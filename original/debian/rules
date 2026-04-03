@@ -1,0 +1,32 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# Enable all hardening options.
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/buildflags.mk
+
+DESTDIR = $(CURDIR)/debian/tmp
+
+override_dh_auto_test:
+	LD_LIBRARY_PATH=$(CURDIR)/obj-$(DEB_BUILD_GNU_TYPE)/libvips dh_auto_test -- --timeout-multiplier=10
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-Ddoxygen=true \
+		-Dgtk_doc=true
+
+override_dh_auto_install:
+	dh_auto_install
+	mv $(DESTDIR)/usr/share/doc/vips-doc/ \
+		$(DESTDIR)/usr/share/doc/libvips-doc
+	perl $(CURDIR)/debian/scripts/create_missing_manual_pages
+
+%:
+	dh $@ --buildsystem=meson --with gir
+
+.PHONY: override_dh_auto_configure override_dh_auto_test \
+	override_dh_auto_install

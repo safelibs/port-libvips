@@ -1,0 +1,981 @@
+vips (8.15.1-1.1build4) noble; urgency=medium
+
+  * No-change rebuild for CVE-2024-3094
+
+ -- William Grant <wgrant@ubuntu.com>  Mon, 01 Apr 2024 16:24:27 +1100
+
+vips (8.15.1-1.1build3) noble; urgency=medium
+
+  * No-change rebuild against .
+
+ -- Michael Hudson-Doyle <michael.hudson@ubuntu.com>  Fri, 22 Mar 2024 09:38:47 +1300
+
+vips (8.15.1-1.1build2) noble; urgency=medium
+
+  * No-change rebuild against libglib2.0-0t64
+
+ -- Steve Langasek <steve.langasek@ubuntu.com>  Mon, 11 Mar 2024 23:48:04 +0000
+
+vips (8.15.1-1.1build1) noble; urgency=medium
+
+  * No-change rebuild against libarchive13t64
+
+ -- Steve Langasek <steve.langasek@ubuntu.com>  Sat, 09 Mar 2024 07:25:05 +0000
+
+vips (8.15.1-1.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Rename libraries for 64-bit time_t transition.  Closes: #1063046
+
+ -- Steve Langasek <vorlon@debian.org>  Wed, 28 Feb 2024 22:40:47 +0000
+
+vips (8.15.1-1) unstable; urgency=medium
+
+  * New upstream release.
+
+  [ Adrian Bunk <bunk@debian.org> ]
+  * Increase the self-testing timeout further and make it unconditional
+    (closes: #1057347).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Wed, 03 Jan 2024 06:58:38 +0100
+
+vips (8.15.0-2) unstable; urgency=medium
+
+  * Triple self-testing timeout on slower architectures.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sat, 18 Nov 2023 21:28:00 +0100
+
+vips (8.15.0-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Double self-testing timeout on hppa, hurd-i386 and sparc64 architectures.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 12 Nov 2023 16:08:41 +0100
+
+vips (8.15.0~rc2-2) unstable; urgency=medium
+
+  * Backport upstream fix for i386 compilation.
+  * Switch PNG load/save with libspng.
+  * Compile with image pyramid save support.
+  * Compile with SIMD support with highway.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Thu, 09 Nov 2023 17:14:31 +0100
+
+vips (8.15.0~rc2-1) unstable; urgency=medium
+
+  * New upstream release candidate version.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Tue, 07 Nov 2023 19:36:33 +0100
+
+vips (8.14.5-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Thu, 28 Sep 2023 18:22:26 +0200
+
+vips (8.14.4-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sat, 19 Aug 2023 15:27:44 +0200
+
+vips (8.14.3-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sat, 29 Jul 2023 08:05:03 +0200
+
+vips (8.14.2-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Install examples to libvips-dev package.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sat, 01 Apr 2023 13:16:58 +0200
+
+vips (8.14.1-3) unstable; urgency=medium
+
+  * Double self-testing timeout on mips64el and mipsel architectures.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Mon, 13 Feb 2023 10:48:58 +0100
+
+vips (8.14.1-2) unstable; urgency=medium
+
+  * Backport upstream fixes:
+    - dedupe FITS header write,
+    - fix target pnm write.
+  * Build dependency on libgif-dev is not needed anymore.
+  * Suggest only nip2 on libvips42 and libvips-tools.
+  * Update Standards-Version to 4.6.2 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 12 Feb 2023 08:52:21 +0100
+
+vips (8.14.1-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Build with JPEG XL support.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Tue, 17 Jan 2023 07:01:01 +0100
+
+vips (8.13.3-2) unstable; urgency=medium
+
+  * Adjust build dependency to libfftw3-dev (closes: #1025317).
+  * Update Standards-Version to 4.6.1 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 04 Dec 2022 20:17:39 +0100
+
+vips (8.13.3-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Use DEP5 copyright format.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sat, 12 Nov 2022 07:01:18 +0100
+
+vips (8.13.2-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 02 Oct 2022 20:10:46 +0200
+
+vips (8.13.1-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Mon, 12 Sep 2022 19:09:22 +0200
+
+vips (8.13.0-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Fri, 29 Jul 2022 17:59:07 +0200
+
+vips (8.12.2-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Mon, 28 Feb 2022 22:28:00 +0100
+
+vips (8.12.1-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Build with CGIF support.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Wed, 15 Dec 2021 15:34:32 +0100
+
+vips (8.11.4-2) unstable; urgency=medium
+
+  * Handle symlink to directory switch in libvips-doc (closes: #995674).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Mon, 04 Oct 2021 19:20:20 +0200
+
+vips (8.11.4-1) unstable; urgency=medium
+
+  * New upstream release (closes: #995437).
+  * Include all documentation to libvips-doc package.
+  * Update watch file.
+  * Update debhelper level to 13 .
+  * Update Standards-Version to 4.6.0 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Fri, 01 Oct 2021 17:42:43 +0200
+
+vips (8.10.5-2) unstable; urgency=medium
+
+  * Add upstream metadata.
+  * Update Standards-Version to 4.5.1 .
+
+  [ Thomas Lehmann <t.lehmann@mailbox.org> ]
+  * Backport upstream fixes:
+    - don't add date in ppmsave if @strip is set,
+    - revise ppmload, fixing a couple of bugs:
+      - ppmload was not setting interpretation, filename, etc. for files read
+        via mmap,
+      - files not read via mmap were never byteswapped,
+      - some cleanups.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Thu, 21 Jan 2021 19:55:16 +0100
+
+vips (8.10.5-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Mon, 21 Dec 2020 20:06:24 +0100
+
+vips (8.10.2-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Tue, 13 Oct 2020 16:56:17 +0200
+
+vips (8.10.1-4) unstable; urgency=medium
+
+  * Build with High Efficiency Image File format support.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sat, 10 Oct 2020 07:51:50 +0200
+
+vips (8.10.1-3) unstable; urgency=medium
+
+  * Backport upstream fix for a regression in the C path for dilate/erode
+    (closes: #969538).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Wed, 07 Oct 2020 14:02:19 +0000
+
+vips (8.10.1-2) unstable; urgency=medium
+
+  * Backport upstream fix for docs building with gobject-introspection 1.66+
+    (closes: #971106).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sat, 03 Oct 2020 18:41:08 +0200
+
+vips (8.10.1-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 06 Sep 2020 07:25:08 +0200
+
+vips (8.10.0-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Fri, 21 Aug 2020 08:55:23 +0200
+
+vips (8.9.2-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Re-evaluate build dependencies (closes: #952567).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 05 Jul 2020 16:33:14 +0200
+
+vips (8.9.1-2) unstable; urgency=medium
+
+  * Add libimagequant-dev dependency to libvips-dev (closes: #952002).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 23 Feb 2020 08:51:26 +0000
+
+vips (8.9.1-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Enable 8bpp PNG quantisation (closes: #949015).
+  * Update debhelper level to 12 .
+  * Update Standards-Version to 4.5.0 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Tue, 04 Feb 2020 16:26:40 +0000
+
+vips (8.9.0-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Update homepage location.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 12 Jan 2020 22:18:36 +0000
+
+vips (8.8.3-3) unstable; urgency=medium
+
+  * Don't fail self tests on s390x until upstream fix that for big-endian.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Thu, 07 Nov 2019 17:40:50 +0000
+
+vips (8.8.3-2) unstable; urgency=medium
+
+  * Build without Orc on ppc64el and s390x.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 03 Nov 2019 19:45:54 +0000
+
+vips (8.8.3-1) unstable; urgency=high
+
+  * New upstream release:
+    - fix CVE-2019-17534: fetch map after DGifGetImageDesc()
+      (closes: #942254),
+    - removed Python bindings (closes: #938780).
+  * Switch to short debhelper rules format.
+  * Update Standards-Version to 4.4.1 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 03 Nov 2019 09:22:21 +0000
+
+vips (8.7.4-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Fri, 18 Jan 2019 17:07:38 +0000
+
+vips (8.7.2-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Mark libvips-doc Multi-Arch foreign.
+  * Update Standards-Version to 4.3.0 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Wed, 26 Dec 2018 19:12:36 +0000
+
+vips (8.7.0-1) unstable; urgency=medium
+
+  * New major upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Wed, 19 Sep 2018 20:56:10 +0000
+
+vips (8.6.5-1) unstable; urgency=high
+
+  * New upstream release:
+    - fix a buffer overflow in the tiff reader.
+  * Update watch file.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Thu, 26 Jul 2018 22:22:33 +0000
+
+vips (8.6.4-1) unstable; urgency=medium
+
+  * New upstream release (closes: #874759).
+  * Update Python bindings packaging.
+  * Update homepage location.
+  * Update watch file.
+  * Update debhelper level to 10:
+    - remove dh-autoreconf build dependency,
+    - remove autotools-dev build dependency.
+  * Update Standards-Version to 4.1.5 .
+
+  [ Lorenz Schori <lo@znerol.ch> ]
+  * Rewrite URLs to github project.
+  * Switch from libxml2 to libexpat1 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Tue, 24 Jul 2018 19:17:08 +0000
+
+vips (8.4.5-2) unstable; urgency=high
+
+  * Backport upstream security fix for CVE-2018-7998: fix a crash with
+    delayed load (closes: #892589).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 11 Mar 2018 07:39:29 +0000
+
+vips (8.4.5-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Wed, 21 Dec 2016 18:04:52 +0000
+
+vips (8.4.4-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Tue, 15 Nov 2016 16:50:44 +0000
+
+vips (8.4.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Mon, 24 Oct 2016 18:12:41 +0000
+
+vips (8.4.1-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Fri, 23 Sep 2016 16:23:29 +0000
+
+vips (8.3.3-1) unstable; urgency=low
+
+  * New upstream release.
+
+  [ Chris Lamb <lamby@debian.org> ]
+  * Make the build reproducible (closes: #834758).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Thu, 18 Aug 2016 19:23:54 +0000
+
+vips (8.3.1-1) unstable; urgency=low
+
+  * New upstream release.
+  * Slightly update package description to prevent word duplication.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Wed, 11 May 2016 17:37:52 +0000
+
+vips (8.3.0-3) unstable; urgency=low
+
+  * Add libgif-dev, libpoppler-glib-dev and librsvg2-dev as dependency of
+    libvips-dev (closes: #822866).
+
+  [ Pino Toscano <pino@debian.org> ]
+  * Enable parallel building (closes: #823267).
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Fri, 06 May 2016 19:17:05 +0000
+
+vips (8.3.0-2) unstable; urgency=low
+
+  * Add optional build dependencies (closes: #821098):
+    - libpoppler-glib-dev for PDF load support,
+    - librsvg2-dev for SVG import.
+  * Backport giflib 5.1 support from upstream Git tree.
+  * Add python-gi-dev build dependency for Python override support.
+  * Replace deprecated DEB_COMPRESS_EXCLUDE with DEB_COMPRESS_EXCLUDE_ALL.
+  * Keep rebuildable.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Mon, 25 Apr 2016 20:49:08 +0000
+
+vips (8.3.0-1) unstable; urgency=low
+
+  * New upstream release.
+  * Update Standards-Version to 3.9.8 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Thu, 14 Apr 2016 20:21:21 +0000
+
+vips (8.2.3-1) unstable; urgency=low
+
+  * New upstream release.
+  * Update Standards-Version to 3.9.7 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Wed, 23 Mar 2016 20:21:51 +0000
+
+vips (8.2.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sat, 30 Jan 2016 11:33:16 +0100
+
+vips (8.2.1-1) unstable; urgency=low
+
+  * New major upstream release.
+  * Don't install HTML documentation twice, use symlink instead.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Mon, 11 Jan 2016 17:19:38 +0100
+
+vips (8.0.2-2) unstable; urgency=low
+
+  * Build depend on GCC 5 transitioned libopenexr-dev version.
+  * Upload to unstable for GCC 5 transition.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Mon, 07 Sep 2015 06:45:38 +0200
+
+vips (8.0.2-1) experimental; urgency=medium
+
+  * New major upstream release.
+  * Transition to libvips42 .
+
+  [ Matijs van Zuijlen <matijs@matijs.net> ]
+  * Add gir1.2-vips-8.0 package to provide introspection data
+    (closes: #784580).
+  * Make rebuildable.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sun, 09 Aug 2015 15:42:14 +0200
+
+vips (7.42.3-1) experimental; urgency=low
+
+  * New upstream release.
+  * Update libcfitsio3-dev build dependency to libcfitsio-dev
+    (closes: #761724).
+  * Add libgsf-1-dev dependency to libvips-dev (closes: #780750).
+  * Update Standars-Version to 3.9.6 .
+  * New maintainer after negotiation with Jay.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Thu, 19 Mar 2015 16:02:03 +0000
+
+vips (7.42.1-2) experimental; urgency=medium
+
+  * Add support for new python and C++ APIs added in 7.42.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 29 Dec 2014 19:00:41 -0500
+
+vips (7.42.1-1) experimental; urgency=medium
+
+  * New upstream version
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 29 Dec 2014 10:03:06 -0500
+
+vips (7.40.6-2) unstable; urgency=medium
+
+  * Add support for image pyramid export
+
+ -- Jay Berkenbilt <qjb@debian.org>  Wed, 10 Sep 2014 08:23:43 -0400
+
+vips (7.40.6-1) unstable; urgency=medium
+
+  * New upstream version
+
+ -- Jay Berkenbilt <qjb@debian.org>  Tue, 02 Sep 2014 14:34:39 -0400
+
+vips (7.38.6-1) unstable; urgency=medium
+
+  * New upstream version.
+  * Remove no-longer-needed dependency on gcc 4.7 for armhf. (Closes:
+    #748006)
+  * Upstream version includes new German transltion. (Closes: #743613)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 21 Jun 2014 16:35:51 -0400
+
+vips (7.38.5-2) unstable; urgency=medium
+
+  * Enable dh-autoreconf. (Closes: #742872)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 29 Mar 2014 12:29:29 -0400
+
+vips (7.38.5-1) unstable; urgency=medium
+
+  * New upstream version.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 01 Mar 2014 09:39:19 -0500
+
+vips (7.38.3-1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Tue, 04 Feb 2014 13:14:25 -0500
+
+vips (7.36.5-1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 21 Dec 2013 16:20:40 -0500
+
+vips (7.36.3-3) unstable; urgency=low
+
+  * Update build dependencies for tiff transition.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Thu, 05 Dec 2013 13:10:41 -0500
+
+vips (7.36.3-2) unstable; urgency=low
+
+  * Fix build dependencies for libvips-dev
+
+ -- Jay Berkenbilt <qjb@debian.org>  Fri, 15 Nov 2013 08:46:09 -0500
+
+vips (7.36.3-1) unstable; urgency=low
+
+  * New upstream release
+  * Update standards version to 3.9.5.  No changes required.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Thu, 14 Nov 2013 12:39:59 -0500
+
+vips (7.34.2-3) unstable; urgency=low
+
+  * Use gcc-4.7 on armhf, as a workaround for gcc-4.8 bug #725880.  Thanks
+    Sébastien Villemot <sebastien@debian.org>.  (Closes: #725032)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Thu, 10 Oct 2013 12:25:07 -0400
+
+vips (7.34.2-1) unstable; urgency=low
+
+  * New upstream release
+  * Update standards to 3.9.4 (no changes required)
+  * Add build dependency on autotools-dev
+  * Stop installing .a files with python modules
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 16 Sep 2013 09:16:07 -0400
+
+vips (7.32.3-1) experimental; urgency=low
+
+  * New upstream release
+  * Fix broken debian/watch file.  (Closes: #688104)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 27 Apr 2013 21:10:48 -0400
+
+vips (7.28.8-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Fri, 29 Jun 2012 14:00:16 -0400
+
+vips (7.28.5-1+deb7u1) stable; urgency=low
+
+  * Fix crash on tiff with jpeg compression.  Thanks to Mathieu Malaterre
+    <malat@debian.org> for diagnosing this bug, getting a fix from
+    upstream, and preparing a patch.  (Closes: #689523, #714984, #731948)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Fri, 20 Dec 2013 16:39:12 -0500
+
+vips (7.28.5-1) unstable; urgency=low
+
+  * New upstream release
+  * multiarch, hardening
+  * Support bigtiff
+
+ -- Jay Berkenbilt <qjb@debian.org>  Tue, 29 May 2012 14:25:06 -0400
+
+vips (7.28.2-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sun, 18 Mar 2012 16:54:58 -0400
+
+vips (7.26.7-4) unstable; urgency=low
+
+  * Explicitly disable v4l on kfreebsd architectures.  Hopefully it's
+    really right this time.  (Closes: #654430)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 05 Mar 2012 16:41:02 -0500
+
+vips (7.26.7-3) unstable; urgency=low
+
+  * Correctly implement previous change (fix omission in rules file)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 05 Mar 2012 13:33:26 -0500
+
+vips (7.26.7-2) unstable; urgency=low
+
+  * Update png dependency to libpng-dev.  (Closes: #662536)
+  * Explicitly disable v4l on kfreebsd architectures.  (Closes: #654430)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 05 Mar 2012 09:15:23 -0500
+
+vips (7.26.7-1) unstable; urgency=low
+
+  * New upstream release
+  * Fix python packaging issue.  Thanks Jakub Wilik <jwilk@debian.org>.
+    (Closes: #642746)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 31 Dec 2011 10:31:20 -0500
+
+vips (7.26.3-1) unstable; urgency=low
+
+  * New upstream release
+  * Migrate from dh_pycentral to dh_python2.  (Closes: #617141)
+  * Remove remaining .la files which were installed with the python
+    module.  (Closes: #633181)
+  * New upstream release includes updated German translation.  (Closes:
+    #625255)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 03 Sep 2011 10:47:36 -0400
+
+vips (7.24.5-4) unstable; urgency=high
+
+  * Fixed ImageMagick dependencies; previous fix missed dependencies of
+    libvips-dev. (Closes: #629904, #630014)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 11 Jun 2011 07:54:15 -0400
+
+vips (7.24.5-3) unstable; urgency=low
+
+  * Updated libmagick build dependencies to use non-version-specific
+    packages for better upgradability. (Closes: #625602, #625552)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 07 May 2011 09:42:14 -0400
+
+vips (7.24.5-2) unstable; urgency=low
+
+  * Oops...fix lintian errors from moved documentation.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 16 Apr 2011 13:29:02 -0400
+
+vips (7.24.5-1) unstable; urgency=low
+
+  * New upstream release
+  * Updated standards to 3.9.2.  No changes required.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 16 Apr 2011 10:58:26 -0400
+
+vips (7.24.1-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 27 Dec 2010 14:24:43 -0500
+
+vips (7.22.4-1) unstable; urgency=low
+
+  * New upstream release
+  * Upstream release includes fix to CVE-2010-3364: insecure library
+    loading.  (Closes: #598296)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 09 Oct 2010 10:39:23 -0400
+
+vips (7.22.2-2) unstable; urgency=low
+
+  * Upstream has declared this to be a stable release.  No code changes
+    from version uploaded to experimental.
+  * Updated version in shlibs file.
+  * Updated watch file for new stable location.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 04 Sep 2010 15:23:54 -0400
+
+vips (7.22.2-1) experimental; urgency=low
+
+  * New upstream release
+  * Updated standards version to 3.9.1.  No changes required.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sun, 08 Aug 2010 19:30:12 -0400
+
+vips (7.22.1-1) experimental; urgency=low
+
+  * New upstream release
+  * Removed replaces/conflicts on very old versions of the package that
+    have been gone since before the current stable.
+  * Updated standards version to 3.9.0.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 24 Jul 2010 11:03:05 -0400
+
+vips (7.22.0-1) experimental; urgency=low
+
+  * New upstream release
+  * Changed references to libjpeg62-dev to libjpeg-dev
+  * Upstream release includes German translation. (Closes: #582086)
+  * Upstream release includes fixes to typos. (Closes: #582084)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sun, 20 Jun 2010 13:20:26 -0400
+
+vips (7.20.7-1) unstable; urgency=low
+
+  * New upstream release
+  * Change rules file so that python-central can properly handle
+    byte-compiled python files.  (Closes: #566053)
+  * Updated standards version to 3.8.4.  No changes required.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 06 Feb 2010 17:54:32 -0500
+
+vips (7.20.6-1) unstable; urgency=low
+
+  * New upstream release
+  * Updated watch file
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sun, 10 Jan 2010 12:13:04 -0500
+
+vips (7.20.4-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 05 Dec 2009 14:57:11 -0500
+
+vips (7.20.2-1) experimental; urgency=low
+
+  * New upstream release
+  * Converted package format to "3.0 (quilt)"
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 23 Nov 2009 21:31:00 -0500
+
+vips (7.18.2-3) unstable; urgency=low
+
+  * Add additional fix for python 2.6.  Thanks Fabrice Coutadeur.
+    Repeated attempts are the fault of my modifications, not Fabrice's
+    patch.  (Closes: #538054)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 24 Aug 2009 11:06:32 -0400
+
+vips (7.18.2-2) unstable; urgency=low
+
+  * Add additional fix for python 2.6.  Thanks Fabrice Coutadeur.
+    (Closes: #538054)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Fri, 21 Aug 2009 22:14:59 -0400
+
+vips (7.18.2-1) unstable; urgency=low
+
+  * New upstream release.
+  * Made updates based on patch from Ubuntu (Fabrice Coutadeur) to enable
+    vips to work with python 2.6.  (Closes: #538054)
+  * Update standards version to 3.8.3.  No changes required.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Wed, 19 Aug 2009 15:42:15 -0400
+
+vips (7.18.1-1) unstable; urgency=low
+
+  * New upstream release
+  * Updated standards to 3.8.1.  No changes required.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sun, 26 Apr 2009 11:11:06 -0400
+
+vips (7.14.5-1) unstable; urgency=low
+
+  * New upstream release
+  * Switched source packaging to no longer use tarball in tarball format.
+  * Switched to quilt.  Added README.source.
+  * Updated standards to 3.8.0
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 19 Jul 2008 16:10:41 -0400
+
+vips (7.14.4-1) unstable; urgency=low
+
+  * New upstream release.  Incorporates all previous patches.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sun, 08 Jun 2008 10:35:16 -0400
+
+vips (7.14.3-1) unstable; urgency=low
+
+  * New upstream release
+  * Change dependency on fftw3-dev to fftw3-dev | libfftw3-dev to save
+    Ubuntu people from having to continually patch vips
+  * Build python package for all versions of python.  Thanks to Matthias
+    Klose for the patch.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 03 May 2008 09:15:55 -0400
+
+vips (7.14.1-4) unstable; urgency=low
+
+  * Make sure g++, not gcc is used to link C programs that link with C++
+    libraries.  (Closes: #474405)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sun, 06 Apr 2008 22:37:47 -0400
+
+vips (7.14.1-3) unstable; urgency=medium
+
+  * Add missing conflicts/replaces to allow proper update.  Thanks to
+    Michal Politowski for pointing out the error.  (Closes: #473388)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 05 Apr 2008 06:21:03 -0400
+
+vips (7.14.1-2) unstable; urgency=low
+
+  * Officially supported version; updating watch file and uploading to
+    unstable.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 29 Mar 2008 11:28:19 -0400
+
+vips (7.14.1-1) experimental; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sun, 16 Mar 2008 09:35:35 -0400
+
+vips (7.12.5-3) unstable; urgency=low
+
+  * Fix gcc 4.3 compilation problems.  (Closes: #456043)
+  * Update standards version to 3.7.3.  No changes required.
+  * Change Section from "graphics" to "python" in python-vipscc
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 11 Feb 2008 09:40:16 -0500
+
+vips (7.12.5-2) unstable; urgency=low
+
+  * Fix python policy conformance.  Thanks to Siegfried Gevatter and
+    Cesare Tirabassi for the analysis. (Closes: #450863, #450858)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 17 Nov 2007 12:30:12 -0500
+
+vips (7.12.5-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sun, 21 Oct 2007 10:15:30 -0400
+
+vips (7.12.4-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon, 30 Jul 2007 16:50:20 -0400
+
+vips (7.12.2-2) unstable; urgency=low
+
+  * Correct dependency typo from Python to python.  Thanks Michal
+    Politowski.  (Closes: #434677)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Thu, 26 Jul 2007 07:26:13 -0400
+
+vips (7.12.2-1) unstable; urgency=low
+
+  * New upstream release
+  * There is now a python-vipsCC package vips's Python bindings.
+  * The development package no longer has the library soname in its name.
+    It is now just libvips-dev.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 21 Jul 2007 22:57:31 -0400
+
+vips (7.10.21-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Tue, 19 Sep 2006 12:18:05 -0400
+
+vips (7.10.20-1) unstable; urgency=low
+
+  * New upstream release
+  * Add watch file
+
+ -- Jay Berkenbilt <qjb@debian.org>  Fri, 23 Jun 2006 14:57:30 -0400
+
+vips (7.10.19-1) unstable; urgency=low
+
+  * New upstream release
+  * Updated standards version to 3.7.2; no changes required.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Fri, 12 May 2006 18:05:32 -0400
+
+vips (7.10.17-1) unstable; urgency=medium
+
+  * New upstream release
+  * No user-visible changes; resync with upstream which has included our
+    local soname patch.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Tue, 29 Nov 2005 19:08:08 -0500
+
+vips (7.10.16-2) unstable; urgency=low
+
+  * Fix libtool versioning problem resulting in wrong soname.
+    (Closes: #340788)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Fri, 25 Nov 2005 19:15:54 -0500
+
+vips (7.10.16-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Tue, 22 Nov 2005 20:43:11 -0500
+
+vips (7.10.15-2) unstable; urgency=low
+
+  * Rename libvips10c2 to libvips10c2a because of libstdc++ allocator
+    change (Closes: #339275)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Wed, 16 Nov 2005 22:49:21 -0500
+
+vips (7.10.15-1) unstable; urgency=low
+
+  * New upstream release
+  * Upstream fix for gcc 4.0 optimization bug
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 15 Oct 2005 19:53:12 -0400
+
+vips (7.10.14-1) unstable; urgency=low
+
+  * New upstream release
+  * Change dependencies for libmagick transition (Closes: #332471)
+
+ -- Jay Berkenbilt <qjb@debian.org>  Fri,  7 Oct 2005 11:39:14 -0400
+
+vips (7.10.12-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Wed, 17 Aug 2005 18:56:41 -0400
+
+vips (7.10.10-2) unstable; urgency=low
+
+  * g++ 4.0 transition: libvips10 is now libvips10c2
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat,  9 Jul 2005 14:20:35 -0400
+
+vips (7.10.10-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Fri,  8 Apr 2005 21:51:33 -0400
+
+vips (7.10.9-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Jay Berkenbilt <qjb@debian.org>  Mon,  4 Apr 2005 18:50:50 -0400
+
+vips (7.10.8-2) unstable; urgency=low
+
+  * Note: 7.10.8-1 was never part of the archive
+  * Name development package libvips10-dev rather than libvips-dev.
+
+ -- Jay Berkenbilt <qjb@debian.org>  Sat, 19 Mar 2005 13:32:00 -0500
+
+vips (7.10.8-1) unstable; urgency=low
+
+  * Rename packages:
+    - libvips7.10 -> libvips10
+    - libvips7.10-dev -> libvips-dev
+    - libvips7.10-tools -> libvips-tools
+    - libvips7.10-doc -> libvips-doc
+
+ -- Jay Berkenbilt <ejb@ql.org>  Sun, 16 Jan 2005 13:12:07 -0500
+
+vips7.10 (7.10.8-1) unstable; urgency=low
+
+  * New upstream release
+  * Upstream fixed gcc-4.0/amd64 compiler error.  Thanks Andreas Jochens
+    <aj@andaco.de>.  (Closes: #288650)
+
+ -- Jay Berkenbilt <ejb@ql.org>  Fri, 14 Jan 2005 21:40:16 -0500
+
+vips7.10 (7.10.6-2) unstable; urgency=high
+
+  * Remove stray header(1) manual page.  (Closes: #284573)
+  * Fix segmentation fault in im_icc_present.  (Closes: #283872)
+
+ -- Jay Berkenbilt <ejb@ql.org>  Tue,  7 Dec 2004 12:10:27 -0500
+
+vips7.10 (7.10.6-1) unstable; urgency=low
+
+  * Initial release. (Closes: #274544)
+
+ -- Jay Berkenbilt <ejb@ql.org>  Sun,  7 Nov 2004 11:47:05 -0500

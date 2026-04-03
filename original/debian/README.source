@@ -1,0 +1,7 @@
+The vips package often adds new external dependencies, but its
+configure output makes it very clear which features might not be
+supported on the basis of missing dependenices. Always check the build
+file when building a new upstream version to see whether any new
+dependencies should be added.
+
+ -- Jay Berkenbilt <qjb@debian.org>, Wed, 10 Sep 2014 08:26:55 -0400

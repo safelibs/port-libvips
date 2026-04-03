@@ -1,0 +1,48 @@
+### C
+# Object files
+*.o
+
+# Libraries
+*.a
+*.la
+*.lo
+
+# Build directories
+build/
+debug/
+release/
+
+# Executables
+*.out
+### End of C
+
+### Python
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+
+# Unit test
+.pytest_cache/
+### End of Python
+
+### VIM
+# Temporary files
+*~
+tmp
+tmp-*
+
+# Swap
+.*.swp
+.*.swo
+
+# Backup
+*.bak
+
+# Auto-generated tag files
+tags
+TAGS
+### End of VIM
+
+### Distribution
+vips-*.tar.gz
+### End of Distribution

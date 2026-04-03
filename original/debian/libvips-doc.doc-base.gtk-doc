@@ -1,0 +1,9 @@
+Document: libvips-appguide
+Title: libvips Reference Manual
+Author: John Cupitt, Kirk Martinez
+Abstract: How to use the VIPS library from the command-line and from C
+Section: Graphics
+
+Format: HTML
+Index: /usr/share/doc/libvips-doc/gtk-doc/html/libvips/index.html
+Files: /usr/share/doc/libvips-doc/gtk-doc/html/libvips/*

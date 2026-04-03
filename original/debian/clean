@@ -1,0 +1,8 @@
+config.log
+gtk-doc.m4
+doc/gtk-doc.make
+doc/libvips-sections.txt
+libvips/include/vips/version.h
+m4/gtk-doc.m4
+po/Makefile.in.in
+po/de.gmo

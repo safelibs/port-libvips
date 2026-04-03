@@ -1,0 +1,131 @@
+Source: vips
+Section: libs
+Priority: optional
+Build-Depends: dpkg-dev (>= 1.22.5), debhelper-compat (= 13), meson, pkgconf,
+ libjpeg-dev, libtiff-dev, libspng-dev, libcgif-dev, librsvg2-dev,
+ libjxl-dev, libpoppler-glib-dev, gobject-introspection, zlib1g-dev,
+ libfftw3-dev | fftw3-dev, liblcms2-dev, libmagickcore-dev,
+ libmagickwand-dev, libfreetype-dev, libpango1.0-dev, libfontconfig-dev,
+ libglib2.0-dev, libice-dev, libimagequant-dev, libhwy-dev, libheif-dev,
+ libmatio-dev, libexpat1-dev, libcfitsio-dev, libopenslide-dev, libwebp-dev,
+ libarchive-dev, libgirepository1.0-dev, doxygen, graphviz,
+ gtk-doc-tools, bc
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Laszlo Boszormenyi (GCS) <gcs@debian.org>
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Homepage: https://libvips.github.io/libvips/
+
+Package: libvips42t64
+Replaces: libvips42
+Breaks: libvips42 (<< ${source:Version})
+Section: libs
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Provides: ${t64:Provides}, libvips
+Suggests: nip2
+Description: image processing system good for very large ones
+ VIPS is an image processing system designed with efficiency in mind.
+ It is good with large images (ones that larger than the amount of RAM in
+ your machine), and for working with colour.  It can perform many
+ image manipulation tasks much faster than other packages such as
+ ImageMagick and the GIMP and includes some special features such as
+ creating single "mosaic" images from multiple parts.
+ .
+ VIPS consists of two main components: an image processing library
+ with some command-line tools and a spreadsheet-like graphical user
+ interface.  The graphical interface is available in the nip2 package.
+ .
+ This package includes runtime libraries needed to run applications
+ linked with the vips library.
+
+Package: libvips-dev
+Section: libdevel
+Architecture: any
+Depends: ${misc:Depends}, libvips42t64 (= ${binary:Version}), gir1.2-vips-8.0 (= ${binary:Version}),
+ libjpeg-dev, libtiff-dev, zlib1g-dev, libfftw3-dev | fftw3-dev, liblcms2-dev,
+ libspng-dev, libmagickcore-dev, libmagickwand-dev, libfreetype-dev,
+ libpango1.0-dev, libfontconfig-dev, libglib2.0-dev, libice-dev, gettext,
+ pkgconf, libhwy-dev, libopenexr-dev, libmatio-dev, libexpat1-dev,
+ libcfitsio-dev, libopenslide-dev, libwebp-dev, libarchive-dev,
+ libcgif-dev, libpoppler-glib-dev, librsvg2-dev, libjxl-dev,
+ libimagequant-dev, libheif-dev
+Recommends: libvips-doc, libvips-tools
+Suggests: nip2
+Description: image processing system good for very large ones (dev)
+ VIPS is an image processing system designed with efficiency in mind.
+ It is good with large images (ones that larger than the amount of RAM in
+ your machine), and for working with colour.  It can perform many
+ image manipulation tasks much faster than other packages such as
+ ImageMagick and the GIMP and includes some special features such as
+ creating single "mosaic" images from multiple parts.
+ .
+ VIPS consists of two main components: an image processing library
+ with some command-line tools and a spreadsheet-like graphical user
+ interface.  The graphical interface is available in the nip2 package.
+ .
+ This package includes all development files needed to compile
+ applications that use the vips library.
+
+Package: libvips-tools
+Section: graphics
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}, python3
+Suggests: nip2, libvips-doc, libvips-dev
+Description: image processing system good for very large ones (tools)
+ VIPS is an image processing system designed with efficiency in mind.
+ It is good with large images (ones that larger than the amount of RAM in
+ your machine), and for working with colour.  It can perform many
+ image manipulation tasks much faster than other packages such as
+ ImageMagick and the GIMP and includes some special features such as
+ creating single "mosaic" images from multiple parts.
+ .
+ VIPS consists of two main components: an image processing library
+ with some command-line tools and a spreadsheet-like graphical user
+ interface.  The graphical interface is available in the nip2 package.
+ .
+ This package includes several command-line utilities that make it
+ possible to use some vips functionality from shell scripts or the
+ command line.
+
+Package: libvips-doc
+Section: doc
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+Description: image processing system good for very large ones (doc)
+ VIPS is an image processing system designed with efficiency in mind.
+ It is good with large images (ones that larger than the amount of RAM in
+ your machine), and for working with colour.  It can perform many
+ image manipulation tasks much faster than other packages such as
+ ImageMagick and the GIMP and includes some special features such as
+ creating single "mosaic" images from multiple parts.
+ .
+ VIPS consists of two main components: an image processing library
+ with some command-line tools and a spreadsheet-like graphical user
+ interface.  The graphical interface is available in the nip2 package.
+ .
+ This package includes complete documentation for the VIPS system.  It
+ includes the application programmers' guide, the library programmers'
+ guide, the C++ programmers' guide, and the reference guide, as well
+ as HTML versions of the program and library manual pages.
+
+Package: gir1.2-vips-8.0
+Section: introspection
+Architecture: any
+Depends: ${gir:Depends}, ${misc:Depends}
+Description: GObject introspection data for VIPS
+ VIPS is an image processing system designed with efficiency in mind.
+ It is good with large images (ones that larger than the amount of RAM in
+ your machine), and for working with colour.  It can perform many
+ image manipulation tasks much faster than other packages such as
+ ImageMagick and the GIMP and includes some special features such as
+ creating single "mosaic" images from multiple parts.
+ .
+ VIPS consists of two main components: an image processing library
+ with some command-line tools and a spreadsheet-like graphical user
+ interface.  The graphical interface is available in the nip2 package.
+ .
+ This package provides the introspection data for VIPS library.
