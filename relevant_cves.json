@@ -1,6 +1,6 @@
 {
   "project": "libvips",
-  "analysis_generated_at_utc": "2026-04-03T23:37:10Z",
+  "analysis_generated_at_utc": "2026-04-03T23:41:13Z",
   "source_dataset": {
     "path": "/home/yans/code/safelibs/ported/libvips/all_cves.json",
     "generated_at_utc": "2026-04-03T23:32:25.200953Z",
@@ -20,8 +20,8 @@
     ]
   },
   "summary": {
-    "included_count": 5,
-    "high_confidence_relevance_count": 3,
+    "included_count": 6,
+    "high_confidence_relevance_count": 4,
     "conditional_relevance_count": 2
   },
   "relevant_cves": [
@@ -90,6 +90,23 @@
       ]
     },
     {
+      "cve_id": "CVE-2026-3146",
+      "relationship_to_libvips": "direct",
+      "affected_versions": "<= 8.18.0",
+      "weaknesses": [
+        "CWE-404",
+        "CWE-476"
+      ],
+      "relevance_confidence": "high",
+      "relevance_category": "matrix header parsing and input-size validation",
+      "description": "A vulnerability has been found in libvips up to 8.18.0. The impacted element is the function vips_foreign_load_matrix_header of the file libvips/foreign/matrixload.c. The manipulation leads to null pointer dereference. The attack needs to be performed locally. The identifier of the patch is d4ce337c76bff1b278d7085c3c4f4725e3aa6ece. To fix this issue, it is recommended to deploy a patch.",
+      "rust_port_relevance": "Although reported as a null-pointer dereference, the upstream fix adds guards for empty and very large matrix inputs in matrixload. That makes this a language-agnostic parser and bounds-validation issue: a Rust port still needs to reject empty headers and cap unreasonable dimensions or counts before allocation, iteration, or indexing.",
+      "supporting_reference_urls": [
+        "https://github.com/libvips/libvips/commit/d4ce337c76bff1b278d7085c3c4f4725e3aa6ece",
+        "https://github.com/libvips/libvips/issues/4875"
+      ]
+    },
+    {
       "cve_id": "CVE-2026-3284",
       "relationship_to_libvips": "direct",
       "affected_versions": "8.19.0",
@@ -115,10 +132,6 @@
     {
       "cve_id": "CVE-2022-24720",
       "reason": "Command injection in the Ruby image_processing wrapper, not a libvips library flaw."
-    },
-    {
-      "cve_id": "CVE-2026-3146",
-      "reason": "Only a null-pointer-dereference symptom is documented. That is not enough to conclude that the underlying defect would survive a Rust rewrite."
     }
   ]
 }
