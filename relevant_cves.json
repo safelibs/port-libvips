@@ -1,0 +1,124 @@
+{
+  "project": "libvips",
+  "analysis_generated_at_utc": "2026-04-03T23:37:10Z",
+  "source_dataset": {
+    "path": "/home/yans/code/safelibs/ported/libvips/all_cves.json",
+    "generated_at_utc": "2026-04-03T23:32:25.200953Z",
+    "reviewed_cve_count": 18
+  },
+  "selection_policy": {
+    "goal": "Identify non-memory-corruption CVEs that may still affect a Rust reimplementation of libvips.",
+    "included_when": [
+      "The CVE is a direct libvips issue and the root cause is still possible in Rust through concurrency, arithmetic, parser logic, or data-initialization mistakes.",
+      "The CVE is not primarily a heap/stack memory-corruption bug such as use-after-free, out-of-bounds read/write, or heap buffer overflow.",
+      "A conditional inclusion is allowed when safe Rust removes the exact C failure mode but the same bug class could return if the port uses unsafe buffer management, FFI-backed buffers, or ports the same custom parser logic."
+    ],
+    "excluded_when": [
+      "The issue is primarily memory corruption or other C-specific pointer misuse with no clear language-agnostic failure mode.",
+      "The issue is in a third-party dependency or ecosystem wrapper rather than libvips itself.",
+      "The only available evidence is a null-dereference symptom with no stronger indication that the underlying defect survives an idiomatic Rust design."
+    ]
+  },
+  "summary": {
+    "included_count": 5,
+    "high_confidence_relevance_count": 3,
+    "conditional_relevance_count": 2
+  },
+  "relevant_cves": [
+    {
+      "cve_id": "CVE-2018-7998",
+      "relationship_to_libvips": "direct",
+      "affected_versions": "< 8.6.3",
+      "weaknesses": [
+        "CWE-362",
+        "CWE-476"
+      ],
+      "relevance_confidence": "high",
+      "relevance_category": "concurrency and shared-state coordination",
+      "description": "In libvips before 8.6.3, a NULL function pointer dereference vulnerability was found in the vips_region_generate function in region.c, which allows remote attackers to cause a denial of service or possibly have unspecified other impact via a crafted image file. This occurs because of a race condition involving a failed delayed load and other worker threads.",
+      "rust_port_relevance": "The root cause is a race between delayed-load failure and worker threads. Safe Rust removes the NULL-function-pointer symptom, but a Rust port can still mishandle shared error state and turn the same condition into a panic, incorrect scheduling, or denial of service.",
+      "supporting_reference_urls": [
+        "https://github.com/jcupitt/libvips/commit/20d840e6da15c1574b3ed998bc92f91d1e36c2a5",
+        "https://github.com/jcupitt/libvips/issues/893"
+      ]
+    },
+    {
+      "cve_id": "CVE-2019-6976",
+      "relationship_to_libvips": "direct",
+      "affected_versions": "< 8.7.4",
+      "weaknesses": [
+        "CWE-908"
+      ],
+      "relevance_confidence": "conditional",
+      "relevance_category": "buffer initialization and information disclosure",
+      "description": "libvips before 8.7.4 generates output images from uninitialized memory locations when processing corrupted input image data because iofuncs/memory.c does not zero out allocated memory. This can result in leaking raw process memory contents through the output image.",
+      "rust_port_relevance": "Fully safe Rust would not expose uninitialized bytes, but a high-performance image pipeline may still use unsafe allocation patterns, partially initialized buffers, or FFI-owned memory. The port should treat full output-buffer initialization as a hard invariant, especially on error paths.",
+      "supporting_reference_urls": [
+        "https://github.com/libvips/libvips/commit/00622428bda8d7521db8d74260b519fa41d69d0a",
+        "https://blog.silentsignal.eu/2019/04/18/drop-by-drop-bleeding-through-libvips/"
+      ]
+    },
+    {
+      "cve_id": "CVE-2021-27847",
+      "relationship_to_libvips": "direct",
+      "affected_versions": "8.10.5",
+      "weaknesses": [
+        "CWE-369"
+      ],
+      "relevance_confidence": "high",
+      "relevance_category": "arithmetic validation",
+      "description": "Division-By-Zero vulnerability in Libvips 8.10.5 in the function vips_eye_point, eye.c#L83, and function vips_mask_point, mask.c#L85.",
+      "rust_port_relevance": "Rust does not prevent divide-by-zero in release builds from becoming a runtime failure. Any port of the geometry or mask-generation code still needs explicit zero and degenerate-dimension checks.",
+      "supporting_reference_urls": [
+        "https://github.com/libvips/libvips/issues/1236"
+      ]
+    },
+    {
+      "cve_id": "CVE-2023-40032",
+      "relationship_to_libvips": "direct",
+      "affected_versions": "8.12.0 - 8.14.3",
+      "weaknesses": [
+        "CWE-476"
+      ],
+      "relevance_confidence": "conditional",
+      "relevance_category": "malformed text handling and parser boundary checks",
+      "description": "libvips is a demand-driven, horizontally threaded image processing library. A specially crafted SVG input can cause libvips versions 8.14.3 or earlier to segfault when attempting to parse a malformed UTF-8 character. Users should upgrade to libvips version 8.14.4 (or later) when processing untrusted input.",
+      "rust_port_relevance": "Idiomatic Rust string APIs remove the exact NULL-dereference failure mode, but malformed UTF-8 and truncated multibyte sequences are still untrusted-input cases the port must handle explicitly. This stays relevant if the Rust port keeps custom byte-level SVG or text parsing instead of delegating to a mature parser.",
+      "supporting_reference_urls": [
+        "https://github.com/libvips/libvips/commit/e091d65835966ef56d53a4105a7362cafdb1582b",
+        "https://github.com/libvips/libvips/security/advisories/GHSA-33qp-9pq7-9584"
+      ]
+    },
+    {
+      "cve_id": "CVE-2026-3284",
+      "relationship_to_libvips": "direct",
+      "affected_versions": "8.19.0",
+      "weaknesses": [
+        "CWE-189",
+        "CWE-190"
+      ],
+      "relevance_confidence": "high",
+      "relevance_category": "integer overflow and bounds validation",
+      "description": "A vulnerability was found in libvips 8.19.0. Impacted is the function vips_extract_area_build of the file libvips/conversion/extract.c. The manipulation of the argument extract_area results in integer overflow. The attack requires a local approach. The exploit has been made public and could be used. The patch is identified as 24795bb3d19d84f7b6f5ed86451ad556c8f2fe70. It is advisable to implement a patch to correct this issue.",
+      "rust_port_relevance": "This is a language-agnostic bug class. Rust debug builds trap many integer overflows, but release builds wrap by default for primitive integers. Coordinate arithmetic and size checks in a Rust port still need checked addition, range validation, and careful signed/unsigned conversions before slicing or allocating.",
+      "supporting_reference_urls": [
+        "https://github.com/libvips/libvips/commit/24795bb3d19d84f7b6f5ed86451ad556c8f2fe70",
+        "https://github.com/libvips/libvips/issues/4879"
+      ]
+    }
+  ],
+  "reviewed_but_excluded": [
+    {
+      "cve_id": "CVE-2020-20739",
+      "reason": "Non-memory-corruption, but the available evidence is an uninitialized variable in deprecated code. The exact failure mode depends on C-style uninitialized locals and is not a strong language-agnostic risk for an idiomatic Rust port."
+    },
+    {
+      "cve_id": "CVE-2022-24720",
+      "reason": "Command injection in the Ruby image_processing wrapper, not a libvips library flaw."
+    },
+    {
+      "cve_id": "CVE-2026-3146",
+      "reason": "Only a null-pointer-dereference symptom is documented. That is not enough to conclude that the underlying defect would survive a Rust rewrite."
+    }
+  ]
+}
