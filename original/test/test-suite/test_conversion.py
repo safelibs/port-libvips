@@ -339,7 +339,7 @@ class TestConversion:
     def test_smartcrop_attention(self):
         test, opts = self.image.smartcrop(
             100, 100, 
-            interesting=pyvips.enums.Interesting.ATTENTION,
+            interesting="attention",
             attention_x=True, attention_y=True)
         assert test.width == 100
         assert test.height == 100

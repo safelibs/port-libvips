@@ -177,9 +177,9 @@ def run_fn(fn, x):
 # make a temp filename with the specified suffix and in the
 # specified directory
 def temp_filename(directory, suffix):
-    temp_name = next(tempfile._get_candidate_names())
-    filename = os.path.join(directory, temp_name + suffix)
-
+    fd, filename = tempfile.mkstemp(dir=directory, suffix=suffix)
+    os.close(fd)
+    os.unlink(filename)
     return filename
 
 

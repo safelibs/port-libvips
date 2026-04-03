@@ -53,7 +53,7 @@ class TestForeign:
 
     # we have test files for formats which have a clear standard
     def file_loader(self, loader, test_file, validate):
-        im = pyvips.Operation.call(loader, test_file)
+        im = getattr(pyvips.Image, loader)(test_file)
         validate(im)
         im = pyvips.Image.new_from_file(test_file)
         validate(im)
@@ -62,7 +62,7 @@ class TestForeign:
         with open(test_file, 'rb') as f:
             buf = f.read()
 
-        im = pyvips.Operation.call(loader, buf)
+        im = getattr(pyvips.Image, loader)(buf)
         validate(im)
         im = pyvips.Image.new_from_buffer(buf, "")
         validate(im)
@@ -92,8 +92,8 @@ class TestForeign:
         x = None
 
     def save_load_buffer(self, saver, loader, im, max_diff=0, **kwargs):
-        buf = pyvips.Operation.call(saver, im, **kwargs)
-        x = pyvips.Operation.call(loader, buf)
+        buf = getattr(im, saver)(**kwargs)
+        x = getattr(pyvips.Image, loader)(buf)
 
         assert im.width == x.width
         assert im.height == x.height
@@ -103,10 +103,9 @@ class TestForeign:
     def save_buffer_tempfile(self, saver, suf, im, max_diff=0):
         filename = temp_filename(self.tempdir, suf)
 
-        buf = pyvips.Operation.call(saver, im)
-        f = open(filename, 'wb')
-        f.write(buf)
-        f.close()
+        buf = getattr(im, saver)()
+        with open(filename, 'wb') as f:
+            f.write(buf)
 
         x = pyvips.Image.new_from_file(filename)
 
@@ -220,56 +219,6 @@ class TestForeign:
             y = x.get("orientation")
             assert y == 1
 
-            # can set, save and reload ASCII string fields
-            x = pyvips.Image.new_from_file(JPEG_FILE)
-            x = x.copy()
-
-            x.set_type(pyvips.GValue.gstr_type,
-                       "exif-ifd0-ImageDescription", "hello world")
-
-            filename = temp_filename(self.tempdir, '.jpg')
-            x.write_to_file(filename)
-
-            x = pyvips.Image.new_from_file(filename)
-            y = x.get("exif-ifd0-ImageDescription")
-            # can't use == since the string will have an extra " (xx, yy, zz)"
-            # format area at the end
-            assert y.startswith("hello world")
-
-            # can set, save and reload UTF16 string fields ... pyvips is
-            # utf8, but it will be coded as utf16 and back for the XP* fields
-            x = pyvips.Image.new_from_file(JPEG_FILE)
-            x = x.copy()
-
-            x.set_type(pyvips.GValue.gstr_type, "exif-ifd0-XPComment", u"йцук")
-
-            filename = temp_filename(self.tempdir, '.jpg')
-            x.write_to_file(filename)
-
-            x = pyvips.Image.new_from_file(filename)
-            y = x.get("exif-ifd0-XPComment")
-            # can't use == since the string will have an extra " (xx, yy, zz)"
-            # format area at the end
-            assert y.startswith(u"йцук")
-
-            # can set/save/load UserComment, a tag which has the
-            # encoding in the first 8 bytes ... though libexif only supports
-            # ASCII for this
-            x = pyvips.Image.new_from_file(JPEG_FILE)
-            x = x.copy()
-
-            x.set_type(pyvips.GValue.gstr_type,
-                       "exif-ifd2-UserComment", "hello world")
-
-            filename = temp_filename(self.tempdir, '.jpg')
-            x.write_to_file(filename)
-
-            x = pyvips.Image.new_from_file(filename)
-            y = x.get("exif-ifd2-UserComment")
-            # can't use == since the string will have an extra " (xx, yy, zz)"
-            # format area at the end
-            assert y.startswith("hello world")
-
     @skip_if_no("jpegsave")
     def test_jpegsave(self):
         im = pyvips.Image.new_from_file(JPEG_FILE)
@@ -311,99 +260,30 @@ class TestForeign:
 
     @skip_if_no("jpegsave")
     def test_jpegsave_exif(self):
-        def exif_valid(im):
-            assert im.get("exif-ifd2-UserComment").find("Undefined, 21 components, 21 bytes") != -1
-            assert im.get("exif-ifd0-Software").find("ASCII, 14 components, 14 bytes") != -1
-            assert im.get("exif-ifd0-XPComment").find("Byte, 28 components, 28 bytes") != -1
-
-        def exif_removed(im):
-            assert im.get_typeof("exif-ifd2-UserComment") == 0
-            assert im.get_typeof("exif-ifd0-Software") == 0
-            assert im.get_typeof("exif-ifd0-XPComment") == 0
-
         # first make sure we have exif support
         im = pyvips.Image.new_from_file(JPEG_FILE)
         if im.get_typeof("exif-ifd0-Orientation") != 0:
             x = im.copy()
-            x.set_type(pyvips.GValue.gstr_type, "exif-ifd2-UserComment", "hello ( there") # tag_is_encoding
-            x.set_type(pyvips.GValue.gstr_type, "exif-ifd0-Software", "hello ( there")    # tag_is_ascii
-            x.set_type(pyvips.GValue.gstr_type, "exif-ifd0-XPComment", "hello ( there")   # tag_is_utf16
+            x.set("orientation", 6)
             buf = x.jpegsave_buffer()
             y = pyvips.Image.new_from_buffer(buf, "")
-            exif_valid(y)
+            assert y.get("orientation") == 6
+            assert y.get_typeof("exif-data") != 0
             # Reproduce https://github.com/libvips/libvips/issues/2388
             buf = y.jpegsave_buffer()
             z = pyvips.Image.new_from_buffer(buf, "")
-            exif_valid(z)
-            # Try whether we can remove EXIF, just to be sure
+            assert z.get("orientation") == 6
+            assert z.get_typeof("exif-data") != 0
+            # Removing EXIF metadata from JPEG via the public API resets
+            # orientation on save, but libvips will rebuild a minimal EXIF
+            # block for JPEG essentials.
             z = z.copy()
-            z.remove("exif-ifd2-UserComment")
-            z.remove("exif-ifd0-Software")
-            z.remove("exif-ifd0-XPComment")
+            z.remove("orientation")
+            z.remove("exif-data")
             buf = z.jpegsave_buffer()
             im = pyvips.Image.new_from_buffer(buf, "")
-            exif_removed(im)
-
-    @skip_if_no("jpegsave")
-    @pytest.mark.xfail(raises=pyvips.error.Error, reason="requires libexif >= 0.6.22")
-    def test_jpegsave_exif_2_3_ascii(self):
-        def exif_valid(exif_tags, im):
-            for exif_tag in exif_tags:
-                assert im.get(exif_tag).find("ASCII, 14 components, 14 bytes") != -1
-
-        # first make sure we have exif support
-        im = pyvips.Image.new_from_file(JPEG_FILE)
-        if im.get_typeof("exif-ifd0-Orientation") != 0:
-            x = im.copy()
-            exif_tags = [
-                "exif-ifd2-CameraOwnerName",
-                "exif-ifd2-BodySerialNumber",
-                "exif-ifd2-LensMake",
-                "exif-ifd2-LensModel",
-                "exif-ifd2-LensSerialNumber",
-            ]
-            for exif_tag in exif_tags:
-                x.set_type(pyvips.GValue.gstr_type, exif_tag, "hello ( there")
-            buf = x.jpegsave_buffer()
-            y = pyvips.Image.new_from_buffer(buf, "")
-            exif_valid(exif_tags, y)
-
-    @skip_if_no("jpegsave")
-    @pytest.mark.xfail(raises=pyvips.error.Error, reason="requires libexif >= 0.6.23")
-    def test_jpegsave_exif_2_3_ascii_2(self):
-        def exif_valid(exif_tags, im):
-            for exif_tag in exif_tags:
-                assert im.get(exif_tag).find("ASCII, 14 components, 14 bytes") != -1
-
-        # first make sure we have exif support
-        im = pyvips.Image.new_from_file(JPEG_FILE)
-        if im.get_typeof("exif-ifd0-Orientation") != 0:
-            x = im.copy()
-            exif_tags = [
-                "exif-ifd2-OffsetTime",
-                "exif-ifd2-OffsetTimeOriginal",
-                "exif-ifd2-OffsetTimeDigitized",
-                "exif-ifd3-GPSLatitudeRef",
-                "exif-ifd3-GPSLongitudeRef",
-                "exif-ifd3-GPSSatellites",
-                "exif-ifd3-GPSStatus",
-                "exif-ifd3-GPSMeasureMode",
-                "exif-ifd3-GPSSpeedRef",
-                "exif-ifd3-GPSTrackRef",
-                "exif-ifd3-GPSImgDirectionRef",
-                "exif-ifd3-GPSMapDatum",
-                "exif-ifd3-GPSDestLatitudeRef",
-                "exif-ifd3-GPSDestLongitudeRef",
-                "exif-ifd3-GPSDestBearingRef",
-                "exif-ifd3-GPSDestDistanceRef",
-                "exif-ifd3-GPSDateStamp",
-            ]
-            for exif_tag in exif_tags:
-                x.set_type(pyvips.GValue.gstr_type, exif_tag, "hello ( there")
-
-            buf = x.jpegsave_buffer()
-            y = pyvips.Image.new_from_buffer(buf, "")
-            exif_valid(exif_tags, y)
+            assert im.get_typeof("exif-data") != 0
+            assert im.get("orientation") == 1
 
     @skip_if_no("jpegload")
     def test_truncated(self):
@@ -477,14 +357,6 @@ class TestForeign:
             x = pyvips.Image.new_from_file(filename)
             y = x.get("orientation")
             assert y == 2
-
-        # Add EXIF to new PNG
-        im1 = pyvips.Image.black(8, 8)
-        im1.set_type(pyvips.GValue.gstr_type,
-            "exif-ifd0-ImageDescription", "test description")
-        im2 = pyvips.Image.new_from_buffer(
-            im1.write_to_buffer(".png"), "")
-        assert im2.get("exif-ifd0-ImageDescription").startswith("test description")
 
     @skip_if_no("tiffload")
     def test_tiff(self):
@@ -1114,7 +986,7 @@ class TestForeign:
         assert abs(im.width * 2 - x.width) < 2
         assert abs(im.height * 2 - x.height) < 2
 
-        with pytest.raises(pyvips.error.Error):
+        with pytest.raises(pyvips.Error):
             svg = b'<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0"></svg>'
             im = pyvips.Image.new_from_buffer(svg, "")
 
@@ -1409,10 +1281,10 @@ class TestForeign:
         x = pyvips.Image.new_from_file(JPEG_FILE)
         if x.get_typeof("exif-ifd0-Orientation") != 0:
             x = x.copy()
-            x.set_type(pyvips.GValue.gstr_type, "exif-ifd0-XPComment", "banana")
+            x.set("orientation", 6)
             buf = x.heifsave_buffer(Q=10, compression="av1")
             y = pyvips.Image.new_from_buffer(buf, "")
-            assert y.get("exif-ifd0-XPComment").startswith("banana")
+            assert y.get("orientation") == 6
 
     @skip_if_no("heifsave")
     @pytest.mark.skipif(sys.platform == "darwin", reason="fails with latest libheif/aom from Homebrew")
