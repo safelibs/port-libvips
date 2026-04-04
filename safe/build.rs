@@ -2,12 +2,16 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde_json::Value;
+
 const SONAME: &str = "libvips.so.42";
 const GENERATED_DIR: &str = "generated";
 const EXPORT_MAP_NAME: &str = "export.map";
 const CORE_BOOTSTRAP_PATH: &str = "reference/abi/core-bootstrap.symbols";
+const GENERATED_OPERATIONS_PATH: &str = "src/generated/operations.json";
 const ERROR_SHIM_NAME: &str = "error_shim.c";
 const API_SHIM_NAME: &str = "api_shim.c";
+const WRAPPER_SHIM_NAME: &str = "operation_wrapper_shim.c";
 const API_TEMPLATE_PATH: &str = "build_support/api_shim.c";
 
 const PHASE4_SYMBOLS: &[&str] = &[
@@ -79,17 +83,19 @@ const PHASE4_SYMBOLS: &[&str] = &[
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={CORE_BOOTSTRAP_PATH}");
+    println!("cargo:rerun-if-changed={GENERATED_OPERATIONS_PATH}");
     println!("cargo:rerun-if-changed={API_TEMPLATE_PATH}");
 
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
     let generated_dir = manifest_dir.join(GENERATED_DIR);
     fs::create_dir_all(&generated_dir).expect("create generated dir");
+    let wrappers = read_generated_wrappers(&manifest_dir.join(GENERATED_OPERATIONS_PATH));
 
     let export_map_path = generated_dir.join(EXPORT_MAP_NAME);
-    let export_map = render_export_map(&manifest_dir.join(CORE_BOOTSTRAP_PATH));
+    let export_map = render_export_map(&manifest_dir.join(CORE_BOOTSTRAP_PATH), &wrappers);
     fs::write(&export_map_path, export_map).expect("write export map");
 
-    compile_c_shims(&manifest_dir);
+    compile_c_shims(&manifest_dir, &wrappers);
 
     println!("cargo:rustc-cdylib-link-arg=-Wl,-soname,{SONAME}");
     println!(
@@ -99,13 +105,18 @@ fn main() {
     println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");
 }
 
-fn render_export_map(symbols_path: &Path) -> String {
+fn render_export_map(symbols_path: &Path, wrappers: &[WrapperDefinition]) -> String {
     let mut lines = vec!["VIPS_42 {".to_owned()];
 
     let mut symbols = read_symbols(symbols_path);
     for symbol in PHASE4_SYMBOLS {
         if !symbols.iter().any(|existing| existing == symbol) {
             symbols.push((*symbol).to_owned());
+        }
+    }
+    for wrapper in wrappers {
+        if !symbols.iter().any(|existing| existing == &wrapper.function) {
+            symbols.push(wrapper.function.clone());
         }
     }
     symbols.sort();
@@ -137,12 +148,202 @@ fn read_symbols(path: &Path) -> Vec<String> {
         .collect()
 }
 
-fn compile_c_shims(manifest_dir: &Path) {
+#[derive(Debug, Clone)]
+struct WrapperParameter {
+    text: String,
+    name: Option<String>,
+    variadic: bool,
+}
+
+#[derive(Debug, Clone)]
+struct WrapperDefinition {
+    function: String,
+    nickname: String,
+    last_fixed_name: Option<String>,
+    variadic: bool,
+    parameters: Vec<WrapperParameter>,
+}
+
+fn read_generated_wrappers(path: &Path) -> Vec<WrapperDefinition> {
+    let contents = fs::read_to_string(path).expect("read generated operations.json");
+    let root: Value = serde_json::from_str(&contents).expect("parse generated operations.json");
+    let wrappers = root
+        .get("wrappers")
+        .and_then(Value::as_object)
+        .expect("generated operations.json wrappers object");
+
+    let mut definitions = wrappers
+        .iter()
+        .map(|(name, wrapper)| {
+            let function = wrapper
+                .get("function")
+                .and_then(Value::as_str)
+                .unwrap_or(name)
+                .to_owned();
+            let nickname = function
+                .strip_prefix("vips_")
+                .unwrap_or(function.as_str())
+                .to_owned();
+            let parameters = wrapper
+                .get("parameters")
+                .and_then(Value::as_array)
+                .map(|parameters| {
+                    parameters
+                        .iter()
+                        .map(|parameter| WrapperParameter {
+                            text: parameter
+                                .get("text")
+                                .and_then(Value::as_str)
+                                .expect("wrapper parameter text")
+                                .to_owned(),
+                            name: parameter
+                                .get("name")
+                                .and_then(Value::as_str)
+                                .map(ToOwned::to_owned),
+                            variadic: parameter
+                                .get("variadic")
+                                .and_then(Value::as_bool)
+                                .unwrap_or(false),
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            WrapperDefinition {
+                function,
+                nickname,
+                last_fixed_name: wrapper
+                    .get("last_fixed_name")
+                    .and_then(Value::as_str)
+                    .map(ToOwned::to_owned),
+                variadic: wrapper
+                    .get("variadic")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+                parameters,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    definitions.sort_by(|left, right| left.function.cmp(&right.function));
+    definitions
+}
+
+fn manual_wrapper(function: &str) -> bool {
+    // Preserve the bespoke implementations that already dispatch to the
+    // working Rust image runtime instead of routing them through metadata-only
+    // generated operation types.
+    matches!(function, "vips_avg" | "vips_crop")
+}
+
+fn render_wrapper_call(
+    wrapper: &WrapperDefinition,
+    fixed_argument_names: &[&str],
+    split: bool,
+) -> String {
+    let target = if split { "vips_call_split" } else { "vips_call" };
+    let operation_name = format!("\"{}\"", wrapper.nickname);
+
+    if split {
+        if fixed_argument_names.is_empty() {
+            format!("{target}({operation_name}, ap)")
+        } else {
+            format!(
+                "{target}({operation_name}, ap, {})",
+                fixed_argument_names.join(", ")
+            )
+        }
+    } else if fixed_argument_names.is_empty() {
+        format!("{target}({operation_name}, NULL)")
+    } else {
+        format!(
+            "{target}({operation_name}, {}, NULL)",
+            fixed_argument_names.join(", ")
+        )
+    }
+}
+
+fn render_wrapper_shim(wrappers: &[WrapperDefinition]) -> String {
+    let mut source = String::from(
+        "// @generated by build.rs from src/generated/operations.json\n\
+#include <stdarg.h>\n\
+#include <vips/vips.h>\n\
+\n\
+#if defined(__GNUC__)\n\
+#define VIPS_PUBLIC __attribute__((visibility(\"default\")))\n\
+#else\n\
+#define VIPS_PUBLIC\n\
+#endif\n\
+\n",
+    );
+
+    for wrapper in wrappers {
+        if manual_wrapper(&wrapper.function) {
+            continue;
+        }
+
+        let parameter_list = wrapper
+            .parameters
+            .iter()
+            .map(|parameter| parameter.text.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let fixed_argument_names = wrapper
+            .parameters
+            .iter()
+            .filter(|parameter| !parameter.variadic)
+            .map(|parameter| {
+                parameter
+                    .name
+                    .as_deref()
+                    .expect("fixed wrapper parameter name")
+            })
+            .collect::<Vec<_>>();
+
+        source.push_str("VIPS_PUBLIC int\n");
+        source.push_str(&wrapper.function);
+        source.push('(');
+        source.push_str(&parameter_list);
+        source.push_str(")\n{\n");
+
+        if wrapper.variadic {
+            let last_fixed_name = wrapper
+                .last_fixed_name
+                .as_deref()
+                .or_else(|| fixed_argument_names.last().copied())
+                .expect("variadic wrapper last fixed parameter");
+            let call = render_wrapper_call(wrapper, &fixed_argument_names, true);
+            source.push_str("    va_list ap;\n");
+            source.push_str("    int result;\n\n");
+            source.push_str("    va_start(ap, ");
+            source.push_str(last_fixed_name);
+            source.push_str(");\n");
+            source.push_str("    result = ");
+            source.push_str(&call);
+            source.push_str(";\n");
+            source.push_str("    va_end(ap);\n\n");
+            source.push_str("    return result;\n");
+        } else {
+            let call = render_wrapper_call(wrapper, &fixed_argument_names, false);
+            source.push_str("    return ");
+            source.push_str(&call);
+            source.push_str(";\n");
+        }
+
+        source.push_str("}\n\n");
+    }
+
+    source
+}
+
+fn compile_c_shims(manifest_dir: &Path, wrappers: &[WrapperDefinition]) {
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR"));
     let error_source_path = out_dir.join(ERROR_SHIM_NAME);
     let api_source_path = out_dir.join(API_SHIM_NAME);
+    let wrapper_source_path = out_dir.join(WRAPPER_SHIM_NAME);
     fs::write(&error_source_path, render_error_shim()).expect("write error shim");
     fs::write(&api_source_path, render_api_shim()).expect("write api shim");
+    fs::write(&wrapper_source_path, render_wrapper_shim(wrappers)).expect("write wrapper shim");
 
     let gio = pkg_config::Config::new()
         .cargo_metadata(false)
@@ -153,6 +354,7 @@ fn compile_c_shims(manifest_dir: &Path) {
     build.cargo_metadata(false);
     build.file(&error_source_path);
     build.file(&api_source_path);
+    build.file(&wrapper_source_path);
     build.flag_if_supported("-std=c99");
     build.flag_if_supported("-fvisibility=hidden");
     build.warnings(false);
