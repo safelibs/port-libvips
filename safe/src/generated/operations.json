@@ -20648,7 +20648,7 @@
       }
     },
     "VipsMaskGaussian": {
-      "abstract": true,
+      "abstract": false,
       "arguments": [
         {
           "construct": true,
@@ -21002,7 +21002,7 @@
       }
     },
     "VipsMaskIdeal": {
-      "abstract": true,
+      "abstract": false,
       "arguments": [
         {
           "construct": true,
@@ -33961,7 +33961,7 @@
       "type_name": "VipsMaskFractal"
     },
     "VipsMaskGaussian": {
-      "abstract": true,
+      "abstract": false,
       "depth": 5,
       "description": "make a gaussian filter",
       "nickname": "mask_gaussian",
@@ -33988,7 +33988,7 @@
       "type_name": "VipsMaskGaussianRing"
     },
     "VipsMaskIdeal": {
-      "abstract": true,
+      "abstract": false,
       "depth": 5,
       "description": "make an ideal filter",
       "nickname": "mask_ideal",

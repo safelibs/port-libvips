@@ -233,7 +233,17 @@ fn manual_wrapper(function: &str) -> bool {
     // Preserve the bespoke implementations that already dispatch to the
     // working Rust image runtime instead of routing them through metadata-only
     // generated operation types.
-    matches!(function, "vips_avg" | "vips_crop")
+    matches!(
+        function,
+        "vips_avg"
+            | "vips_bandjoin"
+            | "vips_bandjoin_const"
+            | "vips_crop"
+            | "vips_linear"
+            | "vips_pngload_buffer"
+            | "vips_pngsave_buffer"
+            | "vips_sum"
+    )
 }
 
 fn render_wrapper_call(

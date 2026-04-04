@@ -548,6 +548,7 @@ unsafe fn configure_registered_type(type_: glib_sys::GType, meta: &'static Gener
             let operation_class = class.cast::<VipsOperationClass>();
             (*operation_class).usage = Some(vips_operation_usage);
             (*operation_class).get_flags = Some(vips_operation_class_flags);
+            (*class).build = Some(crate::ops::generated_operation_build);
             let parent_type =
                 gobject_sys::g_type_parent((*class.cast::<gobject_sys::GTypeClass>()).g_type);
             let inherited_flags = if parent_type != 0

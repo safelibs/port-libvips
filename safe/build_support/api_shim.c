@@ -24,6 +24,8 @@ extern int safe_vips_image_write_to_target_internal(
 extern int safe_vips_crop_internal(
     VipsImage *in, VipsImage **out, int left, int top, int width, int height);
 extern int safe_vips_avg_internal(VipsImage *image, double *out);
+extern int safe_vips_object_mark_argument_assigned(
+    VipsObject *object, const char *name, gboolean assigned);
 
 static void *
 safe_vips_argument_is_required(VipsObject *object,
@@ -239,6 +241,11 @@ safe_vips_operation_set_valist_required(VipsOperation *operation, va_list ap)
 
             g_object_set_property(G_OBJECT(operation),
                 g_param_spec_get_name(pspec), &value);
+            if (safe_vips_object_mark_argument_assigned(
+                    VIPS_OBJECT(operation),
+                    g_param_spec_get_name(pspec),
+                    TRUE))
+                return -1;
 
             VIPS_ARGUMENT_COLLECT_GET(pspec, argument_class, ap);
             VIPS_ARGUMENT_COLLECT_END
@@ -259,7 +266,8 @@ safe_vips_operation_get_valist_required(VipsOperation *operation, va_list ap)
             VIPS_ARGUMENT_COLLECT_SET(pspec, argument_class, ap);
             VIPS_ARGUMENT_COLLECT_GET(pspec, argument_class, ap);
 
-            if (!argument_instance->assigned)
+            if (!(argument_class->flags & VIPS_ARGUMENT_OUTPUT) ||
+                !argument_instance->assigned)
                 continue;
 
             g_object_get(G_OBJECT(operation),
@@ -298,7 +306,7 @@ safe_vips_operation_get_valist_optional(VipsOperation *operation, va_list ap)
         VIPS_ARGUMENT_COLLECT_SET(pspec, argument_class, ap);
         VIPS_ARGUMENT_COLLECT_GET(pspec, argument_class, ap);
 
-        if (arg) {
+        if ((argument_class->flags & VIPS_ARGUMENT_OUTPUT) && arg) {
             g_object_get(G_OBJECT(operation),
                 g_param_spec_get_name(pspec), arg, NULL);
 
@@ -530,6 +538,128 @@ vips_avg(VipsImage *in, double *out, ...)
     return safe_vips_avg_internal(in, out);
 }
 
+VIPS_PUBLIC int
+vips_linear(VipsImage *in, VipsImage **out,
+    const double *a, const double *b, int n, ...)
+{
+    va_list ap;
+    VipsArea *area_a;
+    VipsArea *area_b;
+    int result;
+
+    area_a = VIPS_AREA(vips_array_double_new(a, n));
+    area_b = VIPS_AREA(vips_array_double_new(b, n));
+
+    va_start(ap, n);
+    result = vips_call_split("linear", ap, in, out, area_a, area_b);
+    va_end(ap);
+
+    vips_area_unref(area_a);
+    vips_area_unref(area_b);
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_bandjoin(VipsImage **in, VipsImage **out, int n, ...)
+{
+    va_list ap;
+    VipsArrayImage *array;
+    int result;
+
+    array = vips_array_image_new(in, n);
+
+    va_start(ap, n);
+    result = vips_call_split("bandjoin", ap, array, out);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(array));
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_bandjoin_const(VipsImage *in, VipsImage **out, double *c, int n, ...)
+{
+    va_list ap;
+    VipsArrayDouble *array;
+    int result;
+
+    array = vips_array_double_new(c, n);
+
+    va_start(ap, n);
+    result = vips_call_split("bandjoin_const", ap, in, out, array);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(array));
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_sum(VipsImage **in, VipsImage **out, int n, ...)
+{
+    va_list ap;
+    VipsArrayImage *array;
+    int result;
+
+    array = vips_array_image_new(in, n);
+
+    va_start(ap, n);
+    result = vips_call_split("sum", ap, array, out);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(array));
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_pngload_buffer(void *buf, size_t len, VipsImage **out, ...)
+{
+    va_list ap;
+    VipsBlob *blob;
+    int result;
+
+    blob = vips_blob_new(NULL, buf, len);
+
+    va_start(ap, out);
+    result = vips_call_split("pngload_buffer", ap, blob, out);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(blob));
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_pngsave_buffer(VipsImage *in, void **buf, size_t *len, ...)
+{
+    va_list ap;
+    VipsArea *area;
+    int result;
+
+    area = NULL;
+
+    va_start(ap, len);
+    result = vips_call_split("pngsave_buffer", ap, in, &area);
+    va_end(ap);
+
+    if (!result &&
+        area) {
+        if (buf) {
+            *buf = area->data;
+            area->free_fn = NULL;
+        }
+        if (len)
+            *len = area->length;
+
+        vips_area_unref(area);
+    }
+
+    return result;
+}
+
 VIPS_PUBLIC gboolean
 vips_buf_vappendf(VipsBuf *buf, const char *fmt, va_list ap)
 {
@@ -617,6 +747,11 @@ vips_object_set_valist(VipsObject *object, va_list ap)
         VIPS_ARGUMENT_COLLECT_SET(pspec, argument_class, ap);
         g_object_set_property(G_OBJECT(object),
             g_param_spec_get_name(pspec), &value);
+        if (safe_vips_object_mark_argument_assigned(
+                object,
+                g_param_spec_get_name(pspec),
+                TRUE))
+            return -1;
         VIPS_ARGUMENT_COLLECT_GET(pspec, argument_class, ap);
         VIPS_ARGUMENT_COLLECT_END
     }

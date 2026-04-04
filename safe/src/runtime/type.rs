@@ -1271,6 +1271,47 @@ pub extern "C" fn vips_array_int_get(array: *mut VipsArrayInt, n: *mut c_int) ->
 }
 
 #[no_mangle]
+pub extern "C" fn vips_array_image_new(
+    array: *mut *mut VipsImage,
+    n: c_int,
+) -> *mut VipsArrayImage {
+    let area = vips_area_new_array_object(n);
+    let Some(area_ref) = (unsafe { area.as_mut() }) else {
+        return ptr::null_mut();
+    };
+    area_ref.r#type = crate::runtime::object::vips_image_get_type();
+    let out = area_ref.data.cast::<*mut VipsImage>();
+    for index in 0..n.max(0) as isize {
+        let image = unsafe { *array.offset(index) };
+        unsafe {
+            *out.offset(index) = image;
+        }
+        if !image.is_null() {
+            unsafe {
+                gobject_sys::g_object_ref(image.cast());
+            }
+        }
+    }
+    area.cast::<VipsArrayImage>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_array_image_get(
+    array: *mut VipsArrayImage,
+    n: *mut c_int,
+) -> *mut *mut VipsImage {
+    let Some(array) = (unsafe { array.as_ref() }) else {
+        return ptr::null_mut();
+    };
+    unsafe {
+        if !n.is_null() {
+            *n = array.area.n;
+        }
+    }
+    array.area.data.cast::<*mut VipsImage>()
+}
+
+#[no_mangle]
 pub extern "C" fn vips_value_set_area(
     value: *mut gobject_sys::GValue,
     free_fn: VipsCallbackFn,

@@ -426,6 +426,17 @@ unsafe fn object_state(object: *mut VipsObject) -> Option<&'static mut ObjectSta
     }
 }
 
+fn vips_object_parent_class() -> *mut gobject_sys::GObjectClass {
+    let object_class =
+        unsafe { gobject_sys::g_type_class_peek(vips_object_get_type()) }.cast::<gobject_sys::GTypeClass>();
+    if object_class.is_null() {
+        ptr::null_mut()
+    } else {
+        unsafe { gobject_sys::g_type_class_peek_parent(object_class.cast()) }
+            .cast::<gobject_sys::GObjectClass>()
+    }
+}
+
 unsafe fn clear_dynamic_value(value: Option<DynamicValue>) {
     drop(value);
 }
@@ -440,6 +451,16 @@ unsafe fn set_dynamic_value(object: *mut VipsObject, name: &str, value: DynamicV
 
 unsafe fn dynamic_value<'a>(object: *mut VipsObject, name: &str) -> Option<&'a DynamicValue> {
     unsafe { object_state(object) }?.values.get(name)
+}
+
+pub(crate) unsafe fn dynamic_boxed_value(
+    object: *mut VipsObject,
+    name: &str,
+) -> Option<(glib_sys::GType, glib_sys::gpointer)> {
+    match unsafe { dynamic_value(object, name) } {
+        Some(DynamicValue::Boxed { gtype, value }) => Some((*gtype, *value)),
+        _ => None,
+    }
 }
 
 unsafe fn remove_dynamic_value(object: *mut VipsObject, name: &str) {
@@ -659,6 +680,47 @@ unsafe fn set_assigned(
         unsafe {
             (*instance).assigned = bool_to_gboolean(assigned);
         }
+    }
+}
+
+pub(crate) unsafe fn mark_argument_assigned(
+    object: *mut VipsObject,
+    name: &str,
+    assigned: bool,
+) -> Result<(), ()> {
+    if object.is_null() {
+        return Err(());
+    }
+    let name = CString::new(name).map_err(|_| ())?;
+    let class = unsafe { object_class(object) };
+    if class.is_null() {
+        return Err(());
+    }
+    let pspec = unsafe { gobject_sys::g_object_class_find_property(class.cast(), name.as_ptr()) };
+    if pspec.is_null() {
+        return Err(());
+    }
+    unsafe {
+        set_assigned(object, pspec, assigned);
+    }
+    Ok(())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn safe_vips_object_mark_argument_assigned(
+    object: *mut VipsObject,
+    name: *const c_char,
+    assigned: glib_sys::gboolean,
+) -> c_int {
+    if object.is_null() || name.is_null() {
+        return -1;
+    }
+    let Ok(name) = unsafe { CStr::from_ptr(name) }.to_str() else {
+        return -1;
+    };
+    match unsafe { mark_argument_assigned(object, name, assigned != glib_sys::GFALSE) } {
+        Ok(()) => 0,
+        Err(()) => -1,
     }
 }
 
@@ -884,6 +946,10 @@ unsafe extern "C" fn vips_object_real_build(object: *mut VipsObject) -> c_int {
     }
 }
 
+pub(crate) unsafe fn default_object_build(object: *mut VipsObject) -> c_int {
+    unsafe { vips_object_real_build(object) }
+}
+
 unsafe extern "C" fn vips_object_real_postbuild(
     _object: *mut VipsObject,
     _data: *mut c_void,
@@ -997,9 +1063,7 @@ unsafe extern "C" fn vips_object_dispose(gobject: *mut gobject_sys::GObject) {
         }
     }
 
-    let current_class = unsafe { (*gobject).g_type_instance.g_class.cast::<gobject_sys::GTypeClass>() };
-    let parent_class =
-        unsafe { gobject_sys::g_type_class_peek_parent(current_class.cast()) }.cast::<gobject_sys::GObjectClass>();
+    let parent_class = vips_object_parent_class();
     if !parent_class.is_null() {
         if let Some(dispose) = unsafe { (*parent_class).dispose } {
             unsafe {
@@ -1025,9 +1089,7 @@ unsafe extern "C" fn vips_object_finalize(gobject: *mut gobject_sys::GObject) {
         }
     }
 
-    let current_class = unsafe { (*gobject).g_type_instance.g_class.cast::<gobject_sys::GTypeClass>() };
-    let parent_class =
-        unsafe { gobject_sys::g_type_class_peek_parent(current_class.cast()) }.cast::<gobject_sys::GObjectClass>();
+    let parent_class = vips_object_parent_class();
     if !parent_class.is_null() {
         if let Some(finalize) = unsafe { (*parent_class).finalize } {
             unsafe {
@@ -1069,7 +1131,6 @@ pub unsafe extern "C" fn vips_object_set_property(
         unsafe {
             glib_sys::g_free((*object).nickname.cast());
             (*object).nickname = gobject_sys::g_value_dup_string(value);
-            set_assigned(object, pspec, true);
         }
         return;
     }
@@ -1077,7 +1138,6 @@ pub unsafe extern "C" fn vips_object_set_property(
         unsafe {
             glib_sys::g_free((*object).description.cast());
             (*object).description = gobject_sys::g_value_dup_string(value);
-            set_assigned(object, pspec, true);
         }
         return;
     }
@@ -1085,7 +1145,6 @@ pub unsafe extern "C" fn vips_object_set_property(
     if let Some(dynamic) = unsafe { dynamic_from_gvalue(pspec, value) } {
         unsafe {
             set_dynamic_value(object, &name, dynamic);
-            set_assigned(object, pspec, true);
         }
     }
 }
@@ -1535,6 +1594,11 @@ pub extern "C" fn vips_object_set_argument_from_string(
     }
     unsafe {
         gobject_sys::g_object_set_property(object.cast(), name, &gvalue);
+        let _ = mark_argument_assigned(
+            object,
+            &CStr::from_ptr(name).to_string_lossy(),
+            true,
+        );
         gobject_sys::g_value_unset(&mut gvalue);
     }
     0

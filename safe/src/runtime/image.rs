@@ -711,6 +711,30 @@ pub extern "C" fn safe_vips_crop_internal(
     let Some(input_ref) = (unsafe { input.as_ref() }) else {
         return -1;
     };
+    if left < 0 || top < 0 || width <= 0 || height <= 0 {
+        return -1;
+    }
+    let Ok(left_u) = usize::try_from(left) else {
+        return -1;
+    };
+    let Ok(top_u) = usize::try_from(top) else {
+        return -1;
+    };
+    let Ok(width_u) = usize::try_from(width) else {
+        return -1;
+    };
+    let Ok(height_u) = usize::try_from(height) else {
+        return -1;
+    };
+    let Some(right_u) = left_u.checked_add(width_u) else {
+        return -1;
+    };
+    let Some(bottom_u) = top_u.checked_add(height_u) else {
+        return -1;
+    };
+    if right_u > input_ref.Xsize.max(0) as usize || bottom_u > input_ref.Ysize.max(0) as usize {
+        return -1;
+    }
     let Some(state) = (unsafe { image_state(input) }) else {
         return -1;
     };
@@ -731,18 +755,18 @@ pub extern "C" fn safe_vips_crop_internal(
     if let Some(out_state) = unsafe { image_state(crop) } {
         out_state.pixels = vec![
             0;
-            (width.max(0) as usize)
-                .saturating_mul(height.max(0) as usize)
+            width_u
+                .saturating_mul(height_u)
                 .saturating_mul(bpp)
         ];
-        for y in 0..height.max(0) as usize {
-            let src_y = top.max(0) as usize + y;
-            let src_x = left.max(0) as usize;
+        for y in 0..height_u {
+            let src_y = top_u + y;
+            let src_x = left_u;
             let src_offset = src_y
                 .saturating_mul(line)
                 .saturating_add(src_x.saturating_mul(bpp));
-            let dst_offset = y.saturating_mul(width.max(0) as usize).saturating_mul(bpp);
-            let count = width.max(0) as usize * bpp;
+            let dst_offset = y.saturating_mul(width_u).saturating_mul(bpp);
+            let count = width_u * bpp;
             if src_offset + count <= state.pixels.len()
                 && dst_offset + count <= out_state.pixels.len()
             {
