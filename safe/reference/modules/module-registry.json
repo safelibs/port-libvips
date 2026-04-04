@@ -1,0 +1,166 @@
+{
+  "vips-heif": {
+    "entrypoints": [
+      "vips_foreign_load_heif_buffer_get_type",
+      "vips_foreign_load_heif_file_get_type",
+      "vips_foreign_load_heif_source_get_type",
+      "vips_foreign_save_avif_target_get_type",
+      "vips_foreign_save_heif_buffer_get_type",
+      "vips_foreign_save_heif_file_get_type",
+      "vips_foreign_save_heif_target_get_type"
+    ],
+    "operations": [
+      "avifsave",
+      "avifsave_target",
+      "heifload",
+      "heifload_base",
+      "heifload_buffer",
+      "heifload_source",
+      "heifsave",
+      "heifsave_base",
+      "heifsave_buffer",
+      "heifsave_target"
+    ],
+    "probe_operation": "heifload",
+    "source_files": [
+      "libvips/foreign/heifload.c",
+      "libvips/foreign/heifsave.c"
+    ],
+    "types": [
+      "VipsForeignLoadHeif",
+      "VipsForeignLoadHeifBuffer",
+      "VipsForeignLoadHeifFile",
+      "VipsForeignLoadHeifSource",
+      "VipsForeignSaveAvifTarget",
+      "VipsForeignSaveHeif",
+      "VipsForeignSaveHeifBuffer",
+      "VipsForeignSaveHeifFile",
+      "VipsForeignSaveHeifTarget"
+    ]
+  },
+  "vips-jxl": {
+    "entrypoints": [
+      "vips_foreign_load_jxl_buffer_get_type",
+      "vips_foreign_load_jxl_file_get_type",
+      "vips_foreign_load_jxl_source_get_type",
+      "vips_foreign_save_jxl_buffer_get_type",
+      "vips_foreign_save_jxl_file_get_type",
+      "vips_foreign_save_jxl_target_get_type"
+    ],
+    "operations": [
+      "jxlload",
+      "jxlload_base",
+      "jxlload_buffer",
+      "jxlload_source",
+      "jxlsave",
+      "jxlsave_base",
+      "jxlsave_buffer",
+      "jxlsave_target"
+    ],
+    "probe_operation": "jxlload",
+    "source_files": [
+      "libvips/foreign/jxlload.c",
+      "libvips/foreign/jxlsave.c"
+    ],
+    "types": [
+      "VipsForeignLoadJxl",
+      "VipsForeignLoadJxlBuffer",
+      "VipsForeignLoadJxlFile",
+      "VipsForeignLoadJxlSource",
+      "VipsForeignSaveJxl",
+      "VipsForeignSaveJxlBuffer",
+      "VipsForeignSaveJxlFile",
+      "VipsForeignSaveJxlTarget"
+    ]
+  },
+  "vips-magick": {
+    "entrypoints": [
+      "vips_foreign_load_magick7_buffer_get_type",
+      "vips_foreign_load_magick7_file_get_type",
+      "vips_foreign_load_magick_buffer_get_type",
+      "vips_foreign_load_magick_file_get_type",
+      "vips_foreign_save_magick_bmp_buffer_get_type",
+      "vips_foreign_save_magick_bmp_file_get_type",
+      "vips_foreign_save_magick_buffer_get_type",
+      "vips_foreign_save_magick_file_get_type"
+    ],
+    "operations": [
+      "magickload",
+      "magickload_base",
+      "magickload_buffer",
+      "magicksave",
+      "magicksave_base",
+      "magicksave_bmp",
+      "magicksave_bmp_buffer",
+      "magicksave_buffer",
+      "magicksave_gif",
+      "magicksave_gif_buffer"
+    ],
+    "probe_operation": "magickload",
+    "source_files": [
+      "libvips/foreign/magick.c",
+      "libvips/foreign/magick2vips.c",
+      "libvips/foreign/magick6load.c",
+      "libvips/foreign/magick7load.c",
+      "libvips/foreign/vips2magick.c"
+    ],
+    "types": [
+      "VipsForeignLoadMagick",
+      "VipsForeignLoadMagick7",
+      "VipsForeignLoadMagick7Buffer",
+      "VipsForeignLoadMagick7File",
+      "VipsForeignLoadMagickBuffer",
+      "VipsForeignLoadMagickFile",
+      "VipsForeignSaveMagick",
+      "VipsForeignSaveMagickBmpBuffer",
+      "VipsForeignSaveMagickBmpFile",
+      "VipsForeignSaveMagickBuffer",
+      "VipsForeignSaveMagickFile",
+      "VipsForeignSaveMagickGifBuffer",
+      "VipsForeignSaveMagickGifFile"
+    ]
+  },
+  "vips-openslide": {
+    "entrypoints": [
+      "vips_foreign_load_openslide_file_get_type",
+      "vips_foreign_load_openslide_source_get_type"
+    ],
+    "operations": [
+      "openslideload",
+      "openslideload_base",
+      "openslideload_source"
+    ],
+    "probe_operation": "openslideload",
+    "source_files": [
+      "libvips/foreign/openslideload.c"
+    ],
+    "types": [
+      "VipsForeignLoadOpenslide",
+      "VipsForeignLoadOpenslideFile",
+      "VipsForeignLoadOpenslideSource"
+    ]
+  },
+  "vips-poppler": {
+    "entrypoints": [
+      "vips_foreign_load_pdf_buffer_get_type",
+      "vips_foreign_load_pdf_file_get_type",
+      "vips_foreign_load_pdf_source_get_type"
+    ],
+    "operations": [
+      "pdfload",
+      "pdfload_base",
+      "pdfload_buffer",
+      "pdfload_source"
+    ],
+    "probe_operation": "pdfload",
+    "source_files": [
+      "libvips/foreign/popplerload.c"
+    ],
+    "types": [
+      "VipsForeignLoadPdf",
+      "VipsForeignLoadPdfBuffer",
+      "VipsForeignLoadPdfFile",
+      "VipsForeignLoadPdfSource"
+    ]
+  }
+}

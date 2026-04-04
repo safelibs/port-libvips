@@ -1,0 +1,2853 @@
+{
+  "count": 316,
+  "entries": [
+    {
+      "depth": 1,
+      "description": "operations",
+      "nickname": "operation",
+      "parent": null,
+      "type_name": "VipsOperation"
+    },
+    {
+      "depth": 2,
+      "description": "run an external command",
+      "nickname": "system",
+      "parent": "VipsOperation",
+      "type_name": "VipsSystem"
+    },
+    {
+      "depth": 2,
+      "description": "arithmetic operations",
+      "nickname": "arithmetic",
+      "parent": "VipsSystem",
+      "type_name": "VipsArithmetic"
+    },
+    {
+      "depth": 3,
+      "description": "binary operations",
+      "nickname": "binary",
+      "parent": "VipsArithmetic",
+      "type_name": "VipsBinary"
+    },
+    {
+      "depth": 4,
+      "description": "add two images",
+      "nickname": "add",
+      "parent": "VipsBinary",
+      "type_name": "VipsAdd"
+    },
+    {
+      "depth": 4,
+      "description": "subtract two images",
+      "nickname": "subtract",
+      "parent": "VipsBinary",
+      "type_name": "VipsSubtract"
+    },
+    {
+      "depth": 4,
+      "description": "multiply two images",
+      "nickname": "multiply",
+      "parent": "VipsBinary",
+      "type_name": "VipsMultiply"
+    },
+    {
+      "depth": 4,
+      "description": "divide two images",
+      "nickname": "divide",
+      "parent": "VipsBinary",
+      "type_name": "VipsDivide"
+    },
+    {
+      "depth": 4,
+      "description": "relational operation on two images",
+      "nickname": "relational",
+      "parent": "VipsBinary",
+      "type_name": "VipsRelational"
+    },
+    {
+      "depth": 4,
+      "description": "remainder after integer division of two images",
+      "nickname": "remainder",
+      "parent": "VipsBinary",
+      "type_name": "VipsRemainder"
+    },
+    {
+      "depth": 4,
+      "description": "boolean operation on two images",
+      "nickname": "boolean",
+      "parent": "VipsBinary",
+      "type_name": "VipsBoolean"
+    },
+    {
+      "depth": 4,
+      "description": "binary math operations",
+      "nickname": "math2",
+      "parent": "VipsBinary",
+      "type_name": "VipsMath2"
+    },
+    {
+      "depth": 4,
+      "description": "complex binary operations on two images",
+      "nickname": "complex2",
+      "parent": "VipsBinary",
+      "type_name": "VipsComplex2"
+    },
+    {
+      "depth": 4,
+      "description": "form a complex image from two real images",
+      "nickname": "complexform",
+      "parent": "VipsBinary",
+      "type_name": "VipsComplexform"
+    },
+    {
+      "depth": 3,
+      "description": "nary operations",
+      "nickname": "nary",
+      "parent": "VipsArithmetic",
+      "type_name": "VipsNary"
+    },
+    {
+      "depth": 4,
+      "description": "sum an array of images",
+      "nickname": "sum",
+      "parent": "VipsNary",
+      "type_name": "VipsSum"
+    },
+    {
+      "depth": 3,
+      "description": "unary operations",
+      "nickname": "unary",
+      "parent": "VipsArithmetic",
+      "type_name": "VipsUnary"
+    },
+    {
+      "depth": 4,
+      "description": "invert an image",
+      "nickname": "invert",
+      "parent": "VipsUnary",
+      "type_name": "VipsInvert"
+    },
+    {
+      "depth": 4,
+      "description": "calculate (a * in + b)",
+      "nickname": "linear",
+      "parent": "VipsUnary",
+      "type_name": "VipsLinear"
+    },
+    {
+      "depth": 4,
+      "description": "apply a math operation to an image",
+      "nickname": "math",
+      "parent": "VipsUnary",
+      "type_name": "VipsMath"
+    },
+    {
+      "depth": 4,
+      "description": "absolute value of an image",
+      "nickname": "abs",
+      "parent": "VipsUnary",
+      "type_name": "VipsAbs"
+    },
+    {
+      "depth": 4,
+      "description": "unit vector of pixel",
+      "nickname": "sign",
+      "parent": "VipsUnary",
+      "type_name": "VipsSign"
+    },
+    {
+      "depth": 4,
+      "description": "perform a round function on an image",
+      "nickname": "round",
+      "parent": "VipsUnary",
+      "type_name": "VipsRound"
+    },
+    {
+      "depth": 4,
+      "description": "unary operations with a constant",
+      "nickname": "unary_const",
+      "parent": "VipsUnary",
+      "type_name": "VipsUnaryConst"
+    },
+    {
+      "depth": 5,
+      "description": "relational operations against a constant",
+      "nickname": "relational_const",
+      "parent": "VipsUnaryConst",
+      "type_name": "VipsRelationalConst"
+    },
+    {
+      "depth": 5,
+      "description": "remainder after integer division of an image and a constant",
+      "nickname": "remainder_const",
+      "parent": "VipsUnaryConst",
+      "type_name": "VipsRemainderConst"
+    },
+    {
+      "depth": 5,
+      "description": "boolean operations against a constant",
+      "nickname": "boolean_const",
+      "parent": "VipsUnaryConst",
+      "type_name": "VipsBooleanConst"
+    },
+    {
+      "depth": 5,
+      "description": "binary math operations with a constant",
+      "nickname": "math2_const",
+      "parent": "VipsUnaryConst",
+      "type_name": "VipsMath2Const"
+    },
+    {
+      "depth": 4,
+      "description": "perform a complex operation on an image",
+      "nickname": "complex",
+      "parent": "VipsUnary",
+      "type_name": "VipsComplex"
+    },
+    {
+      "depth": 4,
+      "description": "get a component from a complex image",
+      "nickname": "complexget",
+      "parent": "VipsUnary",
+      "type_name": "VipsComplexget"
+    },
+    {
+      "depth": 2,
+      "description": "VIPS statistic operations",
+      "nickname": "statistic",
+      "parent": "VipsSystem",
+      "type_name": "VipsStatistic"
+    },
+    {
+      "depth": 3,
+      "description": "find image average",
+      "nickname": "avg",
+      "parent": "VipsStatistic",
+      "type_name": "VipsAvg"
+    },
+    {
+      "depth": 3,
+      "description": "find image minimum",
+      "nickname": "min",
+      "parent": "VipsStatistic",
+      "type_name": "VipsMin"
+    },
+    {
+      "depth": 3,
+      "description": "find image maximum",
+      "nickname": "max",
+      "parent": "VipsStatistic",
+      "type_name": "VipsMax"
+    },
+    {
+      "depth": 3,
+      "description": "find image standard deviation",
+      "nickname": "deviate",
+      "parent": "VipsStatistic",
+      "type_name": "VipsDeviate"
+    },
+    {
+      "depth": 3,
+      "description": "find many image stats",
+      "nickname": "stats",
+      "parent": "VipsStatistic",
+      "type_name": "VipsStats"
+    },
+    {
+      "depth": 3,
+      "description": "find image histogram",
+      "nickname": "hist_find",
+      "parent": "VipsStatistic",
+      "type_name": "VipsHistFind"
+    },
+    {
+      "depth": 3,
+      "description": "find n-dimensional image histogram",
+      "nickname": "hist_find_ndim",
+      "parent": "VipsStatistic",
+      "type_name": "VipsHistFindNDim"
+    },
+    {
+      "depth": 3,
+      "description": "find indexed image histogram",
+      "nickname": "hist_find_indexed",
+      "parent": "VipsStatistic",
+      "type_name": "VipsHistFindIndexed"
+    },
+    {
+      "depth": 3,
+      "description": "find hough transform",
+      "nickname": "hough",
+      "parent": "VipsStatistic",
+      "type_name": "VipsHough"
+    },
+    {
+      "depth": 4,
+      "description": "find hough line transform",
+      "nickname": "hough_line",
+      "parent": "VipsHough",
+      "type_name": "VipsHoughLine"
+    },
+    {
+      "depth": 4,
+      "description": "find hough circle transform",
+      "nickname": "hough_circle",
+      "parent": "VipsHough",
+      "type_name": "VipsHoughCircle"
+    },
+    {
+      "depth": 3,
+      "description": "find image projections",
+      "nickname": "project",
+      "parent": "VipsStatistic",
+      "type_name": "VipsProject"
+    },
+    {
+      "depth": 3,
+      "description": "find image profiles",
+      "nickname": "profile",
+      "parent": "VipsStatistic",
+      "type_name": "VipsProfile"
+    },
+    {
+      "depth": 2,
+      "description": "measure a set of patches on a color chart",
+      "nickname": "measure",
+      "parent": "VipsSystem",
+      "type_name": "VipsMeasure"
+    },
+    {
+      "depth": 2,
+      "description": "read a point from an image",
+      "nickname": "getpoint",
+      "parent": "VipsSystem",
+      "type_name": "VipsGetpoint"
+    },
+    {
+      "depth": 2,
+      "description": "search an image for non-edge areas",
+      "nickname": "find_trim",
+      "parent": "VipsSystem",
+      "type_name": "VipsFindTrim"
+    },
+    {
+      "depth": 2,
+      "description": "conversion operations",
+      "nickname": "conversion",
+      "parent": "VipsSystem",
+      "type_name": "VipsConversion"
+    },
+    {
+      "depth": 3,
+      "description": "copy an image",
+      "nickname": "copy",
+      "parent": "VipsConversion",
+      "type_name": "VipsCopy"
+    },
+    {
+      "depth": 3,
+      "description": "cache an image",
+      "nickname": "blockcache",
+      "parent": "VipsConversion",
+      "type_name": "VipsBlockCache"
+    },
+    {
+      "depth": 4,
+      "description": "cache an image as a set of tiles",
+      "nickname": "tilecache",
+      "parent": "VipsBlockCache",
+      "type_name": "VipsTileCache"
+    },
+    {
+      "depth": 4,
+      "description": "cache an image as a set of lines",
+      "nickname": "linecache",
+      "parent": "VipsBlockCache",
+      "type_name": "VipsLineCache"
+    },
+    {
+      "depth": 3,
+      "description": "check sequential access",
+      "nickname": "sequential",
+      "parent": "VipsConversion",
+      "type_name": "VipsSequential"
+    },
+    {
+      "depth": 3,
+      "description": "cache an image",
+      "nickname": "cache",
+      "parent": "VipsConversion",
+      "type_name": "VipsCache"
+    },
+    {
+      "depth": 3,
+      "description": "embed an image in a larger image",
+      "nickname": "embed_base",
+      "parent": "VipsConversion",
+      "type_name": "VipsEmbedBase"
+    },
+    {
+      "depth": 4,
+      "description": "embed an image in a larger image",
+      "nickname": "embed",
+      "parent": "VipsEmbedBase",
+      "type_name": "VipsEmbed"
+    },
+    {
+      "depth": 4,
+      "description": "place an image within a larger image with a certain gravity",
+      "nickname": "gravity",
+      "parent": "VipsEmbedBase",
+      "type_name": "VipsGravity"
+    },
+    {
+      "depth": 3,
+      "description": "flip an image",
+      "nickname": "flip",
+      "parent": "VipsConversion",
+      "type_name": "VipsFlip"
+    },
+    {
+      "depth": 3,
+      "description": "insert image @sub into @main at @x, @y",
+      "nickname": "insert",
+      "parent": "VipsConversion",
+      "type_name": "VipsInsert"
+    },
+    {
+      "depth": 3,
+      "description": "join a pair of images",
+      "nickname": "join",
+      "parent": "VipsConversion",
+      "type_name": "VipsJoin"
+    },
+    {
+      "depth": 3,
+      "description": "join an array of images",
+      "nickname": "arrayjoin",
+      "parent": "VipsConversion",
+      "type_name": "VipsArrayjoin"
+    },
+    {
+      "depth": 3,
+      "description": "extract an area from an image",
+      "nickname": "extract_area",
+      "parent": "VipsConversion",
+      "type_name": "VipsExtractArea"
+    },
+    {
+      "depth": 3,
+      "description": "extract an area from an image",
+      "nickname": "extract_area",
+      "parent": "VipsConversion",
+      "type_name": "crop"
+    },
+    {
+      "depth": 3,
+      "description": "extract an area from an image",
+      "nickname": "smartcrop",
+      "parent": "VipsConversion",
+      "type_name": "VipsSmartcrop"
+    },
+    {
+      "depth": 3,
+      "description": "operations on image bands",
+      "nickname": "bandary",
+      "parent": "VipsConversion",
+      "type_name": "VipsBandary"
+    },
+    {
+      "depth": 4,
+      "description": "extract band from an image",
+      "nickname": "extract_band",
+      "parent": "VipsBandary",
+      "type_name": "VipsExtractBand"
+    },
+    {
+      "depth": 4,
+      "description": "bandwise join a set of images",
+      "nickname": "bandjoin",
+      "parent": "VipsBandary",
+      "type_name": "VipsBandjoin"
+    },
+    {
+      "depth": 4,
+      "description": "append a constant band to an image",
+      "nickname": "bandjoin_const",
+      "parent": "VipsBandary",
+      "type_name": "VipsBandjoinConst"
+    },
+    {
+      "depth": 4,
+      "description": "band-wise rank of a set of images",
+      "nickname": "bandrank",
+      "parent": "VipsBandary",
+      "type_name": "VipsBandrank"
+    },
+    {
+      "depth": 4,
+      "description": "band-wise average",
+      "nickname": "bandmean",
+      "parent": "VipsBandary",
+      "type_name": "VipsBandmean"
+    },
+    {
+      "depth": 4,
+      "description": "boolean operation across image bands",
+      "nickname": "bandbool",
+      "parent": "VipsBandary",
+      "type_name": "VipsBandbool"
+    },
+    {
+      "depth": 3,
+      "description": "replicate an image",
+      "nickname": "replicate",
+      "parent": "VipsConversion",
+      "type_name": "VipsReplicate"
+    },
+    {
+      "depth": 3,
+      "description": "cast an image",
+      "nickname": "cast",
+      "parent": "VipsConversion",
+      "type_name": "VipsCast"
+    },
+    {
+      "depth": 3,
+      "description": "rotate an image",
+      "nickname": "rot",
+      "parent": "VipsConversion",
+      "type_name": "VipsRot"
+    },
+    {
+      "depth": 3,
+      "description": "rotate an image",
+      "nickname": "rot45",
+      "parent": "VipsConversion",
+      "type_name": "VipsRot45"
+    },
+    {
+      "depth": 3,
+      "description": "autorotate image by exif tag",
+      "nickname": "autorot",
+      "parent": "VipsConversion",
+      "type_name": "VipsAutorot"
+    },
+    {
+      "depth": 3,
+      "description": "ifthenelse an image",
+      "nickname": "ifthenelse",
+      "parent": "VipsConversion",
+      "type_name": "VipsIfthenelse"
+    },
+    {
+      "depth": 3,
+      "description": "linear recombination with matrix",
+      "nickname": "recomb",
+      "parent": "VipsConversion",
+      "type_name": "VipsRecomb"
+    },
+    {
+      "depth": 3,
+      "description": "fold up x axis into bands",
+      "nickname": "bandfold",
+      "parent": "VipsConversion",
+      "type_name": "VipsBandfold"
+    },
+    {
+      "depth": 3,
+      "description": "unfold image bands into x axis",
+      "nickname": "bandunfold",
+      "parent": "VipsConversion",
+      "type_name": "VipsBandunfold"
+    },
+    {
+      "depth": 3,
+      "description": "flatten alpha out of an image",
+      "nickname": "flatten",
+      "parent": "VipsConversion",
+      "type_name": "VipsFlatten"
+    },
+    {
+      "depth": 3,
+      "description": "premultiply image alpha",
+      "nickname": "premultiply",
+      "parent": "VipsConversion",
+      "type_name": "VipsPremultiply"
+    },
+    {
+      "depth": 3,
+      "description": "unpremultiply image alpha",
+      "nickname": "unpremultiply",
+      "parent": "VipsConversion",
+      "type_name": "VipsUnpremultiply"
+    },
+    {
+      "depth": 3,
+      "description": "grid an image",
+      "nickname": "grid",
+      "parent": "VipsConversion",
+      "type_name": "VipsGrid"
+    },
+    {
+      "depth": 3,
+      "description": "transpose3d an image",
+      "nickname": "transpose3d",
+      "parent": "VipsConversion",
+      "type_name": "VipsTranspose3d"
+    },
+    {
+      "depth": 3,
+      "description": "scale an image to uchar",
+      "nickname": "scale",
+      "parent": "VipsConversion",
+      "type_name": "VipsScale"
+    },
+    {
+      "depth": 3,
+      "description": "wrap image origin",
+      "nickname": "wrap",
+      "parent": "VipsConversion",
+      "type_name": "VipsWrap"
+    },
+    {
+      "depth": 3,
+      "description": "zoom an image",
+      "nickname": "zoom",
+      "parent": "VipsConversion",
+      "type_name": "VipsZoom"
+    },
+    {
+      "depth": 3,
+      "description": "subsample an image",
+      "nickname": "subsample",
+      "parent": "VipsConversion",
+      "type_name": "VipsSubsample"
+    },
+    {
+      "depth": 3,
+      "description": "pick most-significant byte from an image",
+      "nickname": "msb",
+      "parent": "VipsConversion",
+      "type_name": "VipsMsb"
+    },
+    {
+      "depth": 3,
+      "description": "byteswap an image",
+      "nickname": "byteswap",
+      "parent": "VipsConversion",
+      "type_name": "VipsByteswap"
+    },
+    {
+      "depth": 3,
+      "description": "false-color an image",
+      "nickname": "falsecolour",
+      "parent": "VipsConversion",
+      "type_name": "VipsFalsecolour"
+    },
+    {
+      "depth": 3,
+      "description": "gamma an image",
+      "nickname": "gamma",
+      "parent": "VipsConversion",
+      "type_name": "VipsGamma"
+    },
+    {
+      "depth": 3,
+      "description": "blend images together",
+      "nickname": "composite_base",
+      "parent": "VipsConversion",
+      "type_name": "VipsCompositeBase"
+    },
+    {
+      "depth": 4,
+      "description": "blend an array of images with an array of blend modes",
+      "nickname": "composite",
+      "parent": "VipsCompositeBase",
+      "type_name": "VipsComposite"
+    },
+    {
+      "depth": 4,
+      "description": "blend a pair of images with a blend mode",
+      "nickname": "composite2",
+      "parent": "VipsCompositeBase",
+      "type_name": "VipsComposite2"
+    },
+    {
+      "depth": 2,
+      "description": "create operations",
+      "nickname": "create",
+      "parent": "VipsSystem",
+      "type_name": "VipsCreate"
+    },
+    {
+      "depth": 3,
+      "description": "make a black image",
+      "nickname": "black",
+      "parent": "VipsCreate",
+      "type_name": "VipsBlack"
+    },
+    {
+      "depth": 3,
+      "description": "make a gaussnoise image",
+      "nickname": "gaussnoise",
+      "parent": "VipsCreate",
+      "type_name": "VipsGaussnoise"
+    },
+    {
+      "depth": 3,
+      "description": "make an image where pixel values are coordinates",
+      "nickname": "xyz",
+      "parent": "VipsCreate",
+      "type_name": "VipsXyz"
+    },
+    {
+      "depth": 3,
+      "description": "make a gaussian image",
+      "nickname": "gaussmat",
+      "parent": "VipsCreate",
+      "type_name": "VipsGaussmat"
+    },
+    {
+      "depth": 3,
+      "description": "make a Laplacian of Gaussian image",
+      "nickname": "logmat",
+      "parent": "VipsCreate",
+      "type_name": "VipsLogmat"
+    },
+    {
+      "depth": 3,
+      "description": "make a text image",
+      "nickname": "text",
+      "parent": "VipsCreate",
+      "type_name": "VipsText"
+    },
+    {
+      "depth": 3,
+      "description": "make a point image",
+      "nickname": "point",
+      "parent": "VipsCreate",
+      "type_name": "VipsPoint"
+    },
+    {
+      "depth": 4,
+      "description": "make an image showing the eye's spatial response",
+      "nickname": "eye",
+      "parent": "VipsPoint",
+      "type_name": "VipsEye"
+    },
+    {
+      "depth": 4,
+      "description": "make a grey ramp image",
+      "nickname": "grey",
+      "parent": "VipsPoint",
+      "type_name": "VipsGrey"
+    },
+    {
+      "depth": 4,
+      "description": "make a zone plate",
+      "nickname": "zone",
+      "parent": "VipsPoint",
+      "type_name": "VipsZone"
+    },
+    {
+      "depth": 4,
+      "description": "make a 2D sine wave",
+      "nickname": "sines",
+      "parent": "VipsPoint",
+      "type_name": "VipsSines"
+    },
+    {
+      "depth": 4,
+      "description": "base class for frequency filters",
+      "nickname": "mask",
+      "parent": "VipsPoint",
+      "type_name": "VipsMask"
+    },
+    {
+      "depth": 5,
+      "description": "make an ideal filter",
+      "nickname": "mask_ideal",
+      "parent": "VipsMask",
+      "type_name": "VipsMaskIdeal"
+    },
+    {
+      "depth": 6,
+      "description": "make an ideal ring filter",
+      "nickname": "mask_ideal_ring",
+      "parent": "VipsMaskIdeal",
+      "type_name": "VipsMaskIdealRing"
+    },
+    {
+      "depth": 5,
+      "description": "make an ideal band filter",
+      "nickname": "mask_ideal_band",
+      "parent": "VipsMask",
+      "type_name": "VipsMaskIdealBand"
+    },
+    {
+      "depth": 5,
+      "description": "make a butterworth filter",
+      "nickname": "mask_butterworth",
+      "parent": "VipsMask",
+      "type_name": "VipsMaskButterworth"
+    },
+    {
+      "depth": 6,
+      "description": "make a butterworth ring filter",
+      "nickname": "mask_butterworth_ring",
+      "parent": "VipsMaskButterworth",
+      "type_name": "VipsMaskButterworthRing"
+    },
+    {
+      "depth": 5,
+      "description": "make a butterworth_band filter",
+      "nickname": "mask_butterworth_band",
+      "parent": "VipsMask",
+      "type_name": "VipsMaskButterworthBand"
+    },
+    {
+      "depth": 5,
+      "description": "make a gaussian filter",
+      "nickname": "mask_gaussian",
+      "parent": "VipsMask",
+      "type_name": "VipsMaskGaussian"
+    },
+    {
+      "depth": 6,
+      "description": "make a gaussian ring filter",
+      "nickname": "mask_gaussian_ring",
+      "parent": "VipsMaskGaussian",
+      "type_name": "VipsMaskGaussianRing"
+    },
+    {
+      "depth": 5,
+      "description": "make a gaussian filter",
+      "nickname": "mask_gaussian_band",
+      "parent": "VipsMask",
+      "type_name": "VipsMaskGaussianBand"
+    },
+    {
+      "depth": 5,
+      "description": "make fractal filter",
+      "nickname": "mask_fractal",
+      "parent": "VipsMask",
+      "type_name": "VipsMaskFractal"
+    },
+    {
+      "depth": 3,
+      "description": "build a look-up table",
+      "nickname": "buildlut",
+      "parent": "VipsCreate",
+      "type_name": "VipsBuildlut"
+    },
+    {
+      "depth": 3,
+      "description": "build an inverted look-up table",
+      "nickname": "invertlut",
+      "parent": "VipsCreate",
+      "type_name": "VipsInvertlut"
+    },
+    {
+      "depth": 3,
+      "description": "build a look-up table",
+      "nickname": "tonelut",
+      "parent": "VipsCreate",
+      "type_name": "VipsTonelut"
+    },
+    {
+      "depth": 3,
+      "description": "make a 1D image where pixel values are indexes",
+      "nickname": "identity",
+      "parent": "VipsCreate",
+      "type_name": "VipsIdentity"
+    },
+    {
+      "depth": 3,
+      "description": "make a fractal surface",
+      "nickname": "fractsurf",
+      "parent": "VipsCreate",
+      "type_name": "VipsFractsurf"
+    },
+    {
+      "depth": 3,
+      "description": "make a worley noise image",
+      "nickname": "worley",
+      "parent": "VipsCreate",
+      "type_name": "VipsWorley"
+    },
+    {
+      "depth": 3,
+      "description": "make a perlin noise image",
+      "nickname": "perlin",
+      "parent": "VipsCreate",
+      "type_name": "VipsPerlin"
+    },
+    {
+      "depth": 2,
+      "description": "find the index of the first non-zero pixel in tests",
+      "nickname": "switch",
+      "parent": "VipsSystem",
+      "type_name": "VipsSwitch"
+    },
+    {
+      "depth": 2,
+      "description": "load and save image files, priority=0",
+      "nickname": "foreign",
+      "parent": "VipsSystem",
+      "type_name": "VipsForeign"
+    },
+    {
+      "depth": 3,
+      "description": "loaders, priority=0",
+      "nickname": "load",
+      "parent": "VipsForeign",
+      "type_name": "VipsForeignLoad"
+    },
+    {
+      "depth": 4,
+      "description": "load csv, priority=0, untrusted",
+      "nickname": "csvload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadCsv"
+    },
+    {
+      "depth": 5,
+      "description": "load csv (.csv), priority=0, untrusted, get_flags, get_flags_filename, header, load",
+      "nickname": "csvload",
+      "parent": "VipsForeignLoadCsv",
+      "type_name": "VipsForeignLoadCsvFile"
+    },
+    {
+      "depth": 5,
+      "description": "load csv, priority=0, untrusted, is_a_source, get_flags, header, load",
+      "nickname": "csvload_source",
+      "parent": "VipsForeignLoadCsv",
+      "type_name": "VipsForeignLoadCsvSource"
+    },
+    {
+      "depth": 4,
+      "description": "load matrix, priority=0",
+      "nickname": "matrixload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadMatrix"
+    },
+    {
+      "depth": 5,
+      "description": "load matrix (.mat), priority=0, is_a, get_flags, get_flags_filename, header, load",
+      "nickname": "matrixload",
+      "parent": "VipsForeignLoadMatrix",
+      "type_name": "VipsForeignLoadMatrixFile"
+    },
+    {
+      "depth": 5,
+      "description": "load matrix, priority=0, is_a_source, get_flags, header, load",
+      "nickname": "matrixload_source",
+      "parent": "VipsForeignLoadMatrix",
+      "type_name": "VipsForeignLoadMatrixSource"
+    },
+    {
+      "depth": 4,
+      "description": "load raw data from a file, priority=0, untrusted, get_flags, get_flags_filename, header",
+      "nickname": "rawload",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadRaw"
+    },
+    {
+      "depth": 4,
+      "description": "load vips base class, priority=200, untrusted",
+      "nickname": "vipsload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadVips"
+    },
+    {
+      "depth": 5,
+      "description": "load vips from file (.v, .vips), priority=200, untrusted, is_a, get_flags, get_flags_filename, header",
+      "nickname": "vipsload",
+      "parent": "VipsForeignLoadVips",
+      "type_name": "VipsForeignLoadVipsFile"
+    },
+    {
+      "depth": 5,
+      "description": "load vips from source, priority=200, untrusted, is_a_source, get_flags, get_flags_filename, header",
+      "nickname": "vipsload_source",
+      "parent": "VipsForeignLoadVips",
+      "type_name": "VipsForeignLoadVipsSource"
+    },
+    {
+      "depth": 4,
+      "description": "load an Analyze6 image (.img, .hdr), priority=-50, untrusted, is_a, get_flags, get_flags_filename, header, load",
+      "nickname": "analyzeload",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadAnalyze"
+    },
+    {
+      "depth": 4,
+      "description": "load ppm base class (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted",
+      "nickname": "ppmload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadPpm"
+    },
+    {
+      "depth": 5,
+      "description": "load ppm from file (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted, is_a, get_flags, header, load",
+      "nickname": "ppmload",
+      "parent": "VipsForeignLoadPpm",
+      "type_name": "VipsForeignLoadPpmFile"
+    },
+    {
+      "depth": 5,
+      "description": "load ppm base class (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted, is_a_source, get_flags, header, load",
+      "nickname": "ppmload_source",
+      "parent": "VipsForeignLoadPpm",
+      "type_name": "VipsForeignLoadPpmSource"
+    },
+    {
+      "depth": 4,
+      "description": "load rad base class, priority=-50, untrusted",
+      "nickname": "radload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadRad"
+    },
+    {
+      "depth": 5,
+      "description": "load a Radiance image from a file (.hdr), priority=-50, untrusted, is_a, get_flags, get_flags_filename, header, load",
+      "nickname": "radload",
+      "parent": "VipsForeignLoadRad",
+      "type_name": "VipsForeignLoadRadFile"
+    },
+    {
+      "depth": 5,
+      "description": "load rad from buffer, priority=-50, untrusted, is_a_buffer, get_flags, get_flags_filename, header, load",
+      "nickname": "radload_buffer",
+      "parent": "VipsForeignLoadRad",
+      "type_name": "VipsForeignLoadRadBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load rad from source, priority=-50, untrusted, is_a_source, get_flags, get_flags_filename, header, load",
+      "nickname": "radload_source",
+      "parent": "VipsForeignLoadRad",
+      "type_name": "VipsForeignLoadRadSource"
+    },
+    {
+      "depth": 4,
+      "description": "load GIF with libnsgif, priority=50",
+      "nickname": "gifload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadNsgif"
+    },
+    {
+      "depth": 5,
+      "description": "load GIF with libnsgif (.gif), priority=50, is_a, get_flags, get_flags_filename, header, load",
+      "nickname": "gifload",
+      "parent": "VipsForeignLoadNsgif",
+      "type_name": "VipsForeignLoadNsgifFile"
+    },
+    {
+      "depth": 5,
+      "description": "load GIF with libnsgif, priority=50, is_a_buffer, get_flags, get_flags_filename, header, load",
+      "nickname": "gifload_buffer",
+      "parent": "VipsForeignLoadNsgif",
+      "type_name": "VipsForeignLoadNsgifBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load gif from source, priority=50, is_a_source, get_flags, get_flags_filename, header, load",
+      "nickname": "gifload_source",
+      "parent": "VipsForeignLoadNsgif",
+      "type_name": "VipsForeignLoadNsgifSource"
+    },
+    {
+      "depth": 4,
+      "description": "load png base class, priority=200",
+      "nickname": "pngload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadPng"
+    },
+    {
+      "depth": 5,
+      "description": "load png from file (.png), priority=200, is_a, get_flags, get_flags_filename, header, load",
+      "nickname": "pngload",
+      "parent": "VipsForeignLoadPng",
+      "type_name": "VipsForeignLoadPngFile"
+    },
+    {
+      "depth": 5,
+      "description": "load png from buffer, priority=200, is_a_buffer, get_flags, get_flags_filename, header, load",
+      "nickname": "pngload_buffer",
+      "parent": "VipsForeignLoadPng",
+      "type_name": "VipsForeignLoadPngBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load png from source, priority=200, is_a_source, get_flags, get_flags_filename, header, load",
+      "nickname": "pngload_source",
+      "parent": "VipsForeignLoadPng",
+      "type_name": "VipsForeignLoadPngSource"
+    },
+    {
+      "depth": 4,
+      "description": "load jpeg, priority=50",
+      "nickname": "jpegload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadJpeg"
+    },
+    {
+      "depth": 5,
+      "description": "load jpeg from file (.jpg, .jpeg, .jpe, .jfif), priority=50, is_a, get_flags, get_flags_filename, header, load",
+      "nickname": "jpegload",
+      "parent": "VipsForeignLoadJpeg",
+      "type_name": "VipsForeignLoadJpegFile"
+    },
+    {
+      "depth": 5,
+      "description": "load jpeg from buffer, priority=50, is_a_buffer, get_flags, get_flags_filename, header, load",
+      "nickname": "jpegload_buffer",
+      "parent": "VipsForeignLoadJpeg",
+      "type_name": "VipsForeignLoadJpegBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load image from jpeg source, priority=50, is_a_source, get_flags, get_flags_filename, header, load",
+      "nickname": "jpegload_source",
+      "parent": "VipsForeignLoadJpeg",
+      "type_name": "VipsForeignLoadJpegSource"
+    },
+    {
+      "depth": 4,
+      "description": "load webp, priority=200",
+      "nickname": "webpload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadWebp"
+    },
+    {
+      "depth": 5,
+      "description": "load webp from file (.webp), priority=200, is_a, get_flags, get_flags_filename, header, load",
+      "nickname": "webpload",
+      "parent": "VipsForeignLoadWebp",
+      "type_name": "VipsForeignLoadWebpFile"
+    },
+    {
+      "depth": 5,
+      "description": "load webp from buffer, priority=200, is_a_buffer, get_flags, get_flags_filename, header, load",
+      "nickname": "webpload_buffer",
+      "parent": "VipsForeignLoadWebp",
+      "type_name": "VipsForeignLoadWebpBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load webp from source, priority=200, is_a_source, get_flags, get_flags_filename, header, load",
+      "nickname": "webpload_source",
+      "parent": "VipsForeignLoadWebp",
+      "type_name": "VipsForeignLoadWebpSource"
+    },
+    {
+      "depth": 4,
+      "description": "load tiff, priority=50",
+      "nickname": "tiffload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadTiff"
+    },
+    {
+      "depth": 5,
+      "description": "load tiff from file (.tif, .tiff), priority=50, is_a, get_flags, get_flags_filename, header, load",
+      "nickname": "tiffload",
+      "parent": "VipsForeignLoadTiff",
+      "type_name": "VipsForeignLoadTiffFile"
+    },
+    {
+      "depth": 5,
+      "description": "load tiff from buffer, priority=50, is_a_buffer, get_flags, get_flags_filename, header, load",
+      "nickname": "tiffload_buffer",
+      "parent": "VipsForeignLoadTiff",
+      "type_name": "VipsForeignLoadTiffBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load tiff from source, priority=50, is_a_source, get_flags, get_flags_filename, header, load",
+      "nickname": "tiffload_source",
+      "parent": "VipsForeignLoadTiff",
+      "type_name": "VipsForeignLoadTiffSource"
+    },
+    {
+      "depth": 3,
+      "description": "savers, priority=0, mono",
+      "nickname": "save",
+      "parent": "VipsForeign",
+      "type_name": "VipsForeignSave"
+    },
+    {
+      "depth": 4,
+      "description": "save image to csv (.csv), priority=0, mono",
+      "nickname": "csvsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveCsv"
+    },
+    {
+      "depth": 5,
+      "description": "save image to csv (.csv), priority=0, mono",
+      "nickname": "csvsave",
+      "parent": "VipsForeignSaveCsv",
+      "type_name": "VipsForeignSaveCsvFile"
+    },
+    {
+      "depth": 5,
+      "description": "save image to csv (.csv), priority=0, mono",
+      "nickname": "csvsave_target",
+      "parent": "VipsForeignSaveCsv",
+      "type_name": "VipsForeignSaveCsvTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save image to matrix (.mat), priority=0, mono",
+      "nickname": "matrixsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveMatrix"
+    },
+    {
+      "depth": 5,
+      "description": "save image to matrix (.mat), priority=0, mono",
+      "nickname": "matrixsave",
+      "parent": "VipsForeignSaveMatrix",
+      "type_name": "VipsForeignSaveMatrixFile"
+    },
+    {
+      "depth": 5,
+      "description": "save image to matrix (.mat), priority=0, mono",
+      "nickname": "matrixsave_target",
+      "parent": "VipsForeignSaveMatrix",
+      "type_name": "VipsForeignSaveMatrixTarget"
+    },
+    {
+      "depth": 5,
+      "description": "print matrix (.mat), priority=0, mono",
+      "nickname": "matrixprint",
+      "parent": "VipsForeignSaveMatrix",
+      "type_name": "VipsForeignPrintMatrix"
+    },
+    {
+      "depth": 4,
+      "description": "save image to raw file (.raw), priority=0, any",
+      "nickname": "rawsave",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveRaw"
+    },
+    {
+      "depth": 4,
+      "description": "write raw image to file descriptor (.raw), priority=0, any",
+      "nickname": "rawsave_fd",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveRawFd"
+    },
+    {
+      "depth": 4,
+      "description": "save vips base class (.v, .vips), priority=0, any",
+      "nickname": "vipssave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveVips"
+    },
+    {
+      "depth": 5,
+      "description": "save image to file in vips format (.v, .vips), priority=0, any",
+      "nickname": "vipssave",
+      "parent": "VipsForeignSaveVips",
+      "type_name": "VipsForeignSaveVipsFile"
+    },
+    {
+      "depth": 5,
+      "description": "save image to target in vips format (.v, .vips), priority=0, any",
+      "nickname": "vipssave_target",
+      "parent": "VipsForeignSaveVips",
+      "type_name": "VipsForeignSaveVipsTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save to ppm, priority=0, rgb",
+      "nickname": "ppmsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSavePpm"
+    },
+    {
+      "depth": 5,
+      "description": "save image to ppm file (.pbm, .pgm, .ppm, .pfm, .pnm), priority=0, rgb",
+      "nickname": "ppmsave",
+      "parent": "VipsForeignSavePpm",
+      "type_name": "VipsForeignSavePpmFile"
+    },
+    {
+      "depth": 5,
+      "description": "save to ppm (.ppm), priority=0, rgb",
+      "nickname": "ppmsave_target",
+      "parent": "VipsForeignSavePpm",
+      "type_name": "VipsForeignSavePpmTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save Radiance (.hdr), priority=0, rgb",
+      "nickname": "radsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveRad"
+    },
+    {
+      "depth": 5,
+      "description": "save image to Radiance file (.hdr), priority=0, rgb",
+      "nickname": "radsave",
+      "parent": "VipsForeignSaveRad",
+      "type_name": "VipsForeignSaveRadFile"
+    },
+    {
+      "depth": 5,
+      "description": "save image to Radiance buffer (.hdr), priority=0, rgb",
+      "nickname": "radsave_buffer",
+      "parent": "VipsForeignSaveRad",
+      "type_name": "VipsForeignSaveRadBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save image to Radiance target (.hdr), priority=0, rgb",
+      "nickname": "radsave_target",
+      "parent": "VipsForeignSaveRad",
+      "type_name": "VipsForeignSaveRadTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save png (.png), priority=0, rgba",
+      "nickname": "pngsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSavePng"
+    },
+    {
+      "depth": 5,
+      "description": "save image to png file (.png), priority=0, rgba",
+      "nickname": "pngsave",
+      "parent": "VipsForeignSavePng",
+      "type_name": "VipsForeignSavePngFile"
+    },
+    {
+      "depth": 5,
+      "description": "save image to png buffer (.png), priority=0, rgba",
+      "nickname": "pngsave_buffer",
+      "parent": "VipsForeignSavePng",
+      "type_name": "VipsForeignSavePngBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save image to target as PNG (.png), priority=0, rgba",
+      "nickname": "pngsave_target",
+      "parent": "VipsForeignSavePng",
+      "type_name": "VipsForeignSavePngTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save jpeg (.jpg, .jpeg, .jpe, .jfif), priority=0, rgb-cmyk",
+      "nickname": "jpegsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveJpeg"
+    },
+    {
+      "depth": 5,
+      "description": "save image to jpeg file (.jpg, .jpeg, .jpe, .jfif), priority=0, rgb-cmyk",
+      "nickname": "jpegsave",
+      "parent": "VipsForeignSaveJpeg",
+      "type_name": "VipsForeignSaveJpegFile"
+    },
+    {
+      "depth": 5,
+      "description": "save image to jpeg buffer (.jpg, .jpeg, .jpe, .jfif), priority=0, rgb-cmyk",
+      "nickname": "jpegsave_buffer",
+      "parent": "VipsForeignSaveJpeg",
+      "type_name": "VipsForeignSaveJpegBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save image to jpeg target (.jpg, .jpeg, .jpe, .jfif), priority=0, rgb-cmyk",
+      "nickname": "jpegsave_target",
+      "parent": "VipsForeignSaveJpeg",
+      "type_name": "VipsForeignSaveJpegTarget"
+    },
+    {
+      "depth": 5,
+      "description": "save image to jpeg mime (.jpg, .jpeg, .jpe, .jfif), priority=0, rgb-cmyk",
+      "nickname": "jpegsave_mime",
+      "parent": "VipsForeignSaveJpeg",
+      "type_name": "VipsForeignSaveJpegMime"
+    },
+    {
+      "depth": 4,
+      "description": "save as WebP (.webp), priority=0, rgba-only",
+      "nickname": "webpsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveWebp"
+    },
+    {
+      "depth": 5,
+      "description": "save as WebP (.webp), priority=0, rgba-only",
+      "nickname": "webpsave",
+      "parent": "VipsForeignSaveWebp",
+      "type_name": "VipsForeignSaveWebpFile"
+    },
+    {
+      "depth": 5,
+      "description": "save as WebP (.webp), priority=0, rgba-only",
+      "nickname": "webpsave_buffer",
+      "parent": "VipsForeignSaveWebp",
+      "type_name": "VipsForeignSaveWebpBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save as WebP (.webp), priority=0, rgba-only",
+      "nickname": "webpsave_target",
+      "parent": "VipsForeignSaveWebp",
+      "type_name": "VipsForeignSaveWebpTarget"
+    },
+    {
+      "depth": 5,
+      "description": "save image to webp mime (.webp), priority=0, rgba-only",
+      "nickname": "webpsave_mime",
+      "parent": "VipsForeignSaveWebp",
+      "type_name": "VipsForeignSaveWebpMime"
+    },
+    {
+      "depth": 4,
+      "description": "save image as tiff (.tif, .tiff), priority=0, any",
+      "nickname": "tiffsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveTiff"
+    },
+    {
+      "depth": 5,
+      "description": "save image to tiff file (.tif, .tiff), priority=0, any",
+      "nickname": "tiffsave",
+      "parent": "VipsForeignSaveTiff",
+      "type_name": "VipsForeignSaveTiffFile"
+    },
+    {
+      "depth": 5,
+      "description": "save image to tiff buffer (.tif, .tiff), priority=0, any",
+      "nickname": "tiffsave_buffer",
+      "parent": "VipsForeignSaveTiff",
+      "type_name": "VipsForeignSaveTiffBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save image to tiff target (.tif, .tiff), priority=0, any",
+      "nickname": "tiffsave_target",
+      "parent": "VipsForeignSaveTiff",
+      "type_name": "VipsForeignSaveTiffTarget"
+    },
+    {
+      "depth": 2,
+      "description": "thumbnail generation",
+      "nickname": "thumbnail_base",
+      "parent": "VipsSystem",
+      "type_name": "VipsThumbnail"
+    },
+    {
+      "depth": 3,
+      "description": "generate thumbnail from file",
+      "nickname": "thumbnail",
+      "parent": "VipsThumbnail",
+      "type_name": "VipsThumbnailFile"
+    },
+    {
+      "depth": 3,
+      "description": "generate thumbnail from buffer",
+      "nickname": "thumbnail_buffer",
+      "parent": "VipsThumbnail",
+      "type_name": "VipsThumbnailBuffer"
+    },
+    {
+      "depth": 3,
+      "description": "generate thumbnail from image",
+      "nickname": "thumbnail_image",
+      "parent": "VipsThumbnail",
+      "type_name": "VipsThumbnailImage"
+    },
+    {
+      "depth": 3,
+      "description": "generate thumbnail from source",
+      "nickname": "thumbnail_source",
+      "parent": "VipsThumbnail",
+      "type_name": "VipsThumbnailSource"
+    },
+    {
+      "depth": 2,
+      "description": "resample operations",
+      "nickname": "resample",
+      "parent": "VipsSystem",
+      "type_name": "VipsResample"
+    },
+    {
+      "depth": 3,
+      "description": "resample with a map image",
+      "nickname": "mapim",
+      "parent": "VipsResample",
+      "type_name": "VipsMapim"
+    },
+    {
+      "depth": 3,
+      "description": "shrink an image",
+      "nickname": "shrink",
+      "parent": "VipsResample",
+      "type_name": "VipsShrink"
+    },
+    {
+      "depth": 3,
+      "description": "shrink an image horizontally",
+      "nickname": "shrinkh",
+      "parent": "VipsResample",
+      "type_name": "VipsShrinkh"
+    },
+    {
+      "depth": 3,
+      "description": "shrink an image vertically",
+      "nickname": "shrinkv",
+      "parent": "VipsResample",
+      "type_name": "VipsShrinkv"
+    },
+    {
+      "depth": 3,
+      "description": "shrink an image horizontally",
+      "nickname": "reduceh",
+      "parent": "VipsResample",
+      "type_name": "VipsReduceh"
+    },
+    {
+      "depth": 3,
+      "description": "shrink an image vertically",
+      "nickname": "reducev",
+      "parent": "VipsResample",
+      "type_name": "VipsReducev"
+    },
+    {
+      "depth": 3,
+      "description": "reduce an image",
+      "nickname": "reduce",
+      "parent": "VipsResample",
+      "type_name": "VipsReduce"
+    },
+    {
+      "depth": 3,
+      "description": "resample an image with a quadratic transform",
+      "nickname": "quadratic",
+      "parent": "VipsResample",
+      "type_name": "VipsQuadratic"
+    },
+    {
+      "depth": 3,
+      "description": "affine transform of an image",
+      "nickname": "affine",
+      "parent": "VipsResample",
+      "type_name": "VipsAffine"
+    },
+    {
+      "depth": 3,
+      "description": "base similarity transform",
+      "nickname": "similarity_base",
+      "parent": "VipsResample",
+      "type_name": "VipsSimilarityBase"
+    },
+    {
+      "depth": 4,
+      "description": "similarity transform of an image",
+      "nickname": "similarity",
+      "parent": "VipsSimilarityBase",
+      "type_name": "VipsSimilarity"
+    },
+    {
+      "depth": 4,
+      "description": "rotate an image by a number of degrees",
+      "nickname": "rotate",
+      "parent": "VipsSimilarityBase",
+      "type_name": "VipsRotate"
+    },
+    {
+      "depth": 3,
+      "description": "resize an image",
+      "nickname": "resize",
+      "parent": "VipsResample",
+      "type_name": "VipsResize"
+    },
+    {
+      "depth": 2,
+      "description": "convert to a new colorspace",
+      "nickname": "colourspace",
+      "parent": "VipsSystem",
+      "type_name": "VipsColourspace"
+    },
+    {
+      "depth": 2,
+      "description": "color operations",
+      "nickname": "colour",
+      "parent": "VipsSystem",
+      "type_name": "VipsColour"
+    },
+    {
+      "depth": 3,
+      "description": "color space transformations",
+      "nickname": "space",
+      "parent": "VipsColour",
+      "type_name": "VipsColourTransform"
+    },
+    {
+      "depth": 4,
+      "description": "transform CIELAB to XYZ",
+      "nickname": "Lab2XYZ",
+      "parent": "VipsColourTransform",
+      "type_name": "VipsLab2XYZ"
+    },
+    {
+      "depth": 4,
+      "description": "transform XYZ to Lab",
+      "nickname": "XYZ2Lab",
+      "parent": "VipsColourTransform",
+      "type_name": "VipsXYZ2Lab"
+    },
+    {
+      "depth": 4,
+      "description": "transform Lab to LCh",
+      "nickname": "Lab2LCh",
+      "parent": "VipsColourTransform",
+      "type_name": "VipsLab2LCh"
+    },
+    {
+      "depth": 4,
+      "description": "transform LCh to Lab",
+      "nickname": "LCh2Lab",
+      "parent": "VipsColourTransform",
+      "type_name": "VipsLCh2Lab"
+    },
+    {
+      "depth": 4,
+      "description": "transform LCh to CMC",
+      "nickname": "LCh2CMC",
+      "parent": "VipsColourTransform",
+      "type_name": "VipsLCh2CMC"
+    },
+    {
+      "depth": 4,
+      "description": "transform LCh to CMC",
+      "nickname": "CMC2LCh",
+      "parent": "VipsColourTransform",
+      "type_name": "VipsCMC2LCh"
+    },
+    {
+      "depth": 4,
+      "description": "transform XYZ to Yxy",
+      "nickname": "XYZ2Yxy",
+      "parent": "VipsColourTransform",
+      "type_name": "VipsXYZ2Yxy"
+    },
+    {
+      "depth": 4,
+      "description": "transform Yxy to XYZ",
+      "nickname": "Yxy2XYZ",
+      "parent": "VipsColourTransform",
+      "type_name": "VipsYxy2XYZ"
+    },
+    {
+      "depth": 3,
+      "description": "change color coding",
+      "nickname": "code",
+      "parent": "VipsColour",
+      "type_name": "VipsColourCode"
+    },
+    {
+      "depth": 4,
+      "description": "unpack a LabQ image to float Lab",
+      "nickname": "LabQ2Lab",
+      "parent": "VipsColourCode",
+      "type_name": "VipsLabQ2Lab"
+    },
+    {
+      "depth": 4,
+      "description": "transform float Lab to LabQ coding",
+      "nickname": "Lab2LabQ",
+      "parent": "VipsColourCode",
+      "type_name": "VipsLab2LabQ"
+    },
+    {
+      "depth": 4,
+      "description": "unpack a LabQ image to short Lab",
+      "nickname": "LabQ2LabS",
+      "parent": "VipsColourCode",
+      "type_name": "VipsLabQ2LabS"
+    },
+    {
+      "depth": 4,
+      "description": "transform short Lab to LabQ coding",
+      "nickname": "LabS2LabQ",
+      "parent": "VipsColourCode",
+      "type_name": "VipsLabS2LabQ"
+    },
+    {
+      "depth": 4,
+      "description": "transform signed short Lab to float",
+      "nickname": "LabS2Lab",
+      "parent": "VipsColourCode",
+      "type_name": "VipsLabS2Lab"
+    },
+    {
+      "depth": 4,
+      "description": "transform float Lab to signed short",
+      "nickname": "Lab2LabS",
+      "parent": "VipsColourCode",
+      "type_name": "VipsLab2LabS"
+    },
+    {
+      "depth": 4,
+      "description": "unpack Radiance coding to float RGB",
+      "nickname": "rad2float",
+      "parent": "VipsColourCode",
+      "type_name": "VipsRad2float"
+    },
+    {
+      "depth": 4,
+      "description": "transform float RGB to Radiance coding",
+      "nickname": "float2rad",
+      "parent": "VipsColourCode",
+      "type_name": "VipsFloat2rad"
+    },
+    {
+      "depth": 4,
+      "description": "convert a LabQ image to sRGB",
+      "nickname": "LabQ2sRGB",
+      "parent": "VipsColourCode",
+      "type_name": "VipsLabQ2sRGB"
+    },
+    {
+      "depth": 4,
+      "description": "transform sRGB to HSV",
+      "nickname": "sRGB2HSV",
+      "parent": "VipsColourCode",
+      "type_name": "VipssRGB2HSV"
+    },
+    {
+      "depth": 4,
+      "description": "transform HSV to sRGB",
+      "nickname": "HSV2sRGB",
+      "parent": "VipsColourCode",
+      "type_name": "VipsHSV2sRGB"
+    },
+    {
+      "depth": 4,
+      "description": "transform CMYK to XYZ",
+      "nickname": "CMYK2XYZ",
+      "parent": "VipsColourCode",
+      "type_name": "VipsCMYK2XYZ"
+    },
+    {
+      "depth": 4,
+      "description": "transform XYZ to CMYK",
+      "nickname": "XYZ2CMYK",
+      "parent": "VipsColourCode",
+      "type_name": "VipsXYZ2CMYK"
+    },
+    {
+      "depth": 3,
+      "description": "calculate color difference",
+      "nickname": "difference",
+      "parent": "VipsColour",
+      "type_name": "VipsColourDifference"
+    },
+    {
+      "depth": 4,
+      "description": "calculate dE76",
+      "nickname": "dE76",
+      "parent": "VipsColourDifference",
+      "type_name": "VipsdE76"
+    },
+    {
+      "depth": 4,
+      "description": "calculate dE00",
+      "nickname": "dE00",
+      "parent": "VipsColourDifference",
+      "type_name": "VipsdE00"
+    },
+    {
+      "depth": 4,
+      "description": "calculate dECMC",
+      "nickname": "dECMC",
+      "parent": "VipsColourDifference",
+      "type_name": "VipsdECMC"
+    },
+    {
+      "depth": 2,
+      "description": "convert an sRGB image to scRGB",
+      "nickname": "sRGB2scRGB",
+      "parent": "VipsSystem",
+      "type_name": "VipssRGB2scRGB"
+    },
+    {
+      "depth": 2,
+      "description": "transform scRGB to XYZ",
+      "nickname": "scRGB2XYZ",
+      "parent": "VipsSystem",
+      "type_name": "VipsscRGB2XYZ"
+    },
+    {
+      "depth": 2,
+      "description": "convert scRGB to BW",
+      "nickname": "scRGB2BW",
+      "parent": "VipsSystem",
+      "type_name": "VipsscRGB2BW"
+    },
+    {
+      "depth": 2,
+      "description": "transform XYZ to scRGB",
+      "nickname": "XYZ2scRGB",
+      "parent": "VipsSystem",
+      "type_name": "VipsXYZ2scRGB"
+    },
+    {
+      "depth": 2,
+      "description": "convert an scRGB image to sRGB",
+      "nickname": "scRGB2sRGB",
+      "parent": "VipsSystem",
+      "type_name": "VipsscRGB2sRGB"
+    },
+    {
+      "depth": 2,
+      "description": "load named ICC profile",
+      "nickname": "profile_load",
+      "parent": "VipsSystem",
+      "type_name": "VipsProfileLoad"
+    },
+    {
+      "depth": 2,
+      "description": "map an image though a lut",
+      "nickname": "maplut",
+      "parent": "VipsSystem",
+      "type_name": "VipsMaplut"
+    },
+    {
+      "depth": 2,
+      "description": "use pixel values to pick cases from an array of images",
+      "nickname": "case",
+      "parent": "VipsSystem",
+      "type_name": "VipsCase"
+    },
+    {
+      "depth": 2,
+      "description": "find threshold for percent of pixels",
+      "nickname": "percent",
+      "parent": "VipsSystem",
+      "type_name": "VipsPercent"
+    },
+    {
+      "depth": 2,
+      "description": "statistical difference",
+      "nickname": "stdif",
+      "parent": "VipsSystem",
+      "type_name": "VipsStdif"
+    },
+    {
+      "depth": 2,
+      "description": "histogram operations",
+      "nickname": "histogram",
+      "parent": "VipsSystem",
+      "type_name": "VipsHistogram"
+    },
+    {
+      "depth": 3,
+      "description": "hist_unary operations",
+      "nickname": "hist_unary",
+      "parent": "VipsHistogram",
+      "type_name": "VipsHistUnary"
+    },
+    {
+      "depth": 4,
+      "description": "form cumulative histogram",
+      "nickname": "hist_cum",
+      "parent": "VipsHistUnary",
+      "type_name": "VipsHistCum"
+    },
+    {
+      "depth": 3,
+      "description": "match two histograms",
+      "nickname": "hist_match",
+      "parent": "VipsHistogram",
+      "type_name": "VipsHistMatch"
+    },
+    {
+      "depth": 2,
+      "description": "normalise histogram",
+      "nickname": "hist_norm",
+      "parent": "VipsSystem",
+      "type_name": "VipsHistNorm"
+    },
+    {
+      "depth": 2,
+      "description": "histogram equalisation",
+      "nickname": "hist_equal",
+      "parent": "VipsSystem",
+      "type_name": "VipsHistEqual"
+    },
+    {
+      "depth": 2,
+      "description": "plot histogram",
+      "nickname": "hist_plot",
+      "parent": "VipsSystem",
+      "type_name": "VipsHistPlot"
+    },
+    {
+      "depth": 2,
+      "description": "local histogram equalisation",
+      "nickname": "hist_local",
+      "parent": "VipsSystem",
+      "type_name": "VipsHistLocal"
+    },
+    {
+      "depth": 2,
+      "description": "test for monotonicity",
+      "nickname": "hist_ismonotonic",
+      "parent": "VipsSystem",
+      "type_name": "VipsHistIsmonotonic"
+    },
+    {
+      "depth": 2,
+      "description": "estimate image entropy",
+      "nickname": "hist_entropy",
+      "parent": "VipsSystem",
+      "type_name": "VipsHistEntropy"
+    },
+    {
+      "depth": 2,
+      "description": "convolution operations",
+      "nickname": "convolution",
+      "parent": "VipsSystem",
+      "type_name": "VipsConvolution"
+    },
+    {
+      "depth": 3,
+      "description": "convolution operation",
+      "nickname": "conv",
+      "parent": "VipsConvolution",
+      "type_name": "VipsConv"
+    },
+    {
+      "depth": 3,
+      "description": "approximate integer convolution",
+      "nickname": "conva",
+      "parent": "VipsConvolution",
+      "type_name": "VipsConva"
+    },
+    {
+      "depth": 3,
+      "description": "float convolution operation",
+      "nickname": "convf",
+      "parent": "VipsConvolution",
+      "type_name": "VipsConvf"
+    },
+    {
+      "depth": 3,
+      "description": "int convolution operation",
+      "nickname": "convi",
+      "parent": "VipsConvolution",
+      "type_name": "VipsConvi"
+    },
+    {
+      "depth": 3,
+      "description": "convolve with rotating mask",
+      "nickname": "compass",
+      "parent": "VipsConvolution",
+      "type_name": "VipsCompass"
+    },
+    {
+      "depth": 3,
+      "description": "separable convolution operation",
+      "nickname": "convsep",
+      "parent": "VipsConvolution",
+      "type_name": "VipsConvsep"
+    },
+    {
+      "depth": 3,
+      "description": "approximate separable integer convolution",
+      "nickname": "convasep",
+      "parent": "VipsConvolution",
+      "type_name": "VipsConvasep"
+    },
+    {
+      "depth": 2,
+      "description": "correlation operation",
+      "nickname": "correlation",
+      "parent": "VipsSystem",
+      "type_name": "VipsCorrelation"
+    },
+    {
+      "depth": 3,
+      "description": "fast correlation",
+      "nickname": "fastcor",
+      "parent": "VipsCorrelation",
+      "type_name": "VipsFastcor"
+    },
+    {
+      "depth": 3,
+      "description": "spatial correlation",
+      "nickname": "spcor",
+      "parent": "VipsCorrelation",
+      "type_name": "VipsSpcor"
+    },
+    {
+      "depth": 2,
+      "description": "unsharp masking for print",
+      "nickname": "sharpen",
+      "parent": "VipsSystem",
+      "type_name": "VipsSharpen"
+    },
+    {
+      "depth": 2,
+      "description": "gaussian blur",
+      "nickname": "gaussblur",
+      "parent": "VipsSystem",
+      "type_name": "VipsGaussblur"
+    },
+    {
+      "depth": 2,
+      "description": "Edge detector",
+      "nickname": "edge",
+      "parent": "VipsSystem",
+      "type_name": "VipsEdge"
+    },
+    {
+      "depth": 3,
+      "description": "Sobel edge detector",
+      "nickname": "sobel",
+      "parent": "VipsEdge",
+      "type_name": "VipsSobel"
+    },
+    {
+      "depth": 3,
+      "description": "Scharr edge detector",
+      "nickname": "scharr",
+      "parent": "VipsEdge",
+      "type_name": "VipsScharr"
+    },
+    {
+      "depth": 3,
+      "description": "Prewitt edge detector",
+      "nickname": "prewitt",
+      "parent": "VipsEdge",
+      "type_name": "VipsPrewitt"
+    },
+    {
+      "depth": 2,
+      "description": "Canny edge detector",
+      "nickname": "canny",
+      "parent": "VipsSystem",
+      "type_name": "VipsCanny"
+    },
+    {
+      "depth": 2,
+      "description": "frequency-domain filter operations",
+      "nickname": "freqfilt",
+      "parent": "VipsSystem",
+      "type_name": "VipsFreqfilt"
+    },
+    {
+      "depth": 3,
+      "description": "frequency-domain filtering",
+      "nickname": "freqmult",
+      "parent": "VipsFreqfilt",
+      "type_name": "VipsFreqmult"
+    },
+    {
+      "depth": 3,
+      "description": "make displayable power spectrum",
+      "nickname": "spectrum",
+      "parent": "VipsFreqfilt",
+      "type_name": "VipsSpectrum"
+    },
+    {
+      "depth": 3,
+      "description": "calculate phase correlation",
+      "nickname": "phasecor",
+      "parent": "VipsFreqfilt",
+      "type_name": "VipsPhasecor"
+    },
+    {
+      "depth": 2,
+      "description": "morphological operations",
+      "nickname": "morphology",
+      "parent": "VipsSystem",
+      "type_name": "VipsMorphology"
+    },
+    {
+      "depth": 3,
+      "description": "morphology operation",
+      "nickname": "morph",
+      "parent": "VipsMorphology",
+      "type_name": "VipsMorph"
+    },
+    {
+      "depth": 3,
+      "description": "rank filter",
+      "nickname": "rank",
+      "parent": "VipsMorphology",
+      "type_name": "VipsRank"
+    },
+    {
+      "depth": 3,
+      "description": "count lines in an image",
+      "nickname": "countlines",
+      "parent": "VipsMorphology",
+      "type_name": "VipsCountlines"
+    },
+    {
+      "depth": 3,
+      "description": "label regions in an image",
+      "nickname": "labelregions",
+      "parent": "VipsMorphology",
+      "type_name": "VipsLabelregions"
+    },
+    {
+      "depth": 3,
+      "description": "fill image zeros with nearest non-zero pixel",
+      "nickname": "fill_nearest",
+      "parent": "VipsMorphology",
+      "type_name": "VipsFillNearest"
+    },
+    {
+      "depth": 2,
+      "description": "draw operations",
+      "nickname": "draw",
+      "parent": "VipsSystem",
+      "type_name": "VipsDraw"
+    },
+    {
+      "depth": 3,
+      "description": "draw with ink operations",
+      "nickname": "drawink",
+      "parent": "VipsDraw",
+      "type_name": "VipsDrawink"
+    },
+    {
+      "depth": 4,
+      "description": "paint a rectangle on an image",
+      "nickname": "draw_rect",
+      "parent": "VipsDrawink",
+      "type_name": "VipsDrawRect"
+    },
+    {
+      "depth": 4,
+      "description": "draw a mask on an image",
+      "nickname": "draw_mask",
+      "parent": "VipsDrawink",
+      "type_name": "VipsDrawMask"
+    },
+    {
+      "depth": 4,
+      "description": "draw a line on an image",
+      "nickname": "draw_line",
+      "parent": "VipsDrawink",
+      "type_name": "VipsDrawLine"
+    },
+    {
+      "depth": 4,
+      "description": "draw a circle on an image",
+      "nickname": "draw_circle",
+      "parent": "VipsDrawink",
+      "type_name": "VipsDrawCircle"
+    },
+    {
+      "depth": 4,
+      "description": "flood-fill an area",
+      "nickname": "draw_flood",
+      "parent": "VipsDrawink",
+      "type_name": "VipsDrawFlood"
+    },
+    {
+      "depth": 3,
+      "description": "paint an image into another image",
+      "nickname": "draw_image",
+      "parent": "VipsDraw",
+      "type_name": "VipsDrawImage"
+    },
+    {
+      "depth": 3,
+      "description": "blur a rectangle on an image",
+      "nickname": "draw_smudge",
+      "parent": "VipsDraw",
+      "type_name": "VipsDrawSmudge"
+    },
+    {
+      "depth": 2,
+      "description": "merge two images",
+      "nickname": "merge",
+      "parent": "VipsSystem",
+      "type_name": "VipsMerge"
+    },
+    {
+      "depth": 2,
+      "description": "mosaic two images",
+      "nickname": "mosaic",
+      "parent": "VipsSystem",
+      "type_name": "VipsMosaic"
+    },
+    {
+      "depth": 2,
+      "description": "first-order mosaic of two images",
+      "nickname": "mosaic1",
+      "parent": "VipsSystem",
+      "type_name": "VipsMosaic1"
+    },
+    {
+      "depth": 2,
+      "description": "invert an matrix",
+      "nickname": "matrixinvert",
+      "parent": "VipsSystem",
+      "type_name": "VipsMatrixinvert"
+    },
+    {
+      "depth": 2,
+      "description": "first-order match of two images",
+      "nickname": "match",
+      "parent": "VipsSystem",
+      "type_name": "VipsMatch"
+    },
+    {
+      "depth": 2,
+      "description": "global balance an image mosaic",
+      "nickname": "globalbalance",
+      "parent": "VipsSystem",
+      "type_name": "VipsGlobalbalance"
+    }
+  ],
+  "nicknames": [
+    "CMC2LCh",
+    "CMYK2XYZ",
+    "HSV2sRGB",
+    "LCh2CMC",
+    "LCh2Lab",
+    "Lab2LCh",
+    "Lab2LabQ",
+    "Lab2LabS",
+    "Lab2XYZ",
+    "LabQ2Lab",
+    "LabQ2LabS",
+    "LabQ2sRGB",
+    "LabS2Lab",
+    "LabS2LabQ",
+    "XYZ2CMYK",
+    "XYZ2Lab",
+    "XYZ2Yxy",
+    "XYZ2scRGB",
+    "Yxy2XYZ",
+    "abs",
+    "add",
+    "affine",
+    "analyzeload",
+    "arithmetic",
+    "arrayjoin",
+    "autorot",
+    "avg",
+    "bandary",
+    "bandbool",
+    "bandfold",
+    "bandjoin",
+    "bandjoin_const",
+    "bandmean",
+    "bandrank",
+    "bandunfold",
+    "binary",
+    "black",
+    "blockcache",
+    "boolean",
+    "boolean_const",
+    "buildlut",
+    "byteswap",
+    "cache",
+    "canny",
+    "case",
+    "cast",
+    "code",
+    "colour",
+    "colourspace",
+    "compass",
+    "complex",
+    "complex2",
+    "complexform",
+    "complexget",
+    "composite",
+    "composite2",
+    "composite_base",
+    "conv",
+    "conva",
+    "convasep",
+    "conversion",
+    "convf",
+    "convi",
+    "convolution",
+    "convsep",
+    "copy",
+    "correlation",
+    "countlines",
+    "create",
+    "csvload",
+    "csvload_base",
+    "csvload_source",
+    "csvsave",
+    "csvsave_base",
+    "csvsave_target",
+    "dE00",
+    "dE76",
+    "dECMC",
+    "deviate",
+    "difference",
+    "divide",
+    "draw",
+    "draw_circle",
+    "draw_flood",
+    "draw_image",
+    "draw_line",
+    "draw_mask",
+    "draw_rect",
+    "draw_smudge",
+    "drawink",
+    "edge",
+    "embed",
+    "embed_base",
+    "extract_area",
+    "extract_band",
+    "eye",
+    "falsecolour",
+    "fastcor",
+    "fill_nearest",
+    "find_trim",
+    "flatten",
+    "flip",
+    "float2rad",
+    "foreign",
+    "fractsurf",
+    "freqfilt",
+    "freqmult",
+    "gamma",
+    "gaussblur",
+    "gaussmat",
+    "gaussnoise",
+    "getpoint",
+    "gifload",
+    "gifload_base",
+    "gifload_buffer",
+    "gifload_source",
+    "globalbalance",
+    "gravity",
+    "grey",
+    "grid",
+    "hist_cum",
+    "hist_entropy",
+    "hist_equal",
+    "hist_find",
+    "hist_find_indexed",
+    "hist_find_ndim",
+    "hist_ismonotonic",
+    "hist_local",
+    "hist_match",
+    "hist_norm",
+    "hist_plot",
+    "hist_unary",
+    "histogram",
+    "hough",
+    "hough_circle",
+    "hough_line",
+    "identity",
+    "ifthenelse",
+    "insert",
+    "invert",
+    "invertlut",
+    "join",
+    "jpegload",
+    "jpegload_base",
+    "jpegload_buffer",
+    "jpegload_source",
+    "jpegsave",
+    "jpegsave_base",
+    "jpegsave_buffer",
+    "jpegsave_mime",
+    "jpegsave_target",
+    "labelregions",
+    "linear",
+    "linecache",
+    "load",
+    "logmat",
+    "mapim",
+    "maplut",
+    "mask",
+    "mask_butterworth",
+    "mask_butterworth_band",
+    "mask_butterworth_ring",
+    "mask_fractal",
+    "mask_gaussian",
+    "mask_gaussian_band",
+    "mask_gaussian_ring",
+    "mask_ideal",
+    "mask_ideal_band",
+    "mask_ideal_ring",
+    "match",
+    "math",
+    "math2",
+    "math2_const",
+    "matrixinvert",
+    "matrixload",
+    "matrixload_base",
+    "matrixload_source",
+    "matrixprint",
+    "matrixsave",
+    "matrixsave_base",
+    "matrixsave_target",
+    "max",
+    "measure",
+    "merge",
+    "min",
+    "morph",
+    "morphology",
+    "mosaic",
+    "mosaic1",
+    "msb",
+    "multiply",
+    "nary",
+    "operation",
+    "percent",
+    "perlin",
+    "phasecor",
+    "pngload",
+    "pngload_base",
+    "pngload_buffer",
+    "pngload_source",
+    "pngsave",
+    "pngsave_base",
+    "pngsave_buffer",
+    "pngsave_target",
+    "point",
+    "ppmload",
+    "ppmload_base",
+    "ppmload_source",
+    "ppmsave",
+    "ppmsave_base",
+    "ppmsave_target",
+    "premultiply",
+    "prewitt",
+    "profile",
+    "profile_load",
+    "project",
+    "quadratic",
+    "rad2float",
+    "radload",
+    "radload_base",
+    "radload_buffer",
+    "radload_source",
+    "radsave",
+    "radsave_base",
+    "radsave_buffer",
+    "radsave_target",
+    "rank",
+    "rawload",
+    "rawsave",
+    "rawsave_fd",
+    "recomb",
+    "reduce",
+    "reduceh",
+    "reducev",
+    "relational",
+    "relational_const",
+    "remainder",
+    "remainder_const",
+    "replicate",
+    "resample",
+    "resize",
+    "rot",
+    "rot45",
+    "rotate",
+    "round",
+    "sRGB2HSV",
+    "sRGB2scRGB",
+    "save",
+    "scRGB2BW",
+    "scRGB2XYZ",
+    "scRGB2sRGB",
+    "scale",
+    "scharr",
+    "sequential",
+    "sharpen",
+    "shrink",
+    "shrinkh",
+    "shrinkv",
+    "sign",
+    "similarity",
+    "similarity_base",
+    "sines",
+    "smartcrop",
+    "sobel",
+    "space",
+    "spcor",
+    "spectrum",
+    "statistic",
+    "stats",
+    "stdif",
+    "subsample",
+    "subtract",
+    "sum",
+    "switch",
+    "system",
+    "text",
+    "thumbnail",
+    "thumbnail_base",
+    "thumbnail_buffer",
+    "thumbnail_image",
+    "thumbnail_source",
+    "tiffload",
+    "tiffload_base",
+    "tiffload_buffer",
+    "tiffload_source",
+    "tiffsave",
+    "tiffsave_base",
+    "tiffsave_buffer",
+    "tiffsave_target",
+    "tilecache",
+    "tonelut",
+    "transpose3d",
+    "unary",
+    "unary_const",
+    "unpremultiply",
+    "vipsload",
+    "vipsload_base",
+    "vipsload_source",
+    "vipssave",
+    "vipssave_base",
+    "vipssave_target",
+    "webpload",
+    "webpload_base",
+    "webpload_buffer",
+    "webpload_source",
+    "webpsave",
+    "webpsave_base",
+    "webpsave_buffer",
+    "webpsave_mime",
+    "webpsave_target",
+    "worley",
+    "wrap",
+    "xyz",
+    "zone",
+    "zoom"
+  ],
+  "source": "LD_LIBRARY_PATH=/home/yans/code/safelibs/ported/libvips/build-check-install/lib /home/yans/code/safelibs/ported/libvips/build-check-install/bin/vips -l VipsOperation",
+  "type_names": [
+    "VipsAbs",
+    "VipsAdd",
+    "VipsAffine",
+    "VipsArithmetic",
+    "VipsArrayjoin",
+    "VipsAutorot",
+    "VipsAvg",
+    "VipsBandary",
+    "VipsBandbool",
+    "VipsBandfold",
+    "VipsBandjoin",
+    "VipsBandjoinConst",
+    "VipsBandmean",
+    "VipsBandrank",
+    "VipsBandunfold",
+    "VipsBinary",
+    "VipsBlack",
+    "VipsBlockCache",
+    "VipsBoolean",
+    "VipsBooleanConst",
+    "VipsBuildlut",
+    "VipsByteswap",
+    "VipsCMC2LCh",
+    "VipsCMYK2XYZ",
+    "VipsCache",
+    "VipsCanny",
+    "VipsCase",
+    "VipsCast",
+    "VipsColour",
+    "VipsColourCode",
+    "VipsColourDifference",
+    "VipsColourTransform",
+    "VipsColourspace",
+    "VipsCompass",
+    "VipsComplex",
+    "VipsComplex2",
+    "VipsComplexform",
+    "VipsComplexget",
+    "VipsComposite",
+    "VipsComposite2",
+    "VipsCompositeBase",
+    "VipsConv",
+    "VipsConva",
+    "VipsConvasep",
+    "VipsConversion",
+    "VipsConvf",
+    "VipsConvi",
+    "VipsConvolution",
+    "VipsConvsep",
+    "VipsCopy",
+    "VipsCorrelation",
+    "VipsCountlines",
+    "VipsCreate",
+    "VipsDeviate",
+    "VipsDivide",
+    "VipsDraw",
+    "VipsDrawCircle",
+    "VipsDrawFlood",
+    "VipsDrawImage",
+    "VipsDrawLine",
+    "VipsDrawMask",
+    "VipsDrawRect",
+    "VipsDrawSmudge",
+    "VipsDrawink",
+    "VipsEdge",
+    "VipsEmbed",
+    "VipsEmbedBase",
+    "VipsExtractArea",
+    "VipsExtractBand",
+    "VipsEye",
+    "VipsFalsecolour",
+    "VipsFastcor",
+    "VipsFillNearest",
+    "VipsFindTrim",
+    "VipsFlatten",
+    "VipsFlip",
+    "VipsFloat2rad",
+    "VipsForeign",
+    "VipsForeignLoad",
+    "VipsForeignLoadAnalyze",
+    "VipsForeignLoadCsv",
+    "VipsForeignLoadCsvFile",
+    "VipsForeignLoadCsvSource",
+    "VipsForeignLoadJpeg",
+    "VipsForeignLoadJpegBuffer",
+    "VipsForeignLoadJpegFile",
+    "VipsForeignLoadJpegSource",
+    "VipsForeignLoadMatrix",
+    "VipsForeignLoadMatrixFile",
+    "VipsForeignLoadMatrixSource",
+    "VipsForeignLoadNsgif",
+    "VipsForeignLoadNsgifBuffer",
+    "VipsForeignLoadNsgifFile",
+    "VipsForeignLoadNsgifSource",
+    "VipsForeignLoadPng",
+    "VipsForeignLoadPngBuffer",
+    "VipsForeignLoadPngFile",
+    "VipsForeignLoadPngSource",
+    "VipsForeignLoadPpm",
+    "VipsForeignLoadPpmFile",
+    "VipsForeignLoadPpmSource",
+    "VipsForeignLoadRad",
+    "VipsForeignLoadRadBuffer",
+    "VipsForeignLoadRadFile",
+    "VipsForeignLoadRadSource",
+    "VipsForeignLoadRaw",
+    "VipsForeignLoadTiff",
+    "VipsForeignLoadTiffBuffer",
+    "VipsForeignLoadTiffFile",
+    "VipsForeignLoadTiffSource",
+    "VipsForeignLoadVips",
+    "VipsForeignLoadVipsFile",
+    "VipsForeignLoadVipsSource",
+    "VipsForeignLoadWebp",
+    "VipsForeignLoadWebpBuffer",
+    "VipsForeignLoadWebpFile",
+    "VipsForeignLoadWebpSource",
+    "VipsForeignPrintMatrix",
+    "VipsForeignSave",
+    "VipsForeignSaveCsv",
+    "VipsForeignSaveCsvFile",
+    "VipsForeignSaveCsvTarget",
+    "VipsForeignSaveJpeg",
+    "VipsForeignSaveJpegBuffer",
+    "VipsForeignSaveJpegFile",
+    "VipsForeignSaveJpegMime",
+    "VipsForeignSaveJpegTarget",
+    "VipsForeignSaveMatrix",
+    "VipsForeignSaveMatrixFile",
+    "VipsForeignSaveMatrixTarget",
+    "VipsForeignSavePng",
+    "VipsForeignSavePngBuffer",
+    "VipsForeignSavePngFile",
+    "VipsForeignSavePngTarget",
+    "VipsForeignSavePpm",
+    "VipsForeignSavePpmFile",
+    "VipsForeignSavePpmTarget",
+    "VipsForeignSaveRad",
+    "VipsForeignSaveRadBuffer",
+    "VipsForeignSaveRadFile",
+    "VipsForeignSaveRadTarget",
+    "VipsForeignSaveRaw",
+    "VipsForeignSaveRawFd",
+    "VipsForeignSaveTiff",
+    "VipsForeignSaveTiffBuffer",
+    "VipsForeignSaveTiffFile",
+    "VipsForeignSaveTiffTarget",
+    "VipsForeignSaveVips",
+    "VipsForeignSaveVipsFile",
+    "VipsForeignSaveVipsTarget",
+    "VipsForeignSaveWebp",
+    "VipsForeignSaveWebpBuffer",
+    "VipsForeignSaveWebpFile",
+    "VipsForeignSaveWebpMime",
+    "VipsForeignSaveWebpTarget",
+    "VipsFractsurf",
+    "VipsFreqfilt",
+    "VipsFreqmult",
+    "VipsGamma",
+    "VipsGaussblur",
+    "VipsGaussmat",
+    "VipsGaussnoise",
+    "VipsGetpoint",
+    "VipsGlobalbalance",
+    "VipsGravity",
+    "VipsGrey",
+    "VipsGrid",
+    "VipsHSV2sRGB",
+    "VipsHistCum",
+    "VipsHistEntropy",
+    "VipsHistEqual",
+    "VipsHistFind",
+    "VipsHistFindIndexed",
+    "VipsHistFindNDim",
+    "VipsHistIsmonotonic",
+    "VipsHistLocal",
+    "VipsHistMatch",
+    "VipsHistNorm",
+    "VipsHistPlot",
+    "VipsHistUnary",
+    "VipsHistogram",
+    "VipsHough",
+    "VipsHoughCircle",
+    "VipsHoughLine",
+    "VipsIdentity",
+    "VipsIfthenelse",
+    "VipsInsert",
+    "VipsInvert",
+    "VipsInvertlut",
+    "VipsJoin",
+    "VipsLCh2CMC",
+    "VipsLCh2Lab",
+    "VipsLab2LCh",
+    "VipsLab2LabQ",
+    "VipsLab2LabS",
+    "VipsLab2XYZ",
+    "VipsLabQ2Lab",
+    "VipsLabQ2LabS",
+    "VipsLabQ2sRGB",
+    "VipsLabS2Lab",
+    "VipsLabS2LabQ",
+    "VipsLabelregions",
+    "VipsLineCache",
+    "VipsLinear",
+    "VipsLogmat",
+    "VipsMapim",
+    "VipsMaplut",
+    "VipsMask",
+    "VipsMaskButterworth",
+    "VipsMaskButterworthBand",
+    "VipsMaskButterworthRing",
+    "VipsMaskFractal",
+    "VipsMaskGaussian",
+    "VipsMaskGaussianBand",
+    "VipsMaskGaussianRing",
+    "VipsMaskIdeal",
+    "VipsMaskIdealBand",
+    "VipsMaskIdealRing",
+    "VipsMatch",
+    "VipsMath",
+    "VipsMath2",
+    "VipsMath2Const",
+    "VipsMatrixinvert",
+    "VipsMax",
+    "VipsMeasure",
+    "VipsMerge",
+    "VipsMin",
+    "VipsMorph",
+    "VipsMorphology",
+    "VipsMosaic",
+    "VipsMosaic1",
+    "VipsMsb",
+    "VipsMultiply",
+    "VipsNary",
+    "VipsOperation",
+    "VipsPercent",
+    "VipsPerlin",
+    "VipsPhasecor",
+    "VipsPoint",
+    "VipsPremultiply",
+    "VipsPrewitt",
+    "VipsProfile",
+    "VipsProfileLoad",
+    "VipsProject",
+    "VipsQuadratic",
+    "VipsRad2float",
+    "VipsRank",
+    "VipsRecomb",
+    "VipsReduce",
+    "VipsReduceh",
+    "VipsReducev",
+    "VipsRelational",
+    "VipsRelationalConst",
+    "VipsRemainder",
+    "VipsRemainderConst",
+    "VipsReplicate",
+    "VipsResample",
+    "VipsResize",
+    "VipsRot",
+    "VipsRot45",
+    "VipsRotate",
+    "VipsRound",
+    "VipsScale",
+    "VipsScharr",
+    "VipsSequential",
+    "VipsSharpen",
+    "VipsShrink",
+    "VipsShrinkh",
+    "VipsShrinkv",
+    "VipsSign",
+    "VipsSimilarity",
+    "VipsSimilarityBase",
+    "VipsSines",
+    "VipsSmartcrop",
+    "VipsSobel",
+    "VipsSpcor",
+    "VipsSpectrum",
+    "VipsStatistic",
+    "VipsStats",
+    "VipsStdif",
+    "VipsSubsample",
+    "VipsSubtract",
+    "VipsSum",
+    "VipsSwitch",
+    "VipsSystem",
+    "VipsText",
+    "VipsThumbnail",
+    "VipsThumbnailBuffer",
+    "VipsThumbnailFile",
+    "VipsThumbnailImage",
+    "VipsThumbnailSource",
+    "VipsTileCache",
+    "VipsTonelut",
+    "VipsTranspose3d",
+    "VipsUnary",
+    "VipsUnaryConst",
+    "VipsUnpremultiply",
+    "VipsWorley",
+    "VipsWrap",
+    "VipsXYZ2CMYK",
+    "VipsXYZ2Lab",
+    "VipsXYZ2Yxy",
+    "VipsXYZ2scRGB",
+    "VipsXyz",
+    "VipsYxy2XYZ",
+    "VipsZone",
+    "VipsZoom",
+    "VipsdE00",
+    "VipsdE76",
+    "VipsdECMC",
+    "VipssRGB2HSV",
+    "VipssRGB2scRGB",
+    "VipsscRGB2BW",
+    "VipsscRGB2XYZ",
+    "VipsscRGB2sRGB",
+    "crop"
+  ]
+}

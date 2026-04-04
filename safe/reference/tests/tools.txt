@@ -1,0 +1,6 @@
+# total=5
+vips
+vipsedit
+vipsthumbnail
+vipsheader
+vipsprofile

@@ -1,0 +1,462 @@
+{
+  "cases": [
+    {
+      "category": "test",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "test_connections",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/test/test_connections.p/test_connections.c.o"
+      ],
+      "output": "test_connections",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/sample.jpg",
+          "@workdir@/test_connections.png"
+        ],
+        "artifacts": [
+          "@workdir@/test_connections.png"
+        ]
+      }
+    },
+    {
+      "category": "test",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "test_descriptors",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/test/test_descriptors.p/test_descriptors.c.o"
+      ],
+      "output": "test_descriptors",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/sample.jpg"
+        ]
+      }
+    },
+    {
+      "category": "test",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "test_timeout_webpsave",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/test/test_timeout_webpsave.p/test_timeout_webpsave.c.o"
+      ],
+      "output": "test_timeout_webpsave",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@"
+        ]
+      }
+    },
+    {
+      "category": "tool",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "vips",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/tools/vips.p/vips.c.o"
+      ],
+      "output": "vips",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "avg",
+          "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/sample.jpg"
+        ]
+      }
+    },
+    {
+      "category": "tool",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "vipsedit",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/tools/vipsedit.p/vipsedit.c.o"
+      ],
+      "output": "vipsedit",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "--width",
+          "123",
+          "@workdir@/vipsedit-input.v"
+        ],
+        "post_check": {
+          "argv": [
+            "@safe_prefix@/bin/vipsheader",
+            "-f",
+            "width",
+            "@workdir@/vipsedit-input.v"
+          ],
+          "equals": "123"
+        },
+        "prepare": [
+          {
+            "argv": [
+              "@safe_prefix@/bin/vips",
+              "copy",
+              "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/sample.jpg",
+              "@workdir@/vipsedit-input.v"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "category": "tool",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "vipsheader",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/tools/vipsheader.p/vipsheader.c.o"
+      ],
+      "output": "vipsheader",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "-f",
+          "width",
+          "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/sample.jpg"
+        ]
+      }
+    },
+    {
+      "category": "tool",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "vipsthumbnail",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/tools/vipsthumbnail.p/vipsthumbnail.c.o"
+      ],
+      "output": "vipsthumbnail",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/sample.jpg",
+          "-s",
+          "10",
+          "-o",
+          "@workdir@/thumb.jpg"
+        ],
+        "artifacts": [
+          "@workdir@/thumb.jpg"
+        ]
+      }
+    },
+    {
+      "category": "example",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "annotate-animated",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/examples/annotate-animated.p/annotate-animated.c.o"
+      ],
+      "output": "annotate-animated",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/garden.gif[n=-1]",
+          "@workdir@/annotated.webp"
+        ],
+        "artifacts": [
+          "@workdir@/annotated.webp"
+        ]
+      }
+    },
+    {
+      "category": "example",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "new-from-buffer",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/examples/new-from-buffer.p/new-from-buffer.c.o"
+      ],
+      "output": "new-from-buffer",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/sample.jpg"
+        ]
+      }
+    },
+    {
+      "category": "example",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "progress-cancel",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/examples/progress-cancel.p/progress-cancel.c.o"
+      ],
+      "output": "progress-cancel",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/sample.jpg",
+          ".jpg"
+        ]
+      }
+    },
+    {
+      "category": "example",
+      "extra_link_inputs": [],
+      "link_lang": "c",
+      "name": "use-vips-func",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/examples/use-vips-func.p/use-vips-func.c.o"
+      ],
+      "output": "use-vips-func",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/sample.jpg",
+          "@workdir@/use-vips-func-out.jpg"
+        ],
+        "artifacts": [
+          "@workdir@/use-vips-func-out.jpg"
+        ]
+      }
+    },
+    {
+      "category": "fuzz",
+      "extra_link_inputs": [],
+      "link_lang": "cpp",
+      "name": "gifsave_buffer_fuzzer",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/gifsave_buffer_fuzzer.p/gifsave_buffer_fuzzer.cc.o"
+      ],
+      "output": "gifsave_buffer_fuzzer",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "@corpus@"
+        ],
+        "corpus_glob": "/home/yans/code/safelibs/ported/libvips/original/fuzz/common_fuzzer_corpus/*",
+        "mode": "corpus"
+      },
+      "support_objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/libstandalone_engine.a.p/StandaloneFuzzTargetMain.c.o"
+      ]
+    },
+    {
+      "category": "fuzz",
+      "extra_link_inputs": [],
+      "link_lang": "cpp",
+      "name": "jpegsave_buffer_fuzzer",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/jpegsave_buffer_fuzzer.p/jpegsave_buffer_fuzzer.cc.o"
+      ],
+      "output": "jpegsave_buffer_fuzzer",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "@corpus@"
+        ],
+        "corpus_glob": "/home/yans/code/safelibs/ported/libvips/original/fuzz/common_fuzzer_corpus/*",
+        "mode": "corpus"
+      },
+      "support_objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/libstandalone_engine.a.p/StandaloneFuzzTargetMain.c.o"
+      ]
+    },
+    {
+      "category": "fuzz",
+      "extra_link_inputs": [],
+      "link_lang": "cpp",
+      "name": "jpegsave_file_fuzzer",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/jpegsave_file_fuzzer.p/jpegsave_file_fuzzer.cc.o"
+      ],
+      "output": "jpegsave_file_fuzzer",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "@corpus@"
+        ],
+        "corpus_glob": "/home/yans/code/safelibs/ported/libvips/original/fuzz/common_fuzzer_corpus/*",
+        "mode": "corpus"
+      },
+      "support_objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/libstandalone_engine.a.p/StandaloneFuzzTargetMain.c.o"
+      ]
+    },
+    {
+      "category": "fuzz",
+      "extra_link_inputs": [],
+      "link_lang": "cpp",
+      "name": "mosaic_fuzzer",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/mosaic_fuzzer.p/mosaic_fuzzer.cc.o"
+      ],
+      "output": "mosaic_fuzzer",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "@corpus@"
+        ],
+        "corpus_glob": "/home/yans/code/safelibs/ported/libvips/original/fuzz/common_fuzzer_corpus/*",
+        "mode": "corpus"
+      },
+      "support_objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/libstandalone_engine.a.p/StandaloneFuzzTargetMain.c.o"
+      ]
+    },
+    {
+      "category": "fuzz",
+      "extra_link_inputs": [],
+      "link_lang": "cpp",
+      "name": "pngsave_buffer_fuzzer",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/pngsave_buffer_fuzzer.p/pngsave_buffer_fuzzer.cc.o"
+      ],
+      "output": "pngsave_buffer_fuzzer",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "@corpus@"
+        ],
+        "corpus_glob": "/home/yans/code/safelibs/ported/libvips/original/fuzz/common_fuzzer_corpus/*",
+        "mode": "corpus"
+      },
+      "support_objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/libstandalone_engine.a.p/StandaloneFuzzTargetMain.c.o"
+      ]
+    },
+    {
+      "category": "fuzz",
+      "extra_link_inputs": [],
+      "link_lang": "cpp",
+      "name": "sharpen_fuzzer",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/sharpen_fuzzer.p/sharpen_fuzzer.cc.o"
+      ],
+      "output": "sharpen_fuzzer",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "@corpus@"
+        ],
+        "corpus_glob": "/home/yans/code/safelibs/ported/libvips/original/fuzz/common_fuzzer_corpus/*",
+        "mode": "corpus"
+      },
+      "support_objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/libstandalone_engine.a.p/StandaloneFuzzTargetMain.c.o"
+      ]
+    },
+    {
+      "category": "fuzz",
+      "extra_link_inputs": [],
+      "link_lang": "cpp",
+      "name": "smartcrop_fuzzer",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/smartcrop_fuzzer.p/smartcrop_fuzzer.cc.o"
+      ],
+      "output": "smartcrop_fuzzer",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "@corpus@"
+        ],
+        "corpus_glob": "/home/yans/code/safelibs/ported/libvips/original/fuzz/common_fuzzer_corpus/*",
+        "mode": "corpus"
+      },
+      "support_objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/libstandalone_engine.a.p/StandaloneFuzzTargetMain.c.o"
+      ]
+    },
+    {
+      "category": "fuzz",
+      "extra_link_inputs": [],
+      "link_lang": "cpp",
+      "name": "thumbnail_fuzzer",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/thumbnail_fuzzer.p/thumbnail_fuzzer.cc.o"
+      ],
+      "output": "thumbnail_fuzzer",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "@corpus@"
+        ],
+        "corpus_glob": "/home/yans/code/safelibs/ported/libvips/original/fuzz/common_fuzzer_corpus/*",
+        "mode": "corpus"
+      },
+      "support_objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/libstandalone_engine.a.p/StandaloneFuzzTargetMain.c.o"
+      ]
+    },
+    {
+      "category": "fuzz",
+      "extra_link_inputs": [],
+      "link_lang": "cpp",
+      "name": "webpsave_buffer_fuzzer",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/webpsave_buffer_fuzzer.p/webpsave_buffer_fuzzer.cc.o"
+      ],
+      "output": "webpsave_buffer_fuzzer",
+      "pkg_config": "vips",
+      "run": {
+        "argv": [
+          "@output@",
+          "@corpus@"
+        ],
+        "corpus_glob": "/home/yans/code/safelibs/ported/libvips/original/fuzz/common_fuzzer_corpus/*",
+        "mode": "corpus"
+      },
+      "support_objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/fuzz/libstandalone_engine.a.p/StandaloneFuzzTargetMain.c.o"
+      ]
+    },
+    {
+      "category": "cplusplus",
+      "extra_link_inputs": [],
+      "link_lang": "cpp",
+      "name": "libvips-cpp",
+      "objects": [
+        "/home/yans/code/safelibs/ported/libvips/build-check/cplusplus/libvips-cpp.so.42.17.1.p/VConnection.cpp.o",
+        "/home/yans/code/safelibs/ported/libvips/build-check/cplusplus/libvips-cpp.so.42.17.1.p/VError.cpp.o",
+        "/home/yans/code/safelibs/ported/libvips/build-check/cplusplus/libvips-cpp.so.42.17.1.p/VImage.cpp.o",
+        "/home/yans/code/safelibs/ported/libvips/build-check/cplusplus/libvips-cpp.so.42.17.1.p/VInterpolate.cpp.o",
+        "/home/yans/code/safelibs/ported/libvips/build-check/cplusplus/libvips-cpp.so.42.17.1.p/VRegion.cpp.o"
+      ],
+      "output": "libvips-cpp.so.42.17.1",
+      "pkg_config": "vips-cpp",
+      "run": {
+        "argv": [
+          "@workdir@/vips_cpp_smoke",
+          "/home/yans/code/safelibs/ported/libvips/original/test/test-suite/images/sample.jpg"
+        ],
+        "mode": "cplusplus_smoke",
+        "smoke_source": "tests/link_compat/vips_cpp_smoke.cpp"
+      }
+    }
+  ],
+  "metadata": {
+    "build_check": "/home/yans/code/safelibs/ported/libvips/build-check",
+    "cve_count": 7,
+    "cves": "/home/yans/code/safelibs/ported/libvips/relevant_cves.json",
+    "dependents": "/home/yans/code/safelibs/ported/libvips/dependents.json",
+    "dependents_count": 11
+  }
+}

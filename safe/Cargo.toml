@@ -1,0 +1,70 @@
+[package]
+name = "vips"
+version = "8.15.1"
+edition = "2021"
+rust-version = "1.78"
+build = "build.rs"
+
+[lib]
+name = "vips"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = [
+    "deprecated",
+    "examples",
+    "cplusplus",
+    "nsgif",
+    "ppm",
+    "analyze",
+    "radiance",
+]
+deprecated = []
+examples = []
+cplusplus = []
+doxygen = []
+gtk_doc = []
+modules = []
+introspection = []
+vapi = []
+cfitsio = []
+cgif = []
+exif = []
+fftw = []
+fontconfig = []
+archive = []
+heif = []
+heif-module = []
+imagequant = []
+jpeg = []
+jpeg-xl = []
+jpeg-xl-module = []
+lcms = []
+magick = []
+magick-module = []
+matio = []
+nifti = []
+openexr = []
+openjpeg = []
+openslide = []
+openslide-module = []
+highway = []
+orc = []
+pangocairo = []
+pdfium = []
+png = []
+poppler = []
+poppler-module = []
+quantizr = []
+rsvg = []
+spng = []
+tiff = []
+webp = []
+zlib = []
+nsgif = []
+ppm = []
+analyze = []
+radiance = []
+
+[dependencies]
+
