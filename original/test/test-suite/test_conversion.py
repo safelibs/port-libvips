@@ -821,6 +821,16 @@ class TestConversion:
         files = os.listdir(rotation_images)
         files.sort()
 
+        source_files = [f for f in files
+                        if '.autorot.' not in f and not f.startswith('.')]
+        if not source_files:
+            pytest.skip('no autorot fixtures available')
+
+        probe = pyvips.Image.new_from_file(
+            os.path.join(rotation_images, source_files[0]))
+        if probe.get_typeof('orientation') == 0:
+            pytest.skip('requires EXIF orientation support')
+
         meta = {
             0: {'w': 290, 'h': 442},
             1: {'w': 308, 'h': 410},
@@ -834,20 +844,25 @@ class TestConversion:
         }
 
         i = 0
-        for f in files:
-            if '.autorot.' not in f and not f.startswith('.'):
-                source_filename = os.path.join(rotation_images, f)
+        for f in source_files:
+            source_filename = os.path.join(rotation_images, f)
 
-                actual_filename = temp_filename(self.tempdir, '.jpg')
+            actual_filename = temp_filename(self.tempdir, '.jpg')
 
-                pyvips.Image.new_from_file(source_filename).autorot().write_to_file(actual_filename)
+            pyvips.Image.new_from_file(source_filename) \
+                .autorot() \
+                .write_to_file(actual_filename)
 
-                actual = pyvips.Image.new_from_file(actual_filename)
+            actual = pyvips.Image.new_from_file(actual_filename)
 
-                assert actual.width == meta[i]['w']
-                assert actual.height == meta[i]['h']
-                assert actual.get('orientation') if actual.get_typeof('orientation') else None is None
-                i = i + 1
+            assert actual.width == meta[i]['w']
+            assert actual.height == meta[i]['h']
+            assert (
+                actual.get('orientation')
+                if actual.get_typeof('orientation')
+                else None
+            ) is None
+            i = i + 1
        
     def test_scaleimage(self):
         for fmt in noncomplex_formats:

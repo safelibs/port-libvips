@@ -3,7 +3,7 @@ import pytest
 
 import pyvips
 from helpers import JPEG_FILE, JPEG_FILE_XYB, OME_FILE, HEIC_FILE, TIF_FILE, \
-    all_formats, have, RGBA_FILE, RGBA_CORRECT_FILE, AVIF_FILE
+    all_formats, have, RGBA_FILE, RGBA_CORRECT_FILE, AVIF_FILE, skip_if_no
 
 
 # Run a function expecting a complex image on a two-band image
@@ -231,6 +231,7 @@ class TestResample:
 
     @pytest.mark.skipif(not pyvips.at_least_libvips(8, 5),
                         reason="requires libvips >= 8.5")
+    @skip_if_no("icc_transform")
     def test_thumbnail_icc(self):
         im = pyvips.Image.thumbnail(JPEG_FILE_XYB, 442, export_profile="srgb", intent="perceptual")
 
