@@ -170,25 +170,46 @@ fn draw_line(buffer: &mut ImageBuffer, ink: &[f64], x1: i32, y1: i32, x2: i32, y
     }
 }
 
+fn draw_circle_run(buffer: &mut ImageBuffer, ink: &[f64], y: i32, x1: i32, x2: i32, fill: bool) {
+    if fill {
+        for x in x1..=x2 {
+            put_pixel(buffer, x, y, ink);
+        }
+    } else {
+        put_pixel(buffer, x1, y, ink);
+        put_pixel(buffer, x2, y, ink);
+    }
+}
+
 fn draw_circle(buffer: &mut ImageBuffer, ink: &[f64], cx: i32, cy: i32, radius: i32, fill: bool) {
     if radius < 0 {
         return;
     }
-    let radius_sq = radius * radius;
-    for y in (cy - radius)..=(cy + radius) {
-        for x in (cx - radius)..=(cx + radius) {
-            let dx = x - cx;
-            let dy = y - cy;
-            let dist_sq = dx * dx + dy * dy;
-            let paint = if fill {
-                dist_sq <= radius_sq
-            } else {
-                dist_sq <= radius_sq && dist_sq >= (radius - 1).max(0).pow(2)
-            };
-            if paint {
-                put_pixel(buffer, x, y, ink);
-            }
+
+    let mut x = 0;
+    let mut y = radius;
+    let mut d = 3 - 2 * radius;
+
+    while x < y {
+        draw_circle_run(buffer, ink, cy + y, cx - x, cx + x, fill);
+        draw_circle_run(buffer, ink, cy - y, cx - x, cx + x, fill);
+        draw_circle_run(buffer, ink, cy + x, cx - y, cx + y, fill);
+        draw_circle_run(buffer, ink, cy - x, cx - y, cx + y, fill);
+
+        if d < 0 {
+            d += 4 * x + 6;
+        } else {
+            d += 4 * (x - y) + 10;
+            y -= 1;
         }
+        x += 1;
+    }
+
+    if x == y {
+        draw_circle_run(buffer, ink, cy + y, cx - x, cx + x, fill);
+        draw_circle_run(buffer, ink, cy - y, cx - x, cx + x, fill);
+        draw_circle_run(buffer, ink, cy + x, cx - y, cx + y, fill);
+        draw_circle_run(buffer, ink, cy - x, cx - y, cx + y, fill);
     }
 }
 

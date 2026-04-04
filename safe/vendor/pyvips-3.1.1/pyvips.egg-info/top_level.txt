@@ -1,0 +1,3 @@
+_libvips
+dist
+pyvips

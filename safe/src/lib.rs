@@ -1,6 +1,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod abi;
+pub mod foreign;
 pub(crate) mod ops;
 pub mod pixels;
 pub mod runtime;

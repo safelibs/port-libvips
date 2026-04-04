@@ -1,7 +1,10 @@
+#include <ctype.h>
+#include <errno.h>
 #include <glib.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <gobject/gvaluecollector.h>
 #include <vips/vips.h>
 #include <vips/debug.h>
@@ -26,6 +29,134 @@ extern int safe_vips_crop_internal(
 extern int safe_vips_avg_internal(VipsImage *image, double *out);
 extern int safe_vips_object_mark_argument_assigned(
     VipsObject *object, const char *name, gboolean assigned);
+
+static void
+safe_vips_unref_images(VipsImage **images, size_t n)
+{
+    size_t i;
+
+    for (i = 0; i < n; i++)
+        if (images[i])
+            g_object_unref(images[i]);
+}
+
+static int
+safe_vips_pythagoras(VipsImage *in, VipsImage **out)
+{
+    VipsImage *t[9] = { 0 };
+    double exponent[] = { 0.5 };
+    int i;
+    int result = -1;
+
+    if (!in || !out)
+        return -1;
+
+    for (i = 0; i < in->Bands; i++)
+        if (vips_extract_band(in, &t[i], i, NULL))
+            goto done;
+
+    for (i = 0; i < in->Bands; i++)
+        if (vips_multiply(t[i], t[i], &t[i + in->Bands], NULL))
+            goto done;
+
+    if (vips_sum(&t[in->Bands], &t[2 * in->Bands], in->Bands, NULL) ||
+        vips_math2_const(t[2 * in->Bands], out,
+            VIPS_OPERATION_MATH2_POW, exponent, 1, NULL))
+        goto done;
+
+    result = 0;
+
+done:
+    safe_vips_unref_images(t, G_N_ELEMENTS(t));
+    return result;
+}
+
+int
+safe_vips_smartcrop_attention_internal(VipsImage *in,
+    double hscale, double vscale, double sigma,
+    gboolean premultiplied,
+    int *attention_x, int *attention_y)
+{
+    static double skin_vector[] = { -0.78, -0.57, -0.44 };
+    static double ones[] = { 1.0, 1.0, 1.0 };
+    static double five[] = { 5.0 };
+    static double zero[] = { 0.0 };
+    static double minus_five[] = { -5.0 };
+    static double hundred[] = { -100.0 };
+    static double hundred_offset[] = { 100.0 };
+    static double edge_matrix[] = {
+        0.0, -1.0, 0.0,
+        -1.0, 4.0, -1.0,
+        0.0, -1.0, 0.0
+    };
+
+    VipsImage *t[24] = { 0 };
+    VipsImage *working = in;
+    double max;
+    int x_pos;
+    int y_pos;
+    int result = -1;
+
+    if (!in || !attention_x || !attention_y)
+        return -1;
+
+    if (vips_image_hasalpha(working) && !premultiplied) {
+        if (vips_premultiply(working, &t[22], NULL))
+            goto done;
+        working = t[22];
+    }
+
+    if (vips_resize(working, &t[17], hscale,
+            "vscale", vscale,
+            NULL))
+        goto done;
+
+    t[21] = vips_image_new_matrix_from_array(3, 3,
+        edge_matrix, G_N_ELEMENTS(edge_matrix));
+    if (!t[21])
+        goto done;
+
+    if (vips_colourspace(t[17], &t[0], VIPS_INTERPRETATION_XYZ, NULL) ||
+        vips_extract_band(t[0], &t[1], 0, "n", 3, NULL))
+        goto done;
+
+    if (vips_extract_band(t[1], &t[2], 1, NULL) ||
+        vips_conv(t[2], &t[3], t[21],
+            "precision", VIPS_PRECISION_INTEGER,
+            NULL) ||
+        vips_linear(t[3], &t[4], five, zero, 1, NULL) ||
+        vips_abs(t[4], &t[14], NULL))
+        goto done;
+
+    if (safe_vips_pythagoras(t[1], &t[5]) ||
+        vips_divide(t[1], t[5], &t[6], NULL) ||
+        vips_linear(t[6], &t[7], ones, skin_vector, 3, NULL) ||
+        safe_vips_pythagoras(t[7], &t[8]) ||
+        vips_linear(t[8], &t[9], hundred, hundred_offset, 1, NULL) ||
+        vips_linear(t[2], &t[23], ones, minus_five, 1, NULL) ||
+        vips_sign(t[23], &t[10], NULL) ||
+        vips_black(&t[11], 1, 1, NULL) ||
+        vips_ifthenelse(t[10], t[9], t[11], &t[15], NULL))
+        goto done;
+
+    if (vips_colourspace(t[1], &t[12], VIPS_INTERPRETATION_LAB, NULL) ||
+        vips_extract_band(t[12], &t[13], 1, NULL) ||
+        vips_ifthenelse(t[10], t[13], t[11], &t[16], NULL))
+        goto done;
+
+    if (vips_sum(&t[14], &t[18], 3, NULL) ||
+        vips_gaussblur(t[18], &t[19], sigma, NULL) ||
+        vips_max(t[19], &max, "x", &x_pos, "y", &y_pos, NULL))
+        goto done;
+
+    *attention_x = x_pos / hscale;
+    *attention_y = y_pos / vscale;
+    result = 0;
+
+done:
+    safe_vips_unref_images(t, G_N_ELEMENTS(t));
+    return result;
+}
 
 static void *
 safe_vips_argument_is_required(VipsObject *object,
@@ -273,14 +404,6 @@ safe_vips_operation_get_valist_required(VipsOperation *operation, va_list ap)
             g_object_get(G_OBJECT(operation),
                 g_param_spec_get_name(pspec), arg, NULL);
 
-            if (G_IS_PARAM_SPEC_OBJECT(pspec)) {
-                GObject *object;
-
-                object = *((GObject **) arg);
-                if (object)
-                    g_object_unref(object);
-            }
-
             VIPS_ARGUMENT_COLLECT_END
         }
     }
@@ -309,14 +432,6 @@ safe_vips_operation_get_valist_optional(VipsOperation *operation, va_list ap)
         if ((argument_class->flags & VIPS_ARGUMENT_OUTPUT) && arg) {
             g_object_get(G_OBJECT(operation),
                 g_param_spec_get_name(pspec), arg, NULL);
-
-            if (G_IS_PARAM_SPEC_OBJECT(pspec)) {
-                GObject *object;
-
-                object = *((GObject **) arg);
-                if (object)
-                    g_object_unref(object);
-            }
         }
 
         VIPS_ARGUMENT_COLLECT_END
@@ -520,10 +635,236 @@ vips_image_new_from_source(VipsSource *source, const char *option_string, ...)
     return safe_vips_image_new_from_source_internal(source, option_string, access);
 }
 
+VIPS_PUBLIC VipsImage *
+vips_image_new_from_file(const char *name, ...)
+{
+    char *filename;
+    char *option_string;
+    const char *operation_name;
+    va_list ap;
+    int result;
+    VipsImage *out = NULL;
+
+    if (!(filename = vips_filename_get_filename(name)))
+        return NULL;
+    if (!(option_string = vips_filename_get_options(name))) {
+        g_free(filename);
+        return NULL;
+    }
+    if (!(operation_name = vips_foreign_find_load(filename))) {
+        g_free(option_string);
+        g_free(filename);
+        return NULL;
+    }
+
+    va_start(ap, name);
+    result = vips_call_split_option_string(operation_name,
+        option_string, ap, filename, &out);
+    va_end(ap);
+
+    g_free(option_string);
+    g_free(filename);
+
+    return result ? NULL : out;
+}
+
+VIPS_PUBLIC VipsImage *
+vips_image_new_from_buffer(const void *buf, size_t len,
+    const char *option_string, ...)
+{
+    const char *operation_name;
+    va_list ap;
+    int result;
+    VipsImage *out = NULL;
+    VipsBlob *blob;
+
+    if (!(operation_name = vips_foreign_find_load_buffer(buf, len)))
+        return NULL;
+
+    blob = vips_blob_new(NULL, buf, len);
+    va_start(ap, option_string);
+    result = vips_call_split_option_string(operation_name,
+        option_string, ap, blob, &out);
+    va_end(ap);
+    vips_area_unref(VIPS_AREA(blob));
+
+    return result ? NULL : out;
+}
+
+VIPS_PUBLIC VipsImage *
+vips_image_new_temp_file(const char *format)
+{
+    char *name;
+    VipsImage *image;
+
+    if (!(name = vips__temp_name(format ? format : "%s.v")))
+        return NULL;
+    if (!(image = vips_image_new_memory())) {
+        g_free(name);
+        return NULL;
+    }
+
+    g_object_set(image,
+        "filename", name,
+        "mode", "w",
+        NULL);
+    vips_image_set_delete_on_close(image, TRUE);
+    g_free(name);
+
+    return image;
+}
+
 VIPS_PUBLIC int
 vips_image_write_to_target(VipsImage *in, const char *suffix, VipsTarget *target, ...)
 {
-    return safe_vips_image_write_to_target_internal(in, suffix, target);
+    char *filename;
+    char *option_string;
+    const char *operation_name;
+    va_list ap;
+    int result;
+
+    if (!(filename = vips_filename_get_filename(suffix)))
+        return -1;
+    if (!(option_string = vips_filename_get_options(suffix))) {
+        g_free(filename);
+        return -1;
+    }
+
+    operation_name = vips_foreign_find_save_target(filename);
+    if (!operation_name) {
+        g_free(option_string);
+        g_free(filename);
+        return safe_vips_image_write_to_target_internal(in, suffix, target);
+    }
+
+    va_start(ap, target);
+    result = vips_call_split_option_string(operation_name,
+        option_string, ap, in, target);
+    va_end(ap);
+
+    g_free(option_string);
+    g_free(filename);
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_image_write_to_file(VipsImage *image, const char *name, ...)
+{
+    char *filename;
+    char *option_string;
+    const char *operation_name;
+    va_list ap;
+    int result;
+
+    if (!(filename = vips_filename_get_filename(name)))
+        return -1;
+    if (!(option_string = vips_filename_get_options(name))) {
+        g_free(filename);
+        return -1;
+    }
+
+    operation_name = vips_foreign_find_save_target(filename);
+    if (operation_name) {
+        VipsTarget *target;
+
+        if (!(target = vips_target_new_to_file(filename))) {
+            g_free(option_string);
+            g_free(filename);
+            return -1;
+        }
+
+        va_start(ap, name);
+        result = vips_call_split_option_string(operation_name,
+            option_string, ap, image, target);
+        va_end(ap);
+
+        g_object_unref(target);
+    }
+    else if ((operation_name = vips_foreign_find_save(filename))) {
+        va_start(ap, name);
+        result = vips_call_split_option_string(operation_name,
+            option_string, ap, image, filename);
+        va_end(ap);
+    }
+    else
+        result = -1;
+
+    g_free(option_string);
+    g_free(filename);
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_image_write_to_buffer(VipsImage *in,
+    const char *suffix, void **buf, size_t *len,
+    ...)
+{
+    char *filename;
+    char *option_string;
+    const char *operation_name;
+    va_list ap;
+    int result;
+    VipsBlob *blob = NULL;
+
+    if (buf)
+        *buf = NULL;
+    if (len)
+        *len = 0;
+
+    if (!(filename = vips_filename_get_filename(suffix)))
+        return -1;
+    if (!(option_string = vips_filename_get_options(suffix))) {
+        g_free(filename);
+        return -1;
+    }
+
+    operation_name = vips_foreign_find_save_target(filename);
+    if (operation_name) {
+        VipsTarget *target;
+
+        if (!(target = vips_target_new_to_memory())) {
+            g_free(option_string);
+            g_free(filename);
+            return -1;
+        }
+
+        va_start(ap, len);
+        result = vips_call_split_option_string(operation_name,
+            option_string, ap, in, target);
+        va_end(ap);
+
+        if (!result)
+            g_object_get(target, "blob", &blob, NULL);
+        g_object_unref(target);
+    }
+    else if ((operation_name = vips_foreign_find_save_buffer(filename))) {
+        va_start(ap, len);
+        result = vips_call_split_option_string(operation_name,
+            option_string, ap, in, &blob);
+        va_end(ap);
+    }
+    else
+        result = -1;
+
+    g_free(option_string);
+    g_free(filename);
+
+    if (result)
+        return -1;
+
+    if (blob) {
+        if (buf) {
+            *buf = VIPS_AREA(blob)->data;
+            VIPS_AREA(blob)->free_fn = NULL;
+        }
+        if (len)
+            *len = VIPS_AREA(blob)->length;
+        vips_area_unref(VIPS_AREA(blob));
+    }
+
+    return 0;
 }
 
 VIPS_PUBLIC int
@@ -536,6 +877,183 @@ VIPS_PUBLIC int
 vips_avg(VipsImage *in, double *out, ...)
 {
     return safe_vips_avg_internal(in, out);
+}
+
+VIPS_PUBLIC char *
+vips_strncpy(char *dest, const char *src, int n)
+{
+    if (!dest || n <= 0)
+        return dest;
+    if (!src) {
+        dest[0] = '\0';
+        return dest;
+    }
+
+    g_strlcpy(dest, src, (gsize) n);
+    return dest;
+}
+
+VIPS_PUBLIC int
+vips__substitute(char *buf, size_t len, char *sub)
+{
+    size_t buflen;
+    size_t sublen;
+    char *sub_start = NULL;
+    char *sub_end = NULL;
+    char *p;
+    int lowest_n = -1;
+
+    if (!buf || !sub || len == 0)
+        return -1;
+
+    buflen = strlen(buf);
+    sublen = strlen(sub);
+    if (buflen >= len)
+        return -1;
+
+    for (p = buf; (p = strchr(p, '%')); p++) {
+        if (isdigit((unsigned char) p[1])) {
+            char *q;
+
+            for (q = p + 1; isdigit((unsigned char) *q); q++)
+                ;
+            if (*q == 's') {
+                int n = atoi(p + 1);
+
+                if (lowest_n == -1 || n < lowest_n) {
+                    lowest_n = n;
+                    sub_start = p;
+                    sub_end = q + 1;
+                }
+            }
+        }
+    }
+
+    if (!sub_start)
+        for (p = buf; (p = strchr(p, '%')); p++)
+            if (p[1] == 's') {
+                sub_start = p;
+                sub_end = p + 2;
+                break;
+            }
+
+    if (!sub_start)
+        return -1;
+
+    {
+        size_t before_len = (size_t) (sub_start - buf);
+        size_t marker_len = (size_t) (sub_end - sub_start);
+        size_t after_len = buflen - (before_len + marker_len);
+        size_t final_len = before_len + sublen + after_len + 1;
+
+        if (final_len > len)
+            return -1;
+
+        memmove(buf + before_len + sublen,
+            buf + before_len + marker_len,
+            after_len + 1);
+        memmove(buf + before_len, sub, sublen);
+    }
+
+    return 0;
+}
+
+VIPS_PUBLIC int
+vips_enum_from_nick(const char *domain, GType type, const char *nick)
+{
+    GEnumClass *genum;
+    GEnumValue *value;
+
+    if (!nick)
+        return -1;
+    if (!(genum = G_ENUM_CLASS(g_type_class_ref(type)))) {
+        vips_error(domain, "%s", "no such enum type");
+        return -1;
+    }
+
+    value = g_enum_get_value_by_name(genum, nick);
+    if (!value)
+        value = g_enum_get_value_by_nick(genum, nick);
+    if (!value) {
+        vips_error(domain, "enum '%s' has no member '%s'",
+            g_type_name(type), nick);
+        return -1;
+    }
+
+    return value->value;
+}
+
+VIPS_PUBLIC const char *
+vips_enum_nick(GType type, int value)
+{
+    GEnumClass *genum;
+    GEnumValue *entry;
+    const char *nick = NULL;
+
+    if (!(genum = G_ENUM_CLASS(g_type_class_ref(type))))
+        return NULL;
+
+    entry = g_enum_get_value(genum, value);
+    if (entry)
+        nick = entry->value_nick;
+
+    g_type_class_unref(genum);
+
+    return nick;
+}
+
+VIPS_PUBLIC int
+vips_flags_from_nick(const char *domain, GType type, const char *nick)
+{
+    GFlagsClass *gflags;
+    GFlagsValue *value;
+    int result = 0;
+    char **parts;
+    int i;
+
+    if (!nick)
+        return -1;
+    if (sscanf(nick, "%d", &result) == 1)
+        return result;
+    if (!(gflags = G_FLAGS_CLASS(g_type_class_ref(type)))) {
+        vips_error(domain, "%s", "no such flag type");
+        return -1;
+    }
+
+    parts = g_strsplit_set(nick, "\t;:|, ", -1);
+    for (i = 0; parts[i]; i++) {
+        if (parts[i][0] == '\0')
+            continue;
+        value = g_flags_get_value_by_name(gflags, parts[i]);
+        if (!value)
+            value = g_flags_get_value_by_nick(gflags, parts[i]);
+        if (!value) {
+            vips_error(domain, "flags '%s' has no member '%s'",
+                g_type_name(type), parts[i]);
+            g_strfreev(parts);
+            return -1;
+        }
+        result |= value->value;
+    }
+    g_strfreev(parts);
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips__has_extension_block(VipsImage *im)
+{
+    (void) im;
+    return 0;
+}
+
+VIPS_PUBLIC void *
+vips__read_extension_block(VipsImage *im, int *size)
+{
+    (void) im;
+    if (size)
+        *size = 0;
+    return NULL;
 }
 
 VIPS_PUBLIC int
@@ -658,6 +1176,159 @@ vips_pngsave_buffer(VipsImage *in, void **buf, size_t *len, ...)
     }
 
     return result;
+}
+
+VIPS_PUBLIC int
+vips_gifsave_buffer(VipsImage *in, void **buf, size_t *len, ...)
+{
+    return vips_pngsave_buffer(in, buf, len, NULL);
+}
+
+VIPS_PUBLIC int
+vips_rot180(VipsImage *in, VipsImage **out, ...)
+{
+    return vips_rot(in, out, VIPS_ANGLE_D180, NULL);
+}
+
+VIPS_PUBLIC void
+vips_g_error(GError **error)
+{
+    if (error &&
+        *error) {
+        vips_error("glib", "%s\n", (*error)->message);
+        g_error_free(*error);
+        *error = NULL;
+    }
+}
+
+VIPS_PUBLIC char *
+vips__file_read(FILE *fp, const char *filename, size_t *length_out)
+{
+    size_t capacity;
+    size_t length;
+    char *buffer;
+
+    if (!fp) {
+        vips_error("vips__file_read", "%s", "file handle is null");
+        return NULL;
+    }
+
+    if (fseek(fp, 0, SEEK_END) == 0) {
+        long end = ftell(fp);
+
+        if (end >= 0) {
+            if ((unsigned long) end > 1024UL * 1024UL * 1024UL) {
+                vips_error("vips__file_read", "\"%s\" too long",
+                    filename ? filename : "stream");
+                return NULL;
+            }
+            capacity = (size_t) end + 1;
+            if (fseek(fp, 0, SEEK_SET) != 0)
+                return NULL;
+            buffer = g_try_malloc(capacity);
+            if (!buffer) {
+                vips_error("vips__file_read", "%s", "out of memory");
+                return NULL;
+            }
+            length = fread(buffer, 1, (size_t) end, fp);
+            if (length != (size_t) end) {
+                g_free(buffer);
+                vips_error("vips__file_read", "error reading from file \"%s\"",
+                    filename ? filename : "stream");
+                return NULL;
+            }
+            buffer[length] = '\0';
+            if (length_out)
+                *length_out = length;
+            return buffer;
+        }
+
+        rewind(fp);
+    }
+
+    capacity = 4096;
+    length = 0;
+    buffer = g_try_malloc(capacity);
+    if (!buffer) {
+        vips_error("vips__file_read", "%s", "out of memory");
+        return NULL;
+    }
+
+    for (;;) {
+        size_t remaining = capacity - length - 1;
+        size_t chunk;
+
+        if (remaining == 0) {
+            char *grown;
+
+            if (capacity >= 1024UL * 1024UL * 1024UL) {
+                g_free(buffer);
+                vips_error("vips__file_read", "\"%s\" too long",
+                    filename ? filename : "stream");
+                return NULL;
+            }
+
+            capacity *= 2;
+            grown = g_try_realloc(buffer, capacity);
+            if (!grown) {
+                g_free(buffer);
+                vips_error("vips__file_read", "%s", "out of memory");
+                return NULL;
+            }
+            buffer = grown;
+            remaining = capacity - length - 1;
+        }
+
+        chunk = fread(buffer + length, 1, remaining, fp);
+        length += chunk;
+        if (chunk < remaining) {
+            if (ferror(fp)) {
+                g_free(buffer);
+                vips_error("vips__file_read", "error reading from file \"%s\"",
+                    filename ? filename : "stream");
+                return NULL;
+            }
+            break;
+        }
+    }
+
+    buffer[length] = '\0';
+    if (length_out)
+        *length_out = length;
+
+    return buffer;
+}
+
+VIPS_PUBLIC int
+vips__read_header_bytes(VipsImage *im, unsigned char *from)
+{
+    (void) im;
+    (void) from;
+    vips_error("vipsedit",
+        "%s", "editing raw VIPS headers is not supported in the safe build");
+    return -1;
+}
+
+VIPS_PUBLIC int
+vips__write_header_bytes(VipsImage *im, unsigned char *to)
+{
+    (void) im;
+    if (to)
+        memset(to, 0, VIPS_SIZEOF_HEADER);
+    vips_error("vipsedit",
+        "%s", "editing raw VIPS headers is not supported in the safe build");
+    return -1;
+}
+
+VIPS_PUBLIC int
+vips__write_extension_block(VipsImage *im, void *buf, int size)
+{
+    (void) im;
+    (void) buf;
+    (void) size;
+    vips_error("vipsedit",
+        "%s", "editing raw VIPS headers is not supported in the safe build");
+    return -1;
 }
 
 VIPS_PUBLIC gboolean

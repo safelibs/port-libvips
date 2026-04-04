@@ -177,9 +177,17 @@ pub(crate) fn write_sample(bytes: &mut [u8], format: VipsBandFormat, value: f64)
         VIPS_FORMAT_FLOAT => bytes
             .get_mut(..4)
             .map(|slot| slot.copy_from_slice(&(value as f32).to_ne_bytes())),
+        VIPS_FORMAT_COMPLEX => bytes.get_mut(..8).map(|slot| {
+            slot[..4].copy_from_slice(&(value as f32).to_ne_bytes());
+            slot[4..8].copy_from_slice(&0f32.to_ne_bytes());
+        }),
         VIPS_FORMAT_DOUBLE => bytes
             .get_mut(..8)
             .map(|slot| slot.copy_from_slice(&value.to_ne_bytes())),
+        VIPS_FORMAT_DPCOMPLEX => bytes.get_mut(..16).map(|slot| {
+            slot[..8].copy_from_slice(&value.to_ne_bytes());
+            slot[8..16].copy_from_slice(&0f64.to_ne_bytes());
+        }),
         _ => None,
     }
     .is_some()

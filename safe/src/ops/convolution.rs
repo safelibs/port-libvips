@@ -3,13 +3,15 @@ use crate::abi::basic::{
     VIPS_ANGLE45_D225, VIPS_ANGLE45_D270, VIPS_ANGLE45_D315, VIPS_ANGLE45_D45, VIPS_ANGLE45_D90,
     VIPS_COMBINE_MAX, VIPS_COMBINE_MIN, VIPS_COMBINE_SUM, VIPS_PRECISION_INTEGER,
 };
-use crate::abi::image::{VipsBandFormat, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT};
+use crate::abi::image::{VipsBandFormat, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UINT};
 use crate::abi::object::VipsObject;
+use crate::pixels::format::clamp_for_format;
 use crate::pixels::kernel::{gaussian_kernel, Kernel};
 use crate::pixels::ImageBuffer;
 
 use super::{
-    argument_assigned, get_double, get_enum, get_image_buffer, get_image_ref, set_output_image_like,
+    argument_assigned, get_double, get_enum, get_image_buffer, get_image_ref, get_int,
+    set_output_image_like,
 };
 
 fn conv_output_format(format: VipsBandFormat, precision: VipsPrecision) -> VipsBandFormat {
@@ -24,7 +26,53 @@ fn conv_output_format(format: VipsBandFormat, precision: VipsPrecision) -> VipsB
     }
 }
 
-fn apply_kernel(input: &ImageBuffer, kernel: &Kernel, precision: VipsPrecision) -> ImageBuffer {
+fn align_reference_bands(
+    input: &ImageBuffer,
+    reference: &ImageBuffer,
+) -> Result<(ImageBuffer, ImageBuffer), ()> {
+    let bands = match (input.spec.bands, reference.spec.bands) {
+        (left, right) if left == right => left,
+        (1, right) => right,
+        (left, 1) => left,
+        _ => return Err(()),
+    };
+    Ok((
+        if input.spec.bands == bands {
+            input.clone()
+        } else {
+            input.replicate_bands(bands)?
+        },
+        if reference.spec.bands == bands {
+            reference.clone()
+        } else {
+            reference.replicate_bands(bands)?
+        },
+    ))
+}
+
+fn fastcor_output_format(input: VipsBandFormat, reference: VipsBandFormat) -> VipsBandFormat {
+    if input == VIPS_FORMAT_DOUBLE || reference == VIPS_FORMAT_DOUBLE {
+        VIPS_FORMAT_DOUBLE
+    } else if input == VIPS_FORMAT_FLOAT || reference == VIPS_FORMAT_FLOAT {
+        VIPS_FORMAT_FLOAT
+    } else {
+        VIPS_FORMAT_UINT
+    }
+}
+
+fn spcor_output_format(input: VipsBandFormat, reference: VipsBandFormat) -> VipsBandFormat {
+    if input == VIPS_FORMAT_DOUBLE || reference == VIPS_FORMAT_DOUBLE {
+        VIPS_FORMAT_DOUBLE
+    } else {
+        VIPS_FORMAT_FLOAT
+    }
+}
+
+pub(crate) fn apply_kernel(
+    input: &ImageBuffer,
+    kernel: &Kernel,
+    precision: VipsPrecision,
+) -> ImageBuffer {
     let mut out = input.with_format(conv_output_format(input.spec.format, precision));
     let scale = kernel.scale_or_one();
     let cx = kernel.width as isize / 2;
@@ -47,7 +95,7 @@ fn apply_kernel(input: &ImageBuffer, kernel: &Kernel, precision: VipsPrecision) 
     out
 }
 
-fn apply_separable(
+pub(crate) fn apply_separable(
     input: &ImageBuffer,
     kernel: &Kernel,
     precision: VipsPrecision,
@@ -154,7 +202,7 @@ unsafe fn op_compass(object: *mut VipsObject) -> Result<(), ()> {
     let mask = unsafe { get_image_ref(object, "mask")? };
     let base = Kernel::from_image(mask)?;
     let times = if unsafe { argument_assigned(object, "times")? } {
-        usize::try_from(unsafe { super::get_int(object, "times")? }).map_err(|_| ())?
+        usize::try_from(unsafe { get_int(object, "times")? }).map_err(|_| ())?
     } else {
         2
     };
@@ -226,6 +274,125 @@ unsafe fn edge_pair(object: *mut VipsObject, gx: Kernel, gy: Kernel) -> Result<(
     result
 }
 
+unsafe fn op_fastcor(object: *mut VipsObject) -> Result<(), ()> {
+    let like = unsafe { get_image_ref(object, "in")? };
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let reference = unsafe { get_image_buffer(object, "ref")? };
+    let (input, reference) = align_reference_bands(&input, &reference)?;
+    let mut out = input.with_shape(input.spec.width, input.spec.height, input.spec.bands);
+    out.spec.format = fastcor_output_format(input.spec.format, reference.spec.format);
+    let cx = reference.spec.width as isize / 2;
+    let cy = reference.spec.height as isize / 2;
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            for band in 0..input.spec.bands {
+                let mut sum = 0.0;
+                for ry in 0..reference.spec.height {
+                    for rx in 0..reference.spec.width {
+                        let input_value = input.sample_clamped(
+                            x as isize + rx as isize - cx,
+                            y as isize + ry as isize - cy,
+                            band,
+                        );
+                        let ref_value = reference.get(rx, ry, band);
+                        let diff = ref_value - input_value;
+                        sum += diff * diff;
+                    }
+                }
+                out.set(x, y, band, sum);
+            }
+        }
+    }
+    let result = unsafe { set_output_image_like(object, "out", out, like) };
+    unsafe {
+        crate::runtime::object::object_unref(like);
+    }
+    result
+}
+
+unsafe fn op_spcor(object: *mut VipsObject) -> Result<(), ()> {
+    let like = unsafe { get_image_ref(object, "in")? };
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let reference = unsafe { get_image_buffer(object, "ref")? };
+    let (input, reference) = align_reference_bands(&input, &reference)?;
+    let ref_pixels = (reference.spec.width * reference.spec.height).max(1) as f64;
+    let mut rmean = vec![0.0; reference.spec.bands];
+    let mut c1 = vec![0.0; reference.spec.bands];
+    for band in 0..reference.spec.bands {
+        let mut sum = 0.0;
+        for y in 0..reference.spec.height {
+            for x in 0..reference.spec.width {
+                sum += reference.get(x, y, band);
+            }
+        }
+        rmean[band] = sum / ref_pixels;
+        let mut variance = 0.0;
+        for y in 0..reference.spec.height {
+            for x in 0..reference.spec.width {
+                let diff = reference.get(x, y, band) - rmean[band];
+                variance += diff * diff;
+            }
+        }
+        c1[band] = variance.sqrt();
+    }
+
+    let mut out = input.with_shape(input.spec.width, input.spec.height, input.spec.bands);
+    out.spec.format = spcor_output_format(input.spec.format, reference.spec.format);
+    let cx = reference.spec.width as isize / 2;
+    let cy = reference.spec.height as isize / 2;
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            for band in 0..input.spec.bands {
+                let mut sum1 = 0.0;
+                for ry in 0..reference.spec.height {
+                    for rx in 0..reference.spec.width {
+                        sum1 += input.sample_clamped(
+                            x as isize + rx as isize - cx,
+                            y as isize + ry as isize - cy,
+                            band,
+                        );
+                    }
+                }
+                let imean = sum1 / ref_pixels;
+                let mut sum2 = 0.0;
+                let mut sum3 = 0.0;
+                for ry in 0..reference.spec.height {
+                    for rx in 0..reference.spec.width {
+                        let input_value = input.sample_clamped(
+                            x as isize + rx as isize - cx,
+                            y as isize + ry as isize - cy,
+                            band,
+                        );
+                        let ref_value = reference.get(rx, ry, band);
+                        let delta = input_value - imean;
+                        sum2 += delta * delta;
+                        sum3 += (ref_value - rmean[band]) * delta;
+                    }
+                }
+                let denom = c1[band] * sum2.sqrt();
+                let mut cc = if denom <= f64::EPSILON {
+                    0.0
+                } else {
+                    sum3 / denom
+                };
+                if (cc - 1.0).abs() < 1e-12 {
+                    cc = 1.0;
+                } else if (cc + 1.0).abs() < 1e-12 {
+                    cc = -1.0;
+                } else {
+                    cc = cc.clamp(-1.0, 1.0);
+                }
+                out.set(x, y, band, cc);
+            }
+        }
+    }
+    let result = unsafe { set_output_image_like(object, "out", out, like) };
+    unsafe {
+        crate::runtime::object::object_unref(like);
+    }
+    result
+}
+
 unsafe fn op_gaussblur(object: *mut VipsObject) -> Result<(), ()> {
     let sigma = unsafe { get_double(object, "sigma")? };
     let min_ampl = if unsafe { argument_assigned(object, "min_ampl")? } {
@@ -258,6 +425,74 @@ unsafe fn op_gaussblur(object: *mut VipsObject) -> Result<(), ()> {
     result
 }
 
+unsafe fn op_sharpen(object: *mut VipsObject) -> Result<(), ()> {
+    let like = unsafe { get_image_ref(object, "in")? };
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let sigma = if unsafe { argument_assigned(object, "sigma")? } {
+        unsafe { get_double(object, "sigma")? }
+    } else if unsafe { argument_assigned(object, "radius")? } {
+        1.0 + unsafe { get_int(object, "radius")? } as f64 / 2.0
+    } else {
+        0.5
+    };
+    let x1 = if unsafe { argument_assigned(object, "x1")? } {
+        unsafe { get_double(object, "x1")? }
+    } else {
+        2.0
+    };
+    let y2 = if unsafe { argument_assigned(object, "y2")? } {
+        unsafe { get_double(object, "y2")? }
+    } else {
+        10.0
+    };
+    let y3 = if unsafe { argument_assigned(object, "y3")? } {
+        unsafe { get_double(object, "y3")? }
+    } else {
+        20.0
+    };
+    let m1 = if unsafe { argument_assigned(object, "m1")? } {
+        unsafe { get_double(object, "m1")? }
+    } else {
+        0.0
+    };
+    let m2 = if unsafe { argument_assigned(object, "m2")? } {
+        unsafe { get_double(object, "m2")? }
+    } else {
+        3.0
+    };
+
+    if m1 == 0.0 && m2 == 0.0 {
+        let result = unsafe { set_output_image_like(object, "out", input, like) };
+        unsafe {
+            crate::runtime::object::object_unref(like);
+        }
+        return result;
+    }
+
+    let blur = if sigma < 0.2 {
+        input.clone()
+    } else {
+        let kernel = gaussian_kernel(sigma, 0.1, true, VIPS_PRECISION_INTEGER)?;
+        apply_separable(&input, &kernel, VIPS_PRECISION_INTEGER)?
+    };
+    let mut out = input.clone();
+    for index in 0..out.data.len() {
+        let diff = input.data[index] - blur.data[index];
+        let mut mapped = if diff.abs() < x1 {
+            diff * m1
+        } else {
+            diff * m2
+        };
+        mapped = mapped.clamp(-y3, y2);
+        out.data[index] = clamp_for_format(input.data[index] + mapped, out.spec.format);
+    }
+    let result = unsafe { set_output_image_like(object, "out", out, like) };
+    unsafe {
+        crate::runtime::object::object_unref(like);
+    }
+    result
+}
+
 pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result<bool, ()> {
     match nickname {
         "conv" => {
@@ -272,8 +507,16 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
             unsafe { op_compass(object)? };
             Ok(true)
         }
+        "fastcor" => {
+            unsafe { op_fastcor(object)? };
+            Ok(true)
+        }
         "gaussblur" => {
             unsafe { op_gaussblur(object)? };
+            Ok(true)
+        }
+        "sharpen" => {
+            unsafe { op_sharpen(object)? };
             Ok(true)
         }
         "sobel" => {
@@ -284,6 +527,10 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
                     fixed_kernel(&[-1.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0]),
                 )?
             };
+            Ok(true)
+        }
+        "spcor" => {
+            unsafe { op_spcor(object)? };
             Ok(true)
         }
         "scharr" => {

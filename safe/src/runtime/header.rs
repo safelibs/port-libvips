@@ -179,68 +179,82 @@ const BUILTIN_FIELDS: &[&str] = &[
     "mode",
 ];
 
-fn builtin_type(name: &CStr) -> Option<glib_sys::GType> {
+pub(crate) fn builtin_type(name: &CStr) -> Option<glib_sys::GType> {
     match name.to_bytes() {
         b"width" | b"height" | b"bands" | b"xoffset" | b"yoffset" => Some(G_TYPE_INT),
-        b"format" | b"coding" | b"interpretation" => Some(G_TYPE_INT),
+        b"format" => Some(crate::runtime::r#type::vips_band_format_get_type()),
+        b"coding" => Some(crate::runtime::r#type::vips_coding_get_type()),
+        b"interpretation" => Some(crate::runtime::r#type::vips_interpretation_get_type()),
         b"xres" | b"yres" => Some(G_TYPE_DOUBLE),
         b"filename" | b"mode" => Some(G_TYPE_STRING),
         _ => None,
     }
 }
 
-unsafe fn builtin_get(image: *mut VipsImage, name: &CStr, value: *mut gobject_sys::GValue) -> bool {
+pub(crate) unsafe fn builtin_get(
+    image: *mut VipsImage,
+    name: &CStr,
+    value: *mut gobject_sys::GValue,
+) -> bool {
     let Some(image_ref) = (unsafe { image.as_ref() }) else {
         return false;
+    };
+    let init_if_needed = |value: *mut gobject_sys::GValue, gtype: glib_sys::GType| unsafe {
+        if (*value).g_type == 0 {
+            gobject_sys::g_value_init(value, gtype);
+        }
     };
     unsafe {
         match name.to_bytes() {
             b"width" => {
-                gobject_sys::g_value_init(value, G_TYPE_INT);
+                init_if_needed(value, G_TYPE_INT);
                 gobject_sys::g_value_set_int(value, image_ref.Xsize);
             }
             b"height" => {
-                gobject_sys::g_value_init(value, G_TYPE_INT);
+                init_if_needed(value, G_TYPE_INT);
                 gobject_sys::g_value_set_int(value, image_ref.Ysize);
             }
             b"bands" => {
-                gobject_sys::g_value_init(value, G_TYPE_INT);
+                init_if_needed(value, G_TYPE_INT);
                 gobject_sys::g_value_set_int(value, image_ref.Bands);
             }
             b"format" => {
-                gobject_sys::g_value_init(value, G_TYPE_INT);
+                init_if_needed(value, crate::runtime::r#type::vips_band_format_get_type());
                 gobject_sys::g_value_set_enum(value, image_ref.BandFmt);
             }
             b"coding" => {
-                gobject_sys::g_value_init(value, G_TYPE_INT);
+                init_if_needed(value, crate::runtime::r#type::vips_coding_get_type());
                 gobject_sys::g_value_set_enum(value, image_ref.Coding);
             }
             b"interpretation" => {
-                gobject_sys::g_value_init(value, G_TYPE_INT);
+                init_if_needed(
+                    value,
+                    crate::runtime::r#type::vips_interpretation_get_type(),
+                );
                 gobject_sys::g_value_set_enum(value, image_ref.Type);
             }
             b"xres" => {
-                gobject_sys::g_value_init(value, G_TYPE_DOUBLE);
+                init_if_needed(value, G_TYPE_DOUBLE);
                 gobject_sys::g_value_set_double(value, image_ref.Xres);
             }
             b"yres" => {
-                gobject_sys::g_value_init(value, G_TYPE_DOUBLE);
+                init_if_needed(value, G_TYPE_DOUBLE);
                 gobject_sys::g_value_set_double(value, image_ref.Yres);
             }
             b"xoffset" => {
-                gobject_sys::g_value_init(value, G_TYPE_INT);
+                init_if_needed(value, G_TYPE_INT);
                 gobject_sys::g_value_set_int(value, image_ref.Xoffset);
             }
             b"yoffset" => {
-                gobject_sys::g_value_init(value, G_TYPE_INT);
+                init_if_needed(value, G_TYPE_INT);
                 gobject_sys::g_value_set_int(value, image_ref.Yoffset);
             }
             b"filename" => {
-                gobject_sys::g_value_init(value, G_TYPE_STRING);
+                init_if_needed(value, G_TYPE_STRING);
                 gobject_sys::g_value_set_string(value, image_ref.filename);
             }
             b"mode" => {
-                gobject_sys::g_value_init(value, G_TYPE_STRING);
+                init_if_needed(value, G_TYPE_STRING);
                 gobject_sys::g_value_set_string(value, image_ref.mode);
             }
             _ => return false,
@@ -249,7 +263,11 @@ unsafe fn builtin_get(image: *mut VipsImage, name: &CStr, value: *mut gobject_sy
     true
 }
 
-unsafe fn builtin_set(image: *mut VipsImage, name: &CStr, value: *mut gobject_sys::GValue) -> bool {
+pub(crate) unsafe fn builtin_set(
+    image: *mut VipsImage,
+    name: &CStr,
+    value: *mut gobject_sys::GValue,
+) -> bool {
     let Some(image_ref) = (unsafe { image.as_mut() }) else {
         return false;
     };
@@ -347,6 +365,20 @@ pub(crate) fn copy_metadata(dst: *mut VipsImage, src: *mut VipsImage) {
     dst_state.meta.lock().expect("meta store").entries = snapshot;
 }
 
+pub(crate) fn snapshot_metadata_entries(image: *mut VipsImage) -> Vec<(CString, MetaValue)> {
+    let Some(state) = (unsafe { image_state(image) }) else {
+        return Vec::new();
+    };
+    state
+        .meta
+        .lock()
+        .expect("meta store")
+        .entries
+        .iter()
+        .map(|(name, value)| (name.clone(), value.clone_value()))
+        .collect()
+}
+
 #[no_mangle]
 pub extern "C" fn vips_format_sizeof(format: VipsBandFormat) -> u64 {
     format_sizeof(format) as u64
@@ -358,8 +390,12 @@ pub extern "C" fn vips_format_sizeof_unsafe(format: VipsBandFormat) -> u64 {
 }
 
 #[no_mangle]
-pub extern "C" fn vips_interpretation_max_alpha(_interpretation: VipsInterpretation) -> f64 {
-    255.0
+pub extern "C" fn vips_interpretation_max_alpha(interpretation: VipsInterpretation) -> f64 {
+    match interpretation {
+        crate::abi::image::VIPS_INTERPRETATION_GREY16
+        | crate::abi::image::VIPS_INTERPRETATION_RGB16 => 65535.0,
+        _ => 255.0,
+    }
 }
 
 #[no_mangle]
@@ -598,6 +634,21 @@ pub extern "C" fn vips_image_get_as_string(
     name: *const libc::c_char,
     out: *mut *mut libc::c_char,
 ) -> libc::c_int {
+    let mut blob = ptr::null();
+    let mut blob_len = 0usize;
+    if vips_image_get_blob(image, name, &mut blob, &mut blob_len) == 0 {
+        let text = if blob.is_null() || blob_len == 0 {
+            unsafe { glib_sys::g_strdup(c"".as_ptr()) }
+        } else {
+            unsafe { glib_sys::g_base64_encode(blob.cast::<u8>(), blob_len) }
+        };
+        unsafe {
+            if !out.is_null() {
+                *out = text;
+            }
+        }
+        return 0;
+    }
     let mut value: gobject_sys::GValue = unsafe { std::mem::zeroed() };
     if vips_image_get(image, name, &mut value) != 0 {
         return -1;
@@ -916,7 +967,7 @@ pub extern "C" fn vips_image_get_string(
     if name.to_bytes() == b"filename" {
         unsafe {
             if !out.is_null() {
-                *out = vips_image_get_filename(image);
+                *out = glib_sys::g_strdup(vips_image_get_filename(image));
             }
         }
         return 0;
@@ -924,7 +975,7 @@ pub extern "C" fn vips_image_get_string(
     if name.to_bytes() == b"mode" {
         unsafe {
             if !out.is_null() {
-                *out = vips_image_get_mode(image);
+                *out = glib_sys::g_strdup(vips_image_get_mode(image));
             }
         }
         return 0;
@@ -935,7 +986,7 @@ pub extern "C" fn vips_image_get_string(
     if let Some(MetaValue::String(value)) = state.meta.lock().expect("meta").get(name) {
         unsafe {
             if !out.is_null() {
-                *out = value.as_ptr();
+                *out = glib_sys::g_strdup(value.as_ptr());
             }
         }
         0

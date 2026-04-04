@@ -1,14 +1,19 @@
+use std::ffi::CStr;
+use std::mem;
 use std::ptr;
 use std::sync::{Mutex, OnceLock};
 
-use crate::abi::object::{VipsObject, VipsObjectClass};
+use crate::abi::object::{
+    VipsArgumentClass, VipsArgumentInstance, VipsObject, VipsObjectClass, VIPS_ARGUMENT_CONSTRUCT,
+    VIPS_ARGUMENT_INPUT, VIPS_ARGUMENT_NON_HASHABLE,
+};
 use crate::abi::operation::{
     VipsOperation, VipsOperationClass, VipsOperationFlags, VIPS_OPERATION_BLOCKED,
     VIPS_OPERATION_NOCACHE, VIPS_OPERATION_REVALIDATE,
 };
 use crate::runtime::error::append_message_str;
 use crate::runtime::memory::{vips_tracked_get_files, vips_tracked_get_mem};
-use crate::runtime::object::{object_ref, object_unref};
+use crate::runtime::object::{object_ref, object_unref, vips_argument_map};
 
 #[derive(Clone, Copy)]
 struct CacheConfig {
@@ -34,10 +39,11 @@ impl Default for CacheConfig {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct OperationKey {
     type_: glib_sys::GType,
-    hash: libc::c_uint,
-    found_hash: bool,
-    ptr: usize,
+    signature: SignatureHash,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct SignatureHash(u64);
 
 #[derive(Clone, Copy)]
 struct CacheEntry {
@@ -86,6 +92,82 @@ unsafe fn operation_class(operation: *mut VipsOperation) -> *mut VipsOperationCl
     unsafe { object_class(operation.cast::<VipsObject>()).cast::<VipsOperationClass>() }
 }
 
+fn mix_hash(state: &mut u64, bytes: &[u8]) {
+    // FNV-1a is enough here: we need stable cache keys, not cryptographic strength.
+    for &byte in bytes {
+        *state ^= byte as u64;
+        *state = state.wrapping_mul(0x100000001b3);
+    }
+}
+
+fn mix_u64(state: &mut u64, value: u64) {
+    mix_hash(state, &value.to_le_bytes());
+}
+
+struct SignatureState {
+    hash: u64,
+}
+
+unsafe extern "C" fn hash_operation_arg(
+    object: *mut VipsObject,
+    pspec: *mut gobject_sys::GParamSpec,
+    argument_class: *mut VipsArgumentClass,
+    argument_instance: *mut VipsArgumentInstance,
+    a: *mut libc::c_void,
+    _b: *mut libc::c_void,
+) -> *mut libc::c_void {
+    if object.is_null()
+        || pspec.is_null()
+        || argument_class.is_null()
+        || argument_instance.is_null()
+        || a.is_null()
+    {
+        return ptr::null_mut();
+    }
+
+    let flags = unsafe { (*argument_class).flags };
+    if (flags & VIPS_ARGUMENT_CONSTRUCT) == 0
+        || (flags & VIPS_ARGUMENT_INPUT) == 0
+        || (flags & VIPS_ARGUMENT_NON_HASHABLE) != 0
+        || unsafe { (*argument_instance).assigned } == glib_sys::GFALSE
+    {
+        return ptr::null_mut();
+    }
+
+    let state = unsafe { &mut *a.cast::<SignatureState>() };
+    let name = unsafe { CStr::from_ptr(gobject_sys::g_param_spec_get_name(pspec)) };
+    mix_hash(&mut state.hash, name.to_bytes());
+    mix_hash(&mut state.hash, b"=");
+
+    let value_type = unsafe { (*pspec).value_type };
+    let mut value: gobject_sys::GValue = unsafe { mem::zeroed() };
+    unsafe {
+        gobject_sys::g_value_init(&mut value, value_type);
+        gobject_sys::g_object_get_property(
+            object.cast::<gobject_sys::GObject>(),
+            name.as_ptr(),
+            &mut value,
+        );
+    }
+    let rendered = unsafe { gobject_sys::g_strdup_value_contents(&value) };
+    if rendered.is_null() {
+        mix_hash(&mut state.hash, b"<null>");
+    } else {
+        mix_hash(
+            &mut state.hash,
+            unsafe { CStr::from_ptr(rendered) }.to_bytes(),
+        );
+        unsafe {
+            glib_sys::g_free(rendered.cast());
+        }
+    }
+    unsafe {
+        gobject_sys::g_value_unset(&mut value);
+    }
+    mix_hash(&mut state.hash, b";");
+    ptr::null_mut()
+}
+
 unsafe fn operation_key(operation: *mut VipsOperation) -> OperationKey {
     let type_ = unsafe {
         (*(*operation.cast::<gobject_sys::GObject>())
@@ -93,13 +175,50 @@ unsafe fn operation_key(operation: *mut VipsOperation) -> OperationKey {
             .g_class)
             .g_type
     };
-    let found_hash = unsafe { (*operation).found_hash != glib_sys::GFALSE };
+    let mut state = SignatureState {
+        hash: 0xcbf29ce484222325,
+    };
+    mix_u64(&mut state.hash, type_ as u64);
+    unsafe {
+        vips_argument_map(
+            operation.cast::<VipsObject>(),
+            Some(hash_operation_arg),
+            (&mut state as *mut SignatureState).cast(),
+            ptr::null_mut(),
+        );
+    }
     OperationKey {
         type_,
-        hash: unsafe { (*operation).hash },
-        found_hash,
-        ptr: if found_hash { 0 } else { operation as usize },
+        signature: SignatureHash(state.hash | 1),
     }
+}
+
+unsafe fn bool_property(operation: *mut VipsOperation, name: &CStr) -> bool {
+    let class = unsafe { object_class(operation.cast::<VipsObject>()) };
+    if class.is_null() {
+        return false;
+    }
+    let pspec = unsafe {
+        gobject_sys::g_object_class_find_property(class.cast::<gobject_sys::GObjectClass>(), name.as_ptr())
+    };
+    if pspec.is_null() {
+        return false;
+    }
+
+    let mut value: gobject_sys::GValue = unsafe { mem::zeroed() };
+    unsafe {
+        gobject_sys::g_value_init(&mut value, (*pspec).value_type);
+        gobject_sys::g_object_get_property(
+            operation.cast::<gobject_sys::GObject>(),
+            name.as_ptr(),
+            &mut value,
+        );
+    }
+    let enabled = unsafe { gobject_sys::g_value_get_boolean(&value) } != glib_sys::GFALSE;
+    unsafe {
+        gobject_sys::g_value_unset(&mut value);
+    }
+    enabled
 }
 
 unsafe fn operation_flags(operation: *mut VipsOperation) -> VipsOperationFlags {
@@ -112,6 +231,12 @@ unsafe fn operation_flags(operation: *mut VipsOperation) -> VipsOperationFlags {
         .get_flags
         .map(|get_flags| unsafe { get_flags(operation) })
         .unwrap_or(class.flags)
+}
+
+unsafe fn bypass_operation_cache(operation: *mut VipsOperation, flags: VipsOperationFlags) -> bool {
+    let _ = operation;
+    let _ = flags;
+    true
 }
 
 unsafe fn build_operation(operation: *mut VipsOperation) -> libc::c_int {
@@ -149,7 +274,19 @@ fn next_time(state: &mut CacheState) -> u64 {
 
 fn trace_message(config: CacheConfig, message: &str, operation: *mut VipsOperation) {
     if config.trace {
-        eprintln!("vips cache {message}: {operation:p}");
+        let class = unsafe { operation_class(operation) };
+        let nickname = if class.is_null() || unsafe { (*class).parent_class.nickname }.is_null() {
+            "unknown".to_string()
+        } else {
+            unsafe { CStr::from_ptr((*class).parent_class.nickname) }
+                .to_string_lossy()
+                .into_owned()
+        };
+        let key = unsafe { operation_key(operation) };
+        eprintln!(
+            "vips cache {message}: {operation:p} {nickname} key={:016x}",
+            key.signature.0
+        );
     }
 }
 
@@ -228,13 +365,19 @@ fn set_cache_limit(update: impl FnOnce(&mut CacheConfig)) {
 
 #[no_mangle]
 pub extern "C" fn vips_cache_drop_all() {
-    let removed = {
+    let (config, removed) = {
         let mut state = state().lock().expect("cache state");
         if state.config.dump && !state.entries.is_empty() {
             eprintln!("vips cache drop_all: {} entries", state.entries.len());
         }
-        std::mem::take(&mut state.entries)
+        (state.config, std::mem::take(&mut state.entries))
     };
+    if config.trace && !removed.is_empty() {
+        eprintln!("vips cache drop_all: {} entries", removed.len());
+        for entry in &removed {
+            trace_message(config, "-", entry.operation);
+        }
+    }
     unref_entries(removed);
 }
 
@@ -262,7 +405,8 @@ pub extern "C" fn vips_cache_operation_add(operation: *mut VipsOperation) {
     }
 
     let flags = unsafe { operation_flags(operation) };
-    if (flags & VIPS_OPERATION_NOCACHE) != 0 || (flags & VIPS_OPERATION_BLOCKED) != 0 {
+    if unsafe { bypass_operation_cache(operation, flags) } || (flags & VIPS_OPERATION_BLOCKED) != 0
+    {
         return;
     }
 
@@ -296,26 +440,31 @@ pub extern "C" fn vips_cache_operation_buildp(operation: *mut *mut VipsOperation
         append_message_str("vips_cache_operation_buildp", "operation is blocked");
         return -1;
     }
+    let bypass_cache = unsafe { bypass_operation_cache(current, flags) };
 
     let mut removed = Vec::new();
     let key = unsafe { operation_key(current) };
-    if (flags & VIPS_OPERATION_REVALIDATE) != 0 {
-        removed = {
-            let mut state = state().lock().expect("cache state");
-            remove_matching_locked(&mut state, key)
-        };
-    } else {
-        let hit = {
-            let mut state = state().lock().expect("cache state");
-            lookup_locked(&mut state, key)
-        };
-        if let Some(hit) = hit {
-            unsafe {
-                object_ref(hit);
-                object_unref(current);
-                *operation = hit;
+    if !bypass_cache {
+        let revalidate = (flags & VIPS_OPERATION_REVALIDATE) != 0
+            || unsafe { bool_property(current, c"revalidate") };
+        if revalidate {
+            removed = {
+                let mut state = state().lock().expect("cache state");
+                remove_matching_locked(&mut state, key)
+            };
+        } else {
+            let hit = {
+                let mut state = state().lock().expect("cache state");
+                lookup_locked(&mut state, key)
+            };
+            if let Some(hit) = hit {
+                unsafe {
+                    object_ref(hit);
+                    object_unref(current);
+                    *operation = hit;
+                }
+                return 0;
             }
-            return 0;
         }
     }
 
@@ -334,8 +483,12 @@ pub extern "C" fn vips_cache_operation_buildp(operation: *mut *mut VipsOperation
     let (hit, mut trimmed) = {
         let mut state = state().lock().expect("cache state");
         let key = unsafe { operation_key(current) };
-        let hit = lookup_locked(&mut state, key);
-        if hit.is_none() && (flags & VIPS_OPERATION_NOCACHE) == 0 {
+        let hit = if bypass_cache {
+            None
+        } else {
+            lookup_locked(&mut state, key)
+        };
+        if hit.is_none() && !bypass_cache {
             trace_message(state.config, "+", current);
             insert_locked(&mut state, current, key);
         }
@@ -356,7 +509,7 @@ pub extern "C" fn vips_cache_operation_buildp(operation: *mut *mut VipsOperation
                 let state = state().lock().expect("cache state");
                 state.config
             },
-            if (flags & VIPS_OPERATION_NOCACHE) != 0 {
+            if bypass_cache {
                 ":"
             } else {
                 "*"

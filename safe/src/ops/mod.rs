@@ -34,24 +34,37 @@ use crate::runtime::target::vips_target_new_to_file;
 const SUPPORTED_OPERATIONS: &[&str] = &[
     "abs",
     "add",
+    "arrayjoin",
     "avg",
     "bandbool",
     "bandfold",
     "bandjoin",
     "bandjoin_const",
     "bandmean",
+    "bandrank",
     "bandunfold",
     "black",
+    "blockcache",
     "boolean",
+    "boolean_const",
+    "buildlut",
     "byteswap",
+    "cache",
+    "case",
     "cast",
     "colourspace",
+    "complex",
+    "complexform",
+    "complexget",
     "compass",
     "conv",
     "convsep",
     "copy",
     "countlines",
     "crop",
+    "dE00",
+    "dE76",
+    "dECMC",
     "draw_circle",
     "draw_flood",
     "draw_image",
@@ -59,35 +72,71 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "draw_mask",
     "draw_rect",
     "draw_smudge",
+    "deviate",
     "divide",
     "embed",
     "extract_area",
     "extract_band",
     "eye",
+    "falsecolour",
+    "fastcor",
+    "fill_nearest",
+    "flatten",
+    "flip",
     "freqmult",
+    "gamma",
     "gaussblur",
     "gaussmat",
+    "gaussnoise",
+    "globalbalance",
     "grey",
+    "grid",
+    "hough_circle",
+    "hough_line",
     "HSV2sRGB",
     "hist_cum",
     "hist_entropy",
     "hist_equal",
     "hist_find",
+    "hist_find_indexed",
+    "hist_find_ndim",
+    "hist_ismonotonic",
+    "hist_local",
     "hist_match",
     "hist_norm",
     "hist_plot",
     "identity",
+    "ifthenelse",
+    "insert",
     "invert",
+    "invertlut",
+    "join",
+    "labelregions",
     "linear",
+    "linecache",
     "logmat",
     "maplut",
     "mask_gaussian",
+    "mask_gaussian_band",
+    "mask_gaussian_ring",
+    "mask_butterworth",
+    "mask_butterworth_band",
+    "mask_butterworth_ring",
+    "mask_fractal",
     "mask_ideal",
+    "mask_ideal_band",
+    "mask_ideal_ring",
     "math",
     "math2",
+    "math2_const",
+    "mapim",
     "match",
+    "measure",
+    "merge",
+    "msb",
     "mosaic",
     "mosaic1",
+    "matrixinvert",
     "morph",
     "multiply",
     "pngload",
@@ -97,16 +146,23 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "pngsave_buffer",
     "pngsave_target",
     "percent",
+    "premultiply",
     "profile",
     "profile_load",
+    "project",
     "prewitt",
     "rank",
     "relational",
+    "relational_const",
     "reduce",
     "reduceh",
     "reducev",
+    "recomb",
     "remainder",
+    "remainder_const",
     "resize",
+    "rot",
+    "rot45",
     "round",
     "sRGB2HSV",
     "sRGB2scRGB",
@@ -115,16 +171,29 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "scRGB2sRGB",
     "scRGB2XYZ",
     "sign",
+    "scale",
+    "sharpen",
     "shrink",
     "shrinkh",
     "shrinkv",
+    "smartcrop",
     "sobel",
+    "sines",
     "subtract",
+    "subsample",
     "sum",
+    "switch",
+    "stats",
+    "stdif",
+    "spcor",
+    "tilecache",
     "thumbnail",
     "thumbnail_buffer",
     "thumbnail_image",
     "thumbnail_source",
+    "tonelut",
+    "unpremultiply",
+    "wrap",
     "XYZ2Lab",
     "XYZ2scRGB",
     "XYZ2Yxy",
@@ -133,6 +202,8 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "LCh2Lab",
     "Yxy2XYZ",
     "xyz",
+    "zone",
+    "zoom",
 ];
 
 pub(crate) fn is_manifest_supported_operation(nickname: &str) -> bool {
@@ -180,6 +251,15 @@ unsafe fn argument_info(
     name: &str,
 ) -> Result<(*mut gobject_sys::GParamSpec, *mut VipsArgumentInstance), ()> {
     let name = cstring(name)?;
+    let class = unsafe { object::object_class(object) };
+    if class.is_null() {
+        return Err(());
+    }
+    let fallback =
+        unsafe { gobject_sys::g_object_class_find_property(class.cast(), name.as_ptr()) };
+    if fallback.is_null() {
+        return Err(());
+    }
     let mut pspec = ptr::null_mut();
     let mut instance = ptr::null_mut();
     if unsafe {
@@ -192,15 +272,6 @@ unsafe fn argument_info(
         )
     } != 0
     {
-        let class = unsafe { object::object_class(object) };
-        if class.is_null() {
-            return Err(());
-        }
-        let fallback =
-            unsafe { gobject_sys::g_object_class_find_property(class.cast(), name.as_ptr()) };
-        if fallback.is_null() {
-            return Err(());
-        }
         return Ok((fallback, ptr::null_mut()));
     }
     Ok((pspec, instance))
@@ -399,6 +470,25 @@ pub(crate) unsafe fn set_output_double(
     }
 }
 
+pub(crate) unsafe fn set_output_bool(
+    object: *mut VipsObject,
+    name: &str,
+    value: bool,
+) -> Result<(), ()> {
+    unsafe {
+        set_property(object, name, |gvalue| {
+            gobject_sys::g_value_set_boolean(
+                gvalue,
+                if value {
+                    glib_sys::GTRUE
+                } else {
+                    glib_sys::GFALSE
+                },
+            );
+        })
+    }
+}
+
 pub(crate) unsafe fn set_output_image(
     object: *mut VipsObject,
     name: &str,
@@ -424,6 +514,24 @@ pub(crate) unsafe fn set_output_blob(
     };
     unsafe {
         crate::runtime::r#type::vips_area_unref(blob.cast::<crate::abi::r#type::VipsArea>());
+    }
+    result
+}
+
+pub(crate) unsafe fn set_output_array_double(
+    object: *mut VipsObject,
+    name: &str,
+    values: &[f64],
+) -> Result<(), ()> {
+    let array =
+        crate::runtime::r#type::vips_array_double_new(values.as_ptr(), values.len() as c_int);
+    let result = unsafe {
+        set_property(object, name, |gvalue| {
+            gobject_sys::g_value_set_boxed(gvalue, array.cast::<c_void>());
+        })
+    };
+    unsafe {
+        crate::runtime::r#type::vips_area_unref(array.cast::<crate::abi::r#type::VipsArea>());
     }
     result
 }
@@ -484,6 +592,9 @@ unsafe fn dispatch_operation(object: *mut VipsObject, nickname: &str) -> Result<
         return Ok(true);
     }
     if unsafe { resample::dispatch(object, nickname)? } {
+        return Ok(true);
+    }
+    if unsafe { crate::foreign::dispatch_operation(object, nickname)? } {
         return Ok(true);
     }
     Ok(false)

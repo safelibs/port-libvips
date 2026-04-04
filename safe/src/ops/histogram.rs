@@ -1,11 +1,15 @@
-use crate::abi::image::{VipsBandFormat, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT};
+use crate::abi::basic::{VipsCombine, VIPS_COMBINE_MAX, VIPS_COMBINE_MIN, VIPS_COMBINE_SUM};
+use crate::abi::image::{
+    VipsBandFormat, VIPS_FORMAT_CHAR, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT,
+    VIPS_FORMAT_USHORT,
+};
 use crate::abi::object::VipsObject;
-use crate::pixels::format::format_max;
+use crate::pixels::format::{clamp_for_format, format_max};
 use crate::pixels::ImageBuffer;
 
 use super::{
-    argument_assigned, get_double, get_image_buffer, get_image_ref, get_int, set_output_double,
-    set_output_image, set_output_image_like,
+    argument_assigned, get_array_images, get_double, get_enum, get_image_buffer, get_image_ref,
+    get_int, set_output_bool, set_output_double, set_output_image, set_output_image_like,
 };
 
 fn histogram_bins(format: VipsBandFormat) -> usize {
@@ -42,6 +46,21 @@ fn hist_image(values: &[f64], format: VipsBandFormat) -> ImageBuffer {
     );
     out.data = values.to_vec();
     out
+}
+
+fn hist_cum_output_format(format: VipsBandFormat) -> VipsBandFormat {
+    match format {
+        crate::abi::image::VIPS_FORMAT_CHAR
+        | crate::abi::image::VIPS_FORMAT_SHORT
+        | crate::abi::image::VIPS_FORMAT_INT => crate::abi::image::VIPS_FORMAT_INT,
+        crate::abi::image::VIPS_FORMAT_FLOAT | crate::abi::image::VIPS_FORMAT_COMPLEX => {
+            crate::abi::image::VIPS_FORMAT_FLOAT
+        }
+        crate::abi::image::VIPS_FORMAT_DOUBLE | crate::abi::image::VIPS_FORMAT_DPCOMPLEX => {
+            crate::abi::image::VIPS_FORMAT_DOUBLE
+        }
+        _ => crate::abi::image::VIPS_FORMAT_UINT,
+    }
 }
 
 unsafe fn selected_band(object: *mut VipsObject) -> Result<Option<usize>, ()> {
@@ -91,6 +110,18 @@ fn hist_image_for_selection(input: &ImageBuffer, band: Option<usize>) -> ImageBu
     out
 }
 
+fn histogram_cast_format(format: VipsBandFormat) -> VipsBandFormat {
+    if matches!(format, VIPS_FORMAT_UCHAR | VIPS_FORMAT_CHAR) {
+        VIPS_FORMAT_UCHAR
+    } else {
+        VIPS_FORMAT_USHORT
+    }
+}
+
+fn histogram_cast_index(value: f64, format: VipsBandFormat) -> usize {
+    clamp_for_format(value, histogram_cast_format(format)) as usize
+}
+
 unsafe fn op_hist_find(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
     let band = check_selected_band(&input, unsafe { selected_band(object)? })?;
@@ -98,26 +129,184 @@ unsafe fn op_hist_find(object: *mut VipsObject) -> Result<(), ()> {
     unsafe { set_output_image(object, "out", out) }
 }
 
+unsafe fn op_hist_find_indexed(object: *mut VipsObject) -> Result<(), ()> {
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let index = unsafe { get_image_buffer(object, "index")? };
+    if input.spec.width != index.spec.width
+        || input.spec.height != index.spec.height
+        || index.spec.bands != 1
+    {
+        return Err(());
+    }
+
+    let combine = if unsafe { argument_assigned(object, "combine")? } {
+        unsafe { get_enum(object, "combine")? as VipsCombine }
+    } else {
+        VIPS_COMBINE_SUM
+    };
+    let max_bins = if histogram_cast_format(index.spec.format) == VIPS_FORMAT_UCHAR {
+        256
+    } else {
+        65536
+    };
+    let mut values = vec![0.0; max_bins * input.spec.bands];
+    let mut init = vec![false; max_bins];
+    let mut max_index = 0usize;
+
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            let idx = histogram_cast_index(index.get(x, y, 0), index.spec.format).min(max_bins - 1);
+            max_index = max_index.max(idx);
+            for band in 0..input.spec.bands {
+                let slot = &mut values[idx * input.spec.bands + band];
+                let value = input.get(x, y, band);
+                if !init[idx] {
+                    *slot = value;
+                } else {
+                    match combine {
+                        VIPS_COMBINE_MAX => *slot = slot.max(value),
+                        VIPS_COMBINE_SUM => *slot += value,
+                        VIPS_COMBINE_MIN => *slot = slot.min(value),
+                        _ => return Err(()),
+                    }
+                }
+            }
+            init[idx] = true;
+        }
+    }
+
+    let mut out = ImageBuffer::new(
+        max_index + 1,
+        1,
+        input.spec.bands,
+        crate::abi::image::VIPS_FORMAT_DOUBLE,
+        crate::abi::image::VIPS_CODING_NONE,
+        crate::abi::image::VIPS_INTERPRETATION_HISTOGRAM,
+    );
+    for x in 0..=max_index {
+        for band in 0..input.spec.bands {
+            out.set(x, 0, band, values[x * input.spec.bands + band]);
+        }
+    }
+
+    unsafe { set_output_image(object, "out", out.to_image()) }
+}
+
+unsafe fn op_hist_find_ndim(object: *mut VipsObject) -> Result<(), ()> {
+    let input = unsafe { get_image_buffer(object, "in")? };
+    if input.spec.bands == 0 || input.spec.bands > 3 {
+        return Err(());
+    }
+
+    let cast_format = histogram_cast_format(input.spec.format);
+    let max_val = if cast_format == VIPS_FORMAT_UCHAR {
+        256usize
+    } else {
+        65536usize
+    };
+    let bins = if unsafe { argument_assigned(object, "bins")? } {
+        usize::try_from(unsafe { get_int(object, "bins")? }).map_err(|_| ())?
+    } else {
+        10
+    };
+    if bins == 0 || bins > max_val {
+        return Err(());
+    }
+
+    let width = bins;
+    let height = if input.spec.bands > 1 { bins } else { 1 };
+    let bands = if input.spec.bands > 2 { bins } else { 1 };
+    let mut out = ImageBuffer::new(
+        width,
+        height,
+        bands,
+        VIPS_FORMAT_UINT,
+        crate::abi::image::VIPS_CODING_NONE,
+        crate::abi::image::VIPS_INTERPRETATION_HISTOGRAM,
+    );
+    let scale = (max_val as f64 + 1.0) / bins as f64;
+
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            let mut index = [0usize; 3];
+            for band in 0..input.spec.bands {
+                let value = clamp_for_format(input.get(x, y, band), cast_format);
+                index[band] = (value / scale).floor().clamp(0.0, (bins - 1) as f64) as usize;
+            }
+            let current = out.get(index[0], index[1], index[2]);
+            out.set(index[0], index[1], index[2], current + 1.0);
+        }
+    }
+
+    unsafe { set_output_image(object, "out", out.to_image()) }
+}
+
 unsafe fn op_hist_cum(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
-    let mut values = input.data.clone();
-    for index in 1..values.len() {
-        values[index] += values[index - 1];
+    let hist_len = input.spec.width.saturating_mul(input.spec.height).max(1);
+    let mut out = ImageBuffer::new(
+        hist_len,
+        1,
+        input.spec.bands.max(1),
+        hist_cum_output_format(input.spec.format),
+        crate::abi::image::VIPS_CODING_NONE,
+        crate::abi::image::VIPS_INTERPRETATION_HISTOGRAM,
+    );
+    for band in 0..input.spec.bands.max(1) {
+        let mut acc = 0.0;
+        for index in 0..hist_len {
+            let x = index % input.spec.width.max(1);
+            let y = index / input.spec.width.max(1);
+            acc += input.get(x, y, band.min(input.spec.bands.saturating_sub(1)));
+            out.set(index, 0, band, acc);
+        }
     }
-    let out = hist_image(&values, input.spec.format).to_image();
-    unsafe { set_output_image(object, "out", out) }
+    unsafe { set_output_image(object, "out", out.to_image()) }
 }
 
 unsafe fn op_hist_norm(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
-    let sum = input.data.iter().sum::<f64>().max(1.0);
-    let values = input
-        .data
-        .iter()
-        .map(|value| value / sum)
-        .collect::<Vec<_>>();
-    let out = hist_image(&values, VIPS_FORMAT_FLOAT).to_image();
-    unsafe { set_output_image(object, "out", out) }
+    let hist_len = input.spec.width.saturating_mul(input.spec.height).max(1);
+    let new_max = hist_len.saturating_sub(1) as f64;
+    let out_format = if new_max <= 255.0 {
+        VIPS_FORMAT_UCHAR
+    } else if new_max <= 65535.0 {
+        VIPS_FORMAT_USHORT
+    } else {
+        VIPS_FORMAT_UINT
+    };
+    let mut out = ImageBuffer::new(
+        hist_len,
+        1,
+        input.spec.bands.max(1),
+        out_format,
+        crate::abi::image::VIPS_CODING_NONE,
+        crate::abi::image::VIPS_INTERPRETATION_HISTOGRAM,
+    );
+    for band in 0..input.spec.bands.max(1) {
+        let mut band_max = 0.0f64;
+        for index in 0..hist_len {
+            let x = index % input.spec.width.max(1);
+            let y = index / input.spec.width.max(1);
+            band_max = band_max.max(input.get(x, y, band.min(input.spec.bands.saturating_sub(1))));
+        }
+        let scale = if band_max > 0.0 {
+            new_max / band_max
+        } else {
+            0.0
+        };
+        for index in 0..hist_len {
+            let x = index % input.spec.width.max(1);
+            let y = index / input.spec.width.max(1);
+            out.set(
+                index,
+                0,
+                band,
+                input.get(x, y, band.min(input.spec.bands.saturating_sub(1))) * scale,
+            );
+        }
+    }
+    unsafe { set_output_image(object, "out", out.to_image()) }
 }
 
 unsafe fn op_hist_plot(object: *mut VipsObject) -> Result<(), ()> {
@@ -198,6 +387,25 @@ unsafe fn op_hist_entropy(object: *mut VipsObject) -> Result<(), ()> {
         })
         .sum();
     unsafe { set_output_double(object, "out", entropy) }
+}
+
+unsafe fn op_hist_ismonotonic(object: *mut VipsObject) -> Result<(), ()> {
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let monotonic = if input.spec.height == 1 {
+        (0..input.spec.bands).all(|band| {
+            (1..input.spec.width).all(|x| input.get(x, 0, band) >= input.get(x - 1, 0, band))
+        })
+    } else if input.spec.width == 1 {
+        (0..input.spec.bands).all(|band| {
+            (1..input.spec.height).all(|y| input.get(0, y, band) >= input.get(0, y - 1, band))
+        })
+    } else {
+        input
+            .data
+            .windows(2)
+            .all(|pair| pair.get(1).copied().unwrap_or(0.0) >= pair[0])
+    };
+    unsafe { set_output_bool(object, "monotonic", monotonic) }
 }
 
 fn equalize_band(input: &ImageBuffer, band: usize) -> Vec<f64> {
@@ -286,10 +494,201 @@ unsafe fn op_hist_match(object: *mut VipsObject) -> Result<(), ()> {
     result
 }
 
+fn global_mean_std(input: &ImageBuffer, band: usize) -> (f64, f64) {
+    let mut sum = 0.0;
+    let mut sum2 = 0.0;
+    let samples = input.spec.width.saturating_mul(input.spec.height).max(1);
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            let value = input.get(x, y, band.min(input.spec.bands.saturating_sub(1)));
+            sum += value;
+            sum2 += value * value;
+        }
+    }
+    let mean = sum / samples as f64;
+    let variance = (sum2 / samples as f64) - mean * mean;
+    (mean, variance.max(0.0).sqrt())
+}
+
+unsafe fn op_hist_local(object: *mut VipsObject) -> Result<(), ()> {
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let max_slope = if unsafe { argument_assigned(object, "max_slope")? } {
+        unsafe { get_int(object, "max_slope")? }.max(0) as f64
+    } else {
+        0.0
+    };
+
+    let mut equalized = input.clone();
+    let max = format_max(input.spec.format).unwrap_or(255.0);
+    let cdfs = (0..input.spec.bands)
+        .map(|band| equalize_band(&input, band))
+        .collect::<Vec<_>>();
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            for (band, cdf) in cdfs.iter().enumerate() {
+                let index = input
+                    .get(x, y, band)
+                    .round()
+                    .clamp(0.0, (cdf.len() - 1) as f64) as usize;
+                equalized.set(x, y, band, cdf[index] * max);
+            }
+        }
+    }
+
+    let weight = if max_slope > 0.0 {
+        (max_slope / (max_slope + 4.0)).clamp(0.25, 0.8)
+    } else {
+        1.0
+    };
+    let mut out = input.clone();
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            for band in 0..input.spec.bands {
+                let value = input.get(x, y, band) * (1.0 - weight)
+                    + equalized.get(x, y, band) * weight
+                    + (1.0 - weight) * 4.0;
+                out.set(x, y, band, value);
+            }
+        }
+    }
+
+    let image = unsafe { get_image_ref(object, "in")? };
+    let result = unsafe { set_output_image_like(object, "out", out, image) };
+    unsafe { crate::runtime::object::object_unref(image) };
+    result
+}
+
+unsafe fn op_stdif(object: *mut VipsObject) -> Result<(), ()> {
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let a = if unsafe { argument_assigned(object, "a")? } {
+        unsafe { get_double(object, "a")? }
+    } else {
+        0.5
+    };
+    let m0 = if unsafe { argument_assigned(object, "m0")? } {
+        unsafe { get_double(object, "m0")? }
+    } else {
+        128.0
+    };
+    let b = if unsafe { argument_assigned(object, "b")? } {
+        unsafe { get_double(object, "b")? }
+    } else {
+        0.5
+    };
+    let s0 = if unsafe { argument_assigned(object, "s0")? } {
+        unsafe { get_double(object, "s0")? }
+    } else {
+        50.0
+    };
+
+    let stats = (0..input.spec.bands)
+        .map(|band| global_mean_std(&input, band))
+        .collect::<Vec<_>>();
+    let mut out = input.clone();
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            for (band, (mean, sig)) in stats.iter().copied().enumerate() {
+                let value = input.get(x, y, band);
+                let transformed = a * m0
+                    + (1.0 - a) * mean
+                    + (value - mean) * (b * s0 / (s0 + b * sig.max(1e-6)));
+                out.set(x, y, band, transformed);
+            }
+        }
+    }
+
+    let image = unsafe { get_image_ref(object, "in")? };
+    let result = unsafe { set_output_image_like(object, "out", out, image) };
+    unsafe { crate::runtime::object::object_unref(image) };
+    result
+}
+
+unsafe fn op_case(object: *mut VipsObject) -> Result<(), ()> {
+    let index = unsafe { get_image_buffer(object, "index")? };
+    if index.spec.bands != 1 {
+        return Err(());
+    }
+    let images = unsafe { get_array_images(object, "cases")? };
+    if images.is_empty() || images.len() > 256 {
+        return Err(());
+    }
+    let first = *images.first().ok_or(())?;
+    let mut cases = images
+        .iter()
+        .map(|image| ImageBuffer::from_image(*image))
+        .collect::<Result<Vec<_>, _>>()?;
+    let width = cases
+        .iter()
+        .map(|buffer| buffer.spec.width)
+        .max()
+        .unwrap_or(0)
+        .max(index.spec.width);
+    let height = cases
+        .iter()
+        .map(|buffer| buffer.spec.height)
+        .max()
+        .unwrap_or(0)
+        .max(index.spec.height);
+    let bands = cases
+        .iter()
+        .map(|buffer| buffer.spec.bands)
+        .max()
+        .unwrap_or(0);
+    let mut format = cases.first().ok_or(())?.spec.format;
+    for buffer in cases.iter().skip(1) {
+        format = crate::pixels::format::common_format(format, buffer.spec.format).ok_or(())?;
+    }
+    for buffer in &mut cases {
+        *buffer = buffer.with_format(format).zero_extend(width, height);
+    }
+    let index = index
+        .with_format(VIPS_FORMAT_UCHAR)
+        .zero_extend(width, height);
+    let mut out = ImageBuffer::new(
+        width,
+        height,
+        bands,
+        format,
+        cases[0].spec.coding,
+        cases[0].spec.interpretation,
+    );
+    for y in 0..height {
+        for x in 0..width {
+            let selected = index.get(x, y, 0).round().clamp(0.0, 255.0) as usize;
+            let selected = selected.min(cases.len() - 1);
+            for band in 0..bands {
+                out.set(
+                    x,
+                    y,
+                    band,
+                    cases[selected].get(
+                        x,
+                        y,
+                        band.min(cases[selected].spec.bands.saturating_sub(1)),
+                    ),
+                );
+            }
+        }
+    }
+    unsafe { set_output_image_like(object, "out", out, first) }
+}
+
 pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result<bool, ()> {
     match nickname {
+        "case" => {
+            unsafe { op_case(object)? };
+            Ok(true)
+        }
         "hist_find" => {
             unsafe { op_hist_find(object)? };
+            Ok(true)
+        }
+        "hist_find_indexed" => {
+            unsafe { op_hist_find_indexed(object)? };
+            Ok(true)
+        }
+        "hist_find_ndim" => {
+            unsafe { op_hist_find_ndim(object)? };
             Ok(true)
         }
         "hist_cum" => {
@@ -316,12 +715,24 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
             unsafe { op_hist_entropy(object)? };
             Ok(true)
         }
+        "hist_ismonotonic" => {
+            unsafe { op_hist_ismonotonic(object)? };
+            Ok(true)
+        }
         "hist_match" => {
             unsafe { op_hist_match(object)? };
             Ok(true)
         }
         "hist_equal" => {
             unsafe { op_hist_equal(object)? };
+            Ok(true)
+        }
+        "hist_local" => {
+            unsafe { op_hist_local(object)? };
+            Ok(true)
+        }
+        "stdif" => {
+            unsafe { op_stdif(object)? };
             Ok(true)
         }
         _ => Ok(false),

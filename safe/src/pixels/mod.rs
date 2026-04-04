@@ -4,7 +4,8 @@ pub(crate) mod kernel;
 
 use crate::abi::image::{
     VipsBandFormat, VipsCoding, VipsDemandStyle, VipsImage, VipsInterpretation, VIPS_CODING_NONE,
-    VIPS_DEMAND_STYLE_ANY,
+    VIPS_DEMAND_STYLE_ANY, VIPS_FORMAT_COMPLEX, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_DPCOMPLEX,
+    VIPS_FORMAT_FLOAT,
 };
 use crate::pixels::format::{format_bytes, format_components, read_sample, write_sample};
 use crate::pixels::iter::{clamped_sample, expanded_sample, pixel_index, PixelIter};
@@ -67,9 +68,15 @@ impl ImageBuffer {
         let bytes = &state.pixels;
         let sample_size = format_bytes(image_ref.BandFmt);
         let components = format_components(image_ref.BandFmt);
-        if components != 1 || sample_size == 0 {
+        if sample_size == 0 {
             return Err(());
         }
+        let stored_format = match image_ref.BandFmt {
+            VIPS_FORMAT_COMPLEX => VIPS_FORMAT_FLOAT,
+            VIPS_FORMAT_DPCOMPLEX => VIPS_FORMAT_DOUBLE,
+            _ => image_ref.BandFmt,
+        };
+        let stored_size = format_bytes(stored_format);
 
         let mut data = Vec::with_capacity(
             image_ref.Xsize.max(0) as usize
@@ -77,7 +84,12 @@ impl ImageBuffer {
                 * image_ref.Bands.max(0) as usize,
         );
         for chunk in bytes.chunks_exact(sample_size) {
-            data.push(read_sample(chunk, image_ref.BandFmt).ok_or(())?);
+            let sample = if components == 1 {
+                read_sample(chunk, stored_format).ok_or(())?
+            } else {
+                read_sample(&chunk[..stored_size], stored_format).ok_or(())?
+            };
+            data.push(sample);
         }
 
         Ok(Self {
@@ -85,7 +97,7 @@ impl ImageBuffer {
                 width: image_ref.Xsize.max(0) as usize,
                 height: image_ref.Ysize.max(0) as usize,
                 bands: image_ref.Bands.max(0) as usize,
-                format: image_ref.BandFmt,
+                format: stored_format,
                 coding: image_ref.Coding,
                 interpretation: image_ref.Type,
                 xres: image_ref.Xres,

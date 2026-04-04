@@ -4,17 +4,26 @@ use std::os::raw::c_char;
 use std::ptr;
 use std::sync::OnceLock;
 
-use gobject_sys::{GTypeClass, G_TYPE_INT, G_TYPE_INT64, G_TYPE_NONE, G_TYPE_POINTER};
+use gobject_sys::{
+    GTypeClass, GTypeInstance, G_TYPE_INT, G_TYPE_INT64, G_TYPE_NONE, G_TYPE_POINTER,
+};
 
 use crate::abi::connection::{
     VipsTarget, VipsTargetCustom, VipsTargetCustomClass, VIPS_TARGET_BUFFER_SIZE,
 };
+use crate::abi::object::{VipsObjectClass, VIPS_ARGUMENT_INPUT, VIPS_ARGUMENT_SET_ALWAYS};
 use crate::runtime::connection::optional_cstr;
 use crate::runtime::error::append_message_str;
 use crate::runtime::memory::vips_tracked_close;
-use crate::runtime::object::{get_qdata_ptr, object_new, qdata_quark, set_qdata_box};
+use crate::runtime::object::{
+    get_qdata_ptr, object_new, prepare_existing_class, qdata_quark, set_qdata_box,
+    vips_object_class_install_argument, vips_object_get_property, vips_object_set_property,
+};
+use crate::runtime::r#type::{vips_area_unref, vips_blob_copy, vips_blob_get_type};
 
 static TARGET_STATE_QUARK: &CStr = c"safe-vips-target-state";
+static TARGET_NICKNAME: &CStr = c"target";
+static TARGET_DESCRIPTION: &CStr = c"Target";
 static TARGET_CUSTOM_WRITE_SIGNAL: OnceLock<u32> = OnceLock::new();
 static TARGET_CUSTOM_READ_SIGNAL: OnceLock<u32> = OnceLock::new();
 static TARGET_CUSTOM_SEEK_SIGNAL: OnceLock<u32> = OnceLock::new();
@@ -82,6 +91,146 @@ fn init_target_defaults(target: &mut VipsTarget) {
     target.position = 0;
     target.delete_on_close = glib_sys::GFALSE;
     target.delete_on_close_filename = ptr::null_mut();
+}
+
+fn current_memory_bytes(target: *mut VipsTarget) -> Option<Vec<u8>> {
+    let target_ref = unsafe { target.as_mut()? };
+    if unsafe { flush_buffer(target) }.is_err() {
+        return None;
+    }
+    let state = unsafe { target_state(target) }?;
+    match &state.kind {
+        TargetKind::Memory { bytes } => {
+            target_ref.memory = glib_sys::GTRUE;
+            Some(bytes.clone())
+        }
+        _ => None,
+    }
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn vips_target_class_init(
+    klass: glib_sys::gpointer,
+    _class_data: glib_sys::gpointer,
+) {
+    let class = klass.cast::<VipsObjectClass>();
+    let gobject_class = klass.cast::<gobject_sys::GObjectClass>();
+    unsafe {
+        prepare_existing_class(class);
+        (*gobject_class).set_property = Some(vips_object_set_property);
+        (*gobject_class).get_property = Some(vips_object_get_property);
+        (*class).nickname = TARGET_NICKNAME.as_ptr().cast();
+        (*class).description = TARGET_DESCRIPTION.as_ptr().cast();
+    }
+
+    let memory = unsafe {
+        gobject_sys::g_param_spec_boolean(
+            c"memory".as_ptr(),
+            c"Memory".as_ptr(),
+            c"File descriptor should output to memory".as_ptr(),
+            glib_sys::GFALSE,
+            gobject_sys::G_PARAM_READWRITE,
+        )
+    };
+    unsafe {
+        gobject_sys::g_object_class_install_property(
+            gobject_class,
+            crate::runtime::object::vips_argument_get_id() as u32,
+            memory,
+        );
+        vips_object_class_install_argument(
+            class,
+            memory,
+            VIPS_ARGUMENT_INPUT,
+            3,
+            offset_of!(VipsTarget, memory) as u32,
+        );
+    }
+
+    let blob = unsafe {
+        gobject_sys::g_param_spec_boxed(
+            c"blob".as_ptr(),
+            c"Blob".as_ptr(),
+            c"Blob to save to".as_ptr(),
+            vips_blob_get_type(),
+            gobject_sys::G_PARAM_READABLE,
+        )
+    };
+    unsafe {
+        gobject_sys::g_object_class_install_property(
+            gobject_class,
+            crate::runtime::object::vips_argument_get_id() as u32,
+            blob,
+        );
+        vips_object_class_install_argument(
+            class,
+            blob,
+            VIPS_ARGUMENT_SET_ALWAYS,
+            4,
+            offset_of!(VipsTarget, blob) as u32,
+        );
+    }
+}
+
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn vips_target_instance_init(
+    instance: *mut GTypeInstance,
+    _klass: glib_sys::gpointer,
+) {
+    let Some(target) = (unsafe { instance.cast::<VipsTarget>().as_mut() }) else {
+        return;
+    };
+    init_target_defaults(target);
+}
+
+pub(crate) unsafe fn builtin_set(
+    target: *mut VipsTarget,
+    name: &CStr,
+    value: *mut gobject_sys::GValue,
+) -> bool {
+    let Some(target_ref) = (unsafe { target.as_mut() }) else {
+        return false;
+    };
+    match name.to_bytes() {
+        b"memory" => {
+            target_ref.memory = unsafe { gobject_sys::g_value_get_boolean(value) };
+            true
+        }
+        _ => false,
+    }
+}
+
+pub(crate) unsafe fn builtin_get(
+    target: *mut VipsTarget,
+    name: &CStr,
+    value: *mut gobject_sys::GValue,
+) -> bool {
+    let Some(target_ref) = (unsafe { target.as_mut() }) else {
+        return false;
+    };
+    match name.to_bytes() {
+        b"memory" => {
+            unsafe {
+                gobject_sys::g_value_set_boolean(value, target_ref.memory);
+            }
+            true
+        }
+        b"blob" => {
+            let Some(bytes) = current_memory_bytes(target) else {
+                unsafe {
+                    gobject_sys::g_value_set_boxed(value, ptr::null());
+                }
+                return true;
+            };
+            let blob = vips_blob_copy(bytes.as_ptr().cast::<c_void>(), bytes.len());
+            unsafe {
+                gobject_sys::g_value_set_boxed(value, blob.cast::<c_void>());
+                vips_area_unref(blob.cast());
+            }
+            true
+        }
+        _ => false,
+    }
 }
 
 unsafe fn flush_buffer(target: *mut VipsTarget) -> Result<(), ()> {

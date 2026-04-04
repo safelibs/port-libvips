@@ -16541,7 +16541,7 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         nickname: "mask_butterworth",
         description: "make a butterworth filter",
         depth: 5,
-        abstract_: true,
+        abstract_: false,
         source_file: Some("original/libvips/create/mask_butterworth.c"),
         operation: Some(&OPERATION_VIPSMASKBUTTERWORTH),
     },

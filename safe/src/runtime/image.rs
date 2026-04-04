@@ -6,9 +6,10 @@ use std::sync::Mutex;
 
 use crate::abi::connection::{VipsSource, VipsTarget};
 use crate::abi::image::*;
+use crate::foreign::base::PendingDecode;
 use crate::runtime::error::append_message_str;
 use crate::runtime::header::{copy_metadata, MetaStore};
-use crate::runtime::object::{get_qdata_ptr, object_new, object_ref, qdata_quark, set_qdata_box};
+use crate::runtime::object::{get_qdata_ptr, object_new, qdata_quark, set_qdata_box};
 
 static IMAGE_STATE_QUARK: &CStr = c"safe-vips-image-state";
 
@@ -18,6 +19,7 @@ pub(crate) struct ImageState {
     pub mode: Option<CString>,
     pub history: Option<CString>,
     pub meta: Mutex<MetaStore>,
+    pub pending_load: Option<PendingDecode>,
     pub source: Option<*mut VipsSource>,
 }
 
@@ -129,6 +131,7 @@ fn attach_state(image: *mut VipsImage, mode: Option<&str>) -> *mut VipsImage {
                 mode: mode.map(|mode| CString::new(mode).expect("mode")),
                 history: None,
                 meta: Mutex::new(MetaStore::default()),
+                pending_load: None,
                 source: None,
             },
         );
@@ -188,6 +191,15 @@ pub(crate) fn ensure_pixels(image: *mut VipsImage) -> Result<(), ()> {
         sync_pixels(image);
         return Ok(());
     }
+    if let Some(pending) = state.pending_load.clone() {
+        let pixels = crate::foreign::decode_pending(&pending)?;
+        if let Some(state) = unsafe { image_state(image) } {
+            state.pixels = pixels;
+            state.pending_load = None;
+        }
+        sync_pixels(image);
+        return Ok(());
+    }
     if image_ref.generate_fn.is_some() {
         return crate::runtime::region::materialize_generated_image(image);
     }
@@ -207,9 +219,20 @@ pub(crate) fn ensure_pixels(image: *mut VipsImage) -> Result<(), ()> {
     Err(())
 }
 
-fn decode_png(
+pub(crate) fn safe_decode_png_bytes(
     bytes: &[u8],
-) -> Result<(Vec<u8>, u32, u32, i32, VipsBandFormat, VipsInterpretation), String> {
+) -> Result<
+    (
+        Vec<u8>,
+        u32,
+        u32,
+        i32,
+        VipsBandFormat,
+        VipsInterpretation,
+        u8,
+    ),
+    String,
+> {
     let decoder = png::Decoder::new(Cursor::new(bytes));
     let mut reader = decoder.read_info().map_err(|err| err.to_string())?;
     let mut out = vec![0; reader.output_buffer_size()];
@@ -233,6 +256,12 @@ fn decode_png(
         _ => VIPS_FORMAT_UCHAR,
     };
     out.truncate(info.buffer_size());
+    if matches!(info.bit_depth, png::BitDepth::Sixteen) {
+        for chunk in out.chunks_exact_mut(2) {
+            let value = u16::from_be_bytes([chunk[0], chunk[1]]);
+            chunk.copy_from_slice(&value.to_ne_bytes());
+        }
+    }
     Ok((
         out,
         info.width,
@@ -240,10 +269,17 @@ fn decode_png(
         bands,
         band_format,
         interpretation,
+        match info.bit_depth {
+            png::BitDepth::One => 1,
+            png::BitDepth::Two => 2,
+            png::BitDepth::Four => 4,
+            png::BitDepth::Eight => 8,
+            png::BitDepth::Sixteen => 16,
+        },
     ))
 }
 
-fn encode_png(image: &VipsImage, pixels: &[u8]) -> Result<Vec<u8>, String> {
+pub(crate) fn safe_encode_png_bytes(image: &VipsImage, pixels: &[u8]) -> Result<Vec<u8>, String> {
     let mut bytes = Vec::new();
     let mut encoder = png::Encoder::new(
         &mut bytes,
@@ -262,15 +298,21 @@ fn encode_png(image: &VipsImage, pixels: &[u8]) -> Result<Vec<u8>, String> {
         _ => return Err("unsupported band count for png".to_owned()),
     });
     let mut writer = encoder.write_header().map_err(|err| err.to_string())?;
+    let data = if image.BandFmt == VIPS_FORMAT_USHORT {
+        let mut data = pixels.to_vec();
+        for chunk in data.chunks_exact_mut(2) {
+            let value = u16::from_ne_bytes([chunk[0], chunk[1]]);
+            chunk.copy_from_slice(&value.to_be_bytes());
+        }
+        data
+    } else {
+        pixels.to_vec()
+    };
     writer
-        .write_image_data(pixels)
+        .write_image_data(&data)
         .map_err(|err| err.to_string())?;
     drop(writer);
     Ok(bytes)
-}
-
-fn read_source_bytes(source: *mut VipsSource) -> Result<Vec<u8>, ()> {
-    crate::runtime::source::read_all_bytes(source)
 }
 
 #[no_mangle]
@@ -342,45 +384,79 @@ pub extern "C" fn vips_image_new_from_memory_copy(
 }
 
 #[no_mangle]
-pub extern "C" fn safe_vips_image_new_from_source_internal(
-    source: *mut VipsSource,
-    _option_string: *const c_char,
-    _access: libc::c_int,
+pub extern "C" fn vips_image_new_matrix_from_array(
+    width: libc::c_int,
+    height: libc::c_int,
+    array: *const f64,
+    size: libc::c_int,
 ) -> *mut VipsImage {
-    let Ok(bytes) = read_source_bytes(source) else {
+    if width <= 0 || height <= 0 || size != width.saturating_mul(height) {
+        append_message_str(
+            "VipsImage",
+            &format!(
+                "bad array length --- should be {}, you passed {}",
+                width.saturating_mul(height),
+                size
+            ),
+        );
         return ptr::null_mut();
-    };
-    let Ok((pixels, width, height, bands, format, interpretation)) = decode_png(&bytes) else {
-        append_message_str("vips_image_new_from_source", "unsupported input format");
+    }
+    if size != 0 && array.is_null() {
+        append_message_str("VipsImage", "matrix array is NULL");
         return ptr::null_mut();
-    };
+    }
 
     let image = vips_image_new_memory();
     crate::runtime::header::vips_image_init_fields(
         image,
-        width as libc::c_int,
-        height as libc::c_int,
-        bands,
-        format,
+        width,
+        height,
+        1,
+        VIPS_FORMAT_DOUBLE,
         VIPS_CODING_NONE,
-        interpretation,
+        VIPS_INTERPRETATION_MATRIX,
         1.0,
         1.0,
     );
     if let Some(state) = unsafe { image_state(image) } {
-        state.pixels = pixels;
-        state.source = Some(unsafe { object_ref(source) });
+        let values = if size == 0 {
+            &[][..]
+        } else {
+            unsafe { std::slice::from_raw_parts(array, size as usize) }
+        };
+        state.pixels = values
+            .iter()
+            .flat_map(|value| value.to_ne_bytes())
+            .collect::<Vec<_>>();
     }
     sync_pixels(image);
-    if let Some(source_ref) = unsafe { source.as_ref() } {
-        if !source_ref.parent_object.filename.is_null() {
-            set_filename(
-                image,
-                Some(unsafe { CStr::from_ptr(source_ref.parent_object.filename) }),
-            );
+    image
+}
+
+#[no_mangle]
+pub extern "C" fn vips_image_matrix_from_array(
+    width: libc::c_int,
+    height: libc::c_int,
+    array: *const f64,
+    size: libc::c_int,
+) -> *mut VipsImage {
+    vips_image_new_matrix_from_array(width, height, array, size)
+}
+
+#[no_mangle]
+pub extern "C" fn safe_vips_image_new_from_source_internal(
+    source: *mut VipsSource,
+    option_string: *const c_char,
+    _access: libc::c_int,
+) -> *mut VipsImage {
+    let image = vips_image_new();
+    let out = crate::foreign::new_image_from_source(source, option_string, image);
+    if out.is_null() {
+        unsafe {
+            crate::runtime::object::object_unref(image);
         }
     }
-    image
+    out
 }
 
 #[no_mangle]
@@ -394,32 +470,7 @@ pub extern "C" fn safe_vips_image_write_to_target_internal(
     } else {
         unsafe { CStr::from_ptr(suffix) }.to_str().unwrap_or(".png")
     };
-    if suffix != ".png" && suffix != "png" {
-        append_message_str("vips_image_write_to_target", "only .png is supported");
-        return -1;
-    }
-    if ensure_pixels(image).is_err() {
-        return -1;
-    }
-    let Some(image_ref) = (unsafe { image.as_ref() }) else {
-        return -1;
-    };
-    let Some(state) = (unsafe { image_state(image) }) else {
-        return -1;
-    };
-    let Ok(encoded) = encode_png(image_ref, &state.pixels) else {
-        append_message_str("vips_image_write_to_target", "png encode failed");
-        return -1;
-    };
-    if crate::runtime::target::vips_target_write(
-        target,
-        encoded.as_ptr().cast::<c_void>(),
-        encoded.len(),
-    ) != 0
-    {
-        return -1;
-    }
-    crate::runtime::target::vips_target_end(target)
+    crate::foreign::write_image_to_target(image, suffix, target, ptr::null())
 }
 
 #[no_mangle]
@@ -558,6 +609,39 @@ pub extern "C" fn vips_image_inplace(image: *mut VipsImage) -> libc::c_int {
 }
 
 #[no_mangle]
+pub extern "C" fn vips_image_write(image: *mut VipsImage, out: *mut VipsImage) -> libc::c_int {
+    if ensure_pixels(image).is_err() {
+        return -1;
+    }
+    let Some(input) = (unsafe { image.as_ref() }) else {
+        return -1;
+    };
+    if out.is_null() {
+        return -1;
+    }
+    crate::runtime::header::vips_image_init_fields(
+        out,
+        input.Xsize,
+        input.Ysize,
+        input.Bands,
+        input.BandFmt,
+        input.Coding,
+        input.Type,
+        input.Xres,
+        input.Yres,
+    );
+    if let (Some(src), Some(dst)) = (unsafe { image_state(image) }, unsafe { image_state(out) }) {
+        dst.pixels = src.pixels.clone();
+        dst.pending_load = None;
+    } else {
+        return -1;
+    }
+    sync_pixels(out);
+    copy_metadata(out, image);
+    0
+}
+
+#[no_mangle]
 pub extern "C" fn vips_image_isfile(image: *mut VipsImage) -> glib_sys::gboolean {
     if unsafe { image_state(image) }.is_some_and(|state| state.filename.is_some()) {
         glib_sys::GTRUE
@@ -577,7 +661,23 @@ pub extern "C" fn vips_image_ispartial(image: *mut VipsImage) -> glib_sys::gbool
 
 #[no_mangle]
 pub extern "C" fn vips_image_hasalpha(image: *mut VipsImage) -> glib_sys::gboolean {
-    if unsafe { image.as_ref() }.is_some_and(|image| image.Bands == 2 || image.Bands == 4) {
+    let has_alpha = unsafe { image.as_ref() }.is_some_and(|image| match image.Type {
+        VIPS_INTERPRETATION_B_W | VIPS_INTERPRETATION_GREY16 => image.Bands > 1,
+        VIPS_INTERPRETATION_RGB
+        | VIPS_INTERPRETATION_CMC
+        | VIPS_INTERPRETATION_LCH
+        | VIPS_INTERPRETATION_LABS
+        | VIPS_INTERPRETATION_sRGB
+        | VIPS_INTERPRETATION_YXY
+        | VIPS_INTERPRETATION_XYZ
+        | VIPS_INTERPRETATION_LAB
+        | VIPS_INTERPRETATION_RGB16
+        | VIPS_INTERPRETATION_scRGB
+        | VIPS_INTERPRETATION_HSV => image.Bands > 3,
+        VIPS_INTERPRETATION_CMYK => image.Bands > 4,
+        _ => false,
+    });
+    if has_alpha {
         glib_sys::GTRUE
     } else {
         glib_sys::GFALSE

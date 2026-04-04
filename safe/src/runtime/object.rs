@@ -29,6 +29,10 @@ use crate::abi::operation::{
 use crate::abi::region::{VipsRegion, VipsRegionClass};
 use crate::runtime::error::append_message_str;
 
+unsafe extern "C" {
+    fn vips_image_write_to_file(image: *mut VipsImage, name: *const c_char, ...) -> c_int;
+}
+
 #[no_mangle]
 pub static mut _vips__argument_id: c_int = 1;
 
@@ -55,6 +59,38 @@ pub(crate) fn leak_cstring(text: &str) -> *const c_char {
         .expect("leaked cstrings")
         .push(raw as usize);
     raw.cast_const()
+}
+
+fn alternate_property_name(text: &str) -> Option<CString> {
+    if text.contains('_') {
+        CString::new(text.replace('_', "-")).ok()
+    } else if text.contains('-') {
+        CString::new(text.replace('-', "_")).ok()
+    } else {
+        None
+    }
+}
+
+unsafe fn find_property_name(
+    class: *mut VipsObjectClass,
+    name: &CStr,
+) -> *mut gobject_sys::GParamSpec {
+    if class.is_null() {
+        return ptr::null_mut();
+    }
+
+    let pspec = unsafe { gobject_sys::g_object_class_find_property(class.cast(), name.as_ptr()) };
+    if !pspec.is_null() {
+        return pspec;
+    }
+
+    let Ok(text) = name.to_str() else {
+        return ptr::null_mut();
+    };
+    let Some(alternate) = alternate_property_name(text) else {
+        return ptr::null_mut();
+    };
+    unsafe { gobject_sys::g_object_class_find_property(class.cast(), alternate.as_ptr()) }
 }
 
 pub(crate) fn register_type(
@@ -135,13 +171,6 @@ pub extern "C" fn vips_operation_get_type() -> glib_sys::GType {
     })
 }
 object_type!(
-    vips_image_get_type,
-    vips_object_get_type,
-    VipsImageClass,
-    VipsImage,
-    "VipsImage"
-);
-object_type!(
     vips_region_get_type,
     vips_object_get_type,
     VipsRegionClass,
@@ -162,13 +191,21 @@ object_type!(
     VipsSource,
     "VipsSource"
 );
-object_type!(
-    vips_target_get_type,
-    vips_connection_get_type,
-    VipsTargetClass,
-    VipsTarget,
-    "VipsTarget"
-);
+#[no_mangle]
+pub extern "C" fn vips_target_get_type() -> glib_sys::GType {
+    static ONCE: OnceLock<glib_sys::GType> = OnceLock::new();
+    *ONCE.get_or_init(|| {
+        register_type(
+            vips_connection_get_type(),
+            c"VipsTarget".as_ptr(),
+            size_of::<VipsTargetClass>(),
+            Some(crate::runtime::target::vips_target_class_init),
+            size_of::<VipsTarget>(),
+            Some(crate::runtime::target::vips_target_instance_init),
+            0,
+        )
+    })
+}
 object_type!(
     vips_foreign_get_type,
     vips_operation_get_type,
@@ -218,6 +255,22 @@ object_type!(
     VipsThreadState,
     "VipsThreadState"
 );
+
+#[no_mangle]
+pub extern "C" fn vips_image_get_type() -> glib_sys::GType {
+    static ONCE: OnceLock<glib_sys::GType> = OnceLock::new();
+    *ONCE.get_or_init(|| {
+        register_type(
+            vips_object_get_type(),
+            c"VipsImage".as_ptr(),
+            size_of::<VipsImageClass>(),
+            Some(vips_image_class_init),
+            size_of::<VipsImage>(),
+            None,
+            0,
+        )
+    })
+}
 
 #[no_mangle]
 pub extern "C" fn vips_source_custom_get_type() -> glib_sys::GType {
@@ -369,7 +422,7 @@ impl DynamicValue {
                 *value = ptr::null_mut();
             },
             DynamicValue::Object(value) => {
-                if !value.is_null() {
+                if !(*value).is_null() {
                     unsafe {
                         gobject_sys::g_object_unref((*value).cast());
                     }
@@ -377,7 +430,7 @@ impl DynamicValue {
                 }
             }
             DynamicValue::Boxed { gtype, value } => {
-                if !value.is_null() {
+                if !(*value).is_null() {
                     unsafe {
                         gobject_sys::g_boxed_free(*gtype, *value);
                     }
@@ -400,6 +453,7 @@ impl Drop for DynamicValue {
 #[derive(Default)]
 struct ObjectState {
     values: HashMap<String, DynamicValue>,
+    construct_defaults_pending: bool,
 }
 
 fn object_state_quark() -> glib_sys::GQuark {
@@ -688,7 +742,7 @@ pub(crate) unsafe fn mark_argument_assigned(
     if class.is_null() {
         return Err(());
     }
-    let pspec = unsafe { gobject_sys::g_object_class_find_property(class.cast(), name.as_ptr()) };
+    let pspec = unsafe { find_property_name(class, name.as_c_str()) };
     if pspec.is_null() {
         return Err(());
     }
@@ -726,7 +780,14 @@ pub(crate) unsafe fn parse_enum_like(
         return None;
     }
 
-    let needle = value.to_string_lossy();
+    let needle = value.to_string_lossy().replace('-', "_");
+    let matches_name = |candidate: &str, needle: &str| {
+        candidate.eq_ignore_ascii_case(needle)
+            || candidate
+                .rsplit('_')
+                .next()
+                .is_some_and(|suffix| suffix.eq_ignore_ascii_case(needle))
+    };
     if flags {
         let mut out = 0u32;
         for part in needle.split(':') {
@@ -740,7 +801,7 @@ pub(crate) unsafe fn parse_enum_like(
                 }
                 let nick = unsafe { CStr::from_ptr(item.value_nick) }.to_string_lossy();
                 let name = unsafe { CStr::from_ptr(item.value_name) }.to_string_lossy();
-                if nick.eq_ignore_ascii_case(part) || name.eq_ignore_ascii_case(part) {
+                if matches_name(&nick, part) || matches_name(&name, part) {
                     found = Some(item.value);
                     break;
                 }
@@ -757,7 +818,7 @@ pub(crate) unsafe fn parse_enum_like(
             }
             let nick = unsafe { CStr::from_ptr(item.value_nick) }.to_string_lossy();
             let name = unsafe { CStr::from_ptr(item.value_name) }.to_string_lossy();
-            if nick.eq_ignore_ascii_case(&needle) || name.eq_ignore_ascii_case(&needle) {
+            if matches_name(&nick, &needle) || matches_name(&name, &needle) {
                 return Some(item.value);
             }
         }
@@ -919,7 +980,14 @@ unsafe extern "C" fn vips_object_instance_init(
 ) {
     let object = instance.cast::<VipsObject>();
     unsafe {
-        set_qdata_box(object.cast(), object_state_quark(), ObjectState::default());
+        set_qdata_box(
+            object.cast(),
+            object_state_quark(),
+            ObjectState {
+                values: HashMap::new(),
+                construct_defaults_pending: true,
+            },
+        );
         (*object).constructed = glib_sys::GFALSE;
         (*object).static_object = glib_sys::GFALSE;
         (*object).argument_table = ptr::null_mut();
@@ -934,6 +1002,13 @@ unsafe extern "C" fn vips_object_instance_init(
         .lock()
         .expect("object registry")
         .insert(object as usize);
+}
+
+unsafe extern "C" fn vips_object_constructed(gobject: *mut gobject_sys::GObject) {
+    let object = gobject.cast::<VipsObject>();
+    if let Some(state) = unsafe { object_state(object) } {
+        state.construct_defaults_pending = false;
+    }
 }
 
 unsafe extern "C" fn vips_object_real_build(object: *mut VipsObject) -> c_int {
@@ -1079,6 +1154,118 @@ unsafe extern "C" fn vips_object_real_to_string(object: *mut VipsObject, buf: *m
     }
 }
 
+unsafe fn image_builtin_pspec(name: &CStr) -> Option<*mut gobject_sys::GParamSpec> {
+    let value_type = crate::runtime::header::builtin_type(name)?;
+    let nick = CString::new(name.to_string_lossy().replace('-', " ")).ok()?;
+    let blurb = nick.clone();
+    let flags = gobject_sys::G_PARAM_READWRITE;
+
+    if value_type == gobject_sys::G_TYPE_INT {
+        Some(unsafe {
+            gobject_sys::g_param_spec_int(
+                name.as_ptr(),
+                nick.as_ptr(),
+                blurb.as_ptr(),
+                i32::MIN,
+                i32::MAX,
+                match name.to_bytes() {
+                    b"width" | b"height" | b"bands" | b"xoffset" | b"yoffset" => 0,
+                    _ => 0,
+                },
+                flags,
+            )
+        })
+    } else if value_type == gobject_sys::G_TYPE_DOUBLE {
+        Some(unsafe {
+            gobject_sys::g_param_spec_double(
+                name.as_ptr(),
+                nick.as_ptr(),
+                blurb.as_ptr(),
+                f64::NEG_INFINITY,
+                f64::INFINITY,
+                match name.to_bytes() {
+                    b"xres" | b"yres" => 1.0,
+                    _ => 0.0,
+                },
+                flags,
+            )
+        })
+    } else if value_type == gobject_sys::G_TYPE_STRING {
+        Some(unsafe {
+            gobject_sys::g_param_spec_string(
+                name.as_ptr(),
+                nick.as_ptr(),
+                blurb.as_ptr(),
+                ptr::null(),
+                flags,
+            )
+        })
+    } else if unsafe { gobject_sys::g_type_is_a(value_type, gobject_sys::G_TYPE_ENUM) }
+        != glib_sys::GFALSE
+    {
+        let default = match name.to_bytes() {
+            b"format" => crate::abi::image::VIPS_FORMAT_UCHAR,
+            b"coding" => crate::abi::image::VIPS_CODING_NONE,
+            b"interpretation" => crate::abi::image::VIPS_INTERPRETATION_MULTIBAND,
+            _ => 0,
+        };
+        Some(unsafe {
+            gobject_sys::g_param_spec_enum(
+                name.as_ptr(),
+                nick.as_ptr(),
+                blurb.as_ptr(),
+                value_type,
+                default,
+                flags,
+            )
+        })
+    } else {
+        None
+    }
+}
+
+unsafe extern "C" fn vips_image_class_init(
+    klass: glib_sys::gpointer,
+    _class_data: glib_sys::gpointer,
+) {
+    let class = klass.cast::<VipsObjectClass>();
+    let gobject_class = klass.cast::<gobject_sys::GObjectClass>();
+    unsafe {
+        init_subclass_class(class);
+        (*gobject_class).set_property = Some(vips_object_set_property);
+        (*gobject_class).get_property = Some(vips_object_get_property);
+    }
+
+    let mut priority = 1;
+    for name in [
+        c"width",
+        c"height",
+        c"bands",
+        c"format",
+        c"coding",
+        c"interpretation",
+        c"xres",
+        c"yres",
+        c"xoffset",
+        c"yoffset",
+        c"filename",
+        c"mode",
+    ] {
+        let Some(pspec) = (unsafe { image_builtin_pspec(name) }) else {
+            continue;
+        };
+        unsafe {
+            gobject_sys::g_object_class_install_property(
+                gobject_class,
+                vips_argument_get_id() as u32,
+                pspec,
+            );
+            vips_object_class_install_argument(class, pspec, 0, priority, DYNAMIC_ARGUMENT_OFFSET);
+        }
+        priority += 1;
+    }
+}
+
 unsafe extern "C" fn vips_object_dispose(gobject: *mut gobject_sys::GObject) {
     let object = gobject.cast::<VipsObject>();
     if !object.is_null() && unsafe { (*object).argument_table } != ptr::null_mut() {
@@ -1147,9 +1334,8 @@ pub unsafe extern "C" fn vips_object_set_property(
         return;
     }
 
-    let name = unsafe { CStr::from_ptr(gobject_sys::g_param_spec_get_name(pspec)) }
-        .to_string_lossy()
-        .into_owned();
+    let name_cstr = unsafe { CStr::from_ptr(gobject_sys::g_param_spec_get_name(pspec)) };
+    let name = name_cstr.to_string_lossy().into_owned();
     let value_type = unsafe { (*pspec).value_type };
 
     if name == "nickname" && value_type == gobject_sys::G_TYPE_STRING {
@@ -1166,10 +1352,40 @@ pub unsafe extern "C" fn vips_object_set_property(
         }
         return;
     }
+    if unsafe { gobject_sys::g_type_check_instance_is_a(gobject.cast(), vips_image_get_type()) }
+        != glib_sys::GFALSE
+        && crate::runtime::header::builtin_type(name_cstr).is_some()
+    {
+        unsafe {
+            crate::runtime::header::builtin_set(gobject.cast::<VipsImage>(), name_cstr, value);
+        }
+        return;
+    }
+    if unsafe { gobject_sys::g_type_check_instance_is_a(gobject.cast(), vips_target_get_type()) }
+        != glib_sys::GFALSE
+        && unsafe {
+            crate::runtime::target::builtin_set(gobject.cast::<VipsTarget>(), name_cstr, value)
+        }
+    {
+        return;
+    }
 
     if let Some(dynamic) = unsafe { dynamic_from_gvalue(pspec, value) } {
+        let is_default =
+            unsafe { gobject_sys::g_param_value_defaults(pspec, value) } != glib_sys::GFALSE;
+        let in_construct_defaults = unsafe { object_state(object) }
+            .map(|state| state.construct_defaults_pending)
+            .unwrap_or(false);
+        if is_default && in_construct_defaults {
+            unsafe {
+                remove_dynamic_value(object, &name);
+                set_assigned(object, pspec, false);
+            }
+            return;
+        }
         unsafe {
             set_dynamic_value(object, &name, dynamic);
+            set_assigned(object, pspec, true);
         }
     }
 }
@@ -1186,9 +1402,8 @@ pub unsafe extern "C" fn vips_object_get_property(
         return;
     }
 
-    let name = unsafe { CStr::from_ptr(gobject_sys::g_param_spec_get_name(pspec)) }
-        .to_string_lossy()
-        .into_owned();
+    let name_cstr = unsafe { CStr::from_ptr(gobject_sys::g_param_spec_get_name(pspec)) };
+    let name = name_cstr.to_string_lossy().into_owned();
     if name == "nickname" {
         unsafe {
             gobject_sys::g_value_set_string(value, (*object).nickname);
@@ -1199,6 +1414,22 @@ pub unsafe extern "C" fn vips_object_get_property(
         unsafe {
             gobject_sys::g_value_set_string(value, (*object).description);
         }
+        return;
+    }
+    if unsafe { gobject_sys::g_type_check_instance_is_a(gobject.cast(), vips_image_get_type()) }
+        != glib_sys::GFALSE
+        && unsafe {
+            crate::runtime::header::builtin_get(gobject.cast::<VipsImage>(), name_cstr, value)
+        }
+    {
+        return;
+    }
+    if unsafe { gobject_sys::g_type_check_instance_is_a(gobject.cast(), vips_target_get_type()) }
+        != glib_sys::GFALSE
+        && unsafe {
+            crate::runtime::target::builtin_get(gobject.cast::<VipsTarget>(), name_cstr, value)
+        }
+    {
         return;
     }
 
@@ -1224,6 +1455,7 @@ unsafe extern "C" fn vips_object_class_init(
         (*gobject_class).finalize = Some(vips_object_finalize);
         (*gobject_class).set_property = Some(vips_object_set_property);
         (*gobject_class).get_property = Some(vips_object_get_property);
+        (*gobject_class).constructed = Some(vips_object_constructed);
     }
 
     class.build = Some(vips_object_real_build);
@@ -1520,15 +1752,138 @@ unsafe fn parse_string_for_value(
     value: *mut gobject_sys::GValue,
 ) -> Result<(), ()> {
     let value_type = unsafe { (*pspec).value_type };
-    unsafe {
-        gobject_sys::g_value_init(value, value_type);
-    }
     if value_type == gobject_sys::G_TYPE_STRING {
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+        }
         unsafe {
             gobject_sys::g_value_set_string(value, text.as_ptr());
         }
         Ok(())
+    } else if value_type == vips_image_get_type()
+        || unsafe { gobject_sys::g_type_is_a(value_type, vips_image_get_type()) }
+            != glib_sys::GFALSE
+    {
+        let text_string = text.to_string_lossy();
+        let (filename, options) = crate::foreign::base::parse_embedded_options(&text_string);
+        let filename_c = CString::new(filename.as_str()).map_err(|_| ())?;
+        let options_c = if options.is_empty() {
+            None
+        } else {
+            Some(CString::new(options).map_err(|_| ())?)
+        };
+        let source = if filename == "stdin" {
+            crate::runtime::source::vips_source_new_from_descriptor(0)
+        } else {
+            crate::runtime::source::vips_source_new_from_file(filename_c.as_ptr())
+        };
+        if source.is_null() {
+            return Err(());
+        }
+        let image = crate::runtime::image::safe_vips_image_new_from_source_internal(
+            source,
+            options_c
+                .as_ref()
+                .map_or(ptr::null(), |value| value.as_ptr()),
+            0,
+        );
+        unsafe {
+            object_unref(source.cast::<VipsObject>());
+        }
+        if image.is_null() {
+            return Err(());
+        }
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+            gobject_sys::g_value_set_object(value, image.cast());
+            gobject_sys::g_object_unref(image.cast());
+        }
+        Ok(())
+    } else if value_type == crate::runtime::r#type::vips_array_image_get_type()
+        || unsafe {
+            gobject_sys::g_type_is_a(
+                value_type,
+                crate::runtime::r#type::vips_array_image_get_type(),
+            )
+        } != glib_sys::GFALSE
+    {
+        let mut images: Vec<*mut VipsImage> = Vec::new();
+        for part in text.to_string_lossy().split_whitespace() {
+            let filename = CString::new(part).map_err(|_| ())?;
+            let source = crate::runtime::source::vips_source_new_from_file(filename.as_ptr());
+            if source.is_null() {
+                for image in images.drain(..) {
+                    unsafe {
+                        gobject_sys::g_object_unref(image.cast());
+                    }
+                }
+                return Err(());
+            }
+            let image = crate::runtime::image::safe_vips_image_new_from_source_internal(
+                source,
+                ptr::null(),
+                0,
+            );
+            unsafe {
+                object_unref(source.cast::<VipsObject>());
+            }
+            if image.is_null() {
+                for image in images.drain(..) {
+                    unsafe {
+                        gobject_sys::g_object_unref(image.cast());
+                    }
+                }
+                return Err(());
+            }
+            images.push(image);
+        }
+        let array = crate::runtime::r#type::vips_array_image_new(
+            images.as_mut_ptr(),
+            images.len() as c_int,
+        );
+        for image in images {
+            unsafe {
+                gobject_sys::g_object_unref(image.cast());
+            }
+        }
+        if array.is_null() {
+            return Err(());
+        }
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+            gobject_sys::g_value_set_boxed(value, array.cast());
+            crate::runtime::r#type::vips_area_unref(array.cast());
+        }
+        Ok(())
+    } else if value_type == crate::runtime::r#type::vips_array_double_get_type()
+        || unsafe {
+            gobject_sys::g_type_is_a(
+                value_type,
+                crate::runtime::r#type::vips_array_double_get_type(),
+            )
+        } != glib_sys::GFALSE
+    {
+        let values = text
+            .to_string_lossy()
+            .split(|ch: char| ch.is_ascii_whitespace() || ch == ',')
+            .filter(|part| !part.is_empty())
+            .map(|part| part.parse::<f64>().map_err(|_| ()))
+            .collect::<Result<Vec<_>, _>>()?;
+        let array =
+            crate::runtime::r#type::vips_array_double_new(values.as_ptr(), values.len() as c_int);
+        if array.is_null() {
+            return Err(());
+        }
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+            gobject_sys::g_value_set_boxed(value, array.cast());
+            crate::runtime::r#type::vips_area_unref(array.cast());
+        }
+        Ok(())
     } else if value_type == gobject_sys::G_TYPE_BOOLEAN {
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+        }
         let parsed = matches!(
             text.to_string_lossy().to_ascii_lowercase().as_str(),
             "1" | "true" | "yes" | "on"
@@ -1538,18 +1893,27 @@ unsafe fn parse_string_for_value(
         }
         Ok(())
     } else if value_type == gobject_sys::G_TYPE_INT {
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+        }
         let parsed = text.to_string_lossy().parse::<c_int>().map_err(|_| ())?;
         unsafe {
             gobject_sys::g_value_set_int(value, parsed);
         }
         Ok(())
     } else if value_type == gobject_sys::G_TYPE_UINT64 {
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+        }
         let parsed = text.to_string_lossy().parse::<u64>().map_err(|_| ())?;
         unsafe {
             gobject_sys::g_value_set_uint64(value, parsed);
         }
         Ok(())
     } else if value_type == gobject_sys::G_TYPE_DOUBLE {
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+        }
         let parsed = text.to_string_lossy().parse::<f64>().map_err(|_| ())?;
         unsafe {
             gobject_sys::g_value_set_double(value, parsed);
@@ -1558,6 +1922,9 @@ unsafe fn parse_string_for_value(
     } else if unsafe { gobject_sys::g_type_is_a(value_type, gobject_sys::G_TYPE_ENUM) }
         != glib_sys::GFALSE
     {
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+        }
         let parsed = unsafe { parse_enum_like(value_type, text, false) }.ok_or(())?;
         unsafe {
             gobject_sys::g_value_set_enum(value, parsed);
@@ -1566,9 +1933,35 @@ unsafe fn parse_string_for_value(
     } else if unsafe { gobject_sys::g_type_is_a(value_type, gobject_sys::G_TYPE_FLAGS) }
         != glib_sys::GFALSE
     {
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+        }
         let parsed = unsafe { parse_enum_like(value_type, text, true) }.ok_or(())?;
         unsafe {
             gobject_sys::g_value_set_flags(value, parsed as u32);
+        }
+        Ok(())
+    } else if unsafe { gobject_sys::g_type_is_a(value_type, vips_object_get_type()) }
+        != glib_sys::GFALSE
+    {
+        let object_class = unsafe { object_class_for_type(value_type) };
+        if object_class.is_null() {
+            return Err(());
+        }
+        let new_object = vips_object_new_from_string(object_class, text.as_ptr());
+        if new_object.is_null() {
+            return Err(());
+        }
+        if vips_object_build(new_object) != 0 {
+            unsafe {
+                object_unref(new_object);
+            }
+            return Err(());
+        }
+        unsafe {
+            gobject_sys::g_value_init(value, value_type);
+            gobject_sys::g_value_set_object(value, new_object.cast());
+            gobject_sys::g_object_unref(new_object.cast());
         }
         Ok(())
     } else {
@@ -1589,7 +1982,7 @@ pub extern "C" fn vips_object_set_argument_from_string(
     if class.is_null() {
         return -1;
     }
-    let pspec = unsafe { gobject_sys::g_object_class_find_property(class.cast(), name) };
+    let pspec = unsafe { find_property_name(class, CStr::from_ptr(name)) };
     if pspec.is_null() {
         append_message_str(
             "vips_object_set_argument_from_string",
@@ -1635,7 +2028,7 @@ pub extern "C" fn vips_object_argument_needsstring(
     if class.is_null() {
         return glib_sys::GFALSE;
     }
-    let pspec = unsafe { gobject_sys::g_object_class_find_property(class.cast(), name) };
+    let pspec = unsafe { find_property_name(class, CStr::from_ptr(name)) };
     if pspec.is_null() {
         return glib_sys::GFALSE;
     }
@@ -1644,8 +2037,17 @@ pub extern "C" fn vips_object_argument_needsstring(
         return glib_sys::GFALSE;
     }
     let value_type = unsafe { (*pspec).value_type };
-    let needs = unsafe { (*argument).flags & VIPS_ARGUMENT_OUTPUT != 0 }
-        && (value_type == gobject_sys::G_TYPE_STRING || value_type == gobject_sys::G_TYPE_POINTER);
+    let needs = if unsafe { (*argument).flags & VIPS_ARGUMENT_INPUT != 0 } {
+        value_type != gobject_sys::G_TYPE_BOOLEAN
+    } else if unsafe { (*argument).flags & VIPS_ARGUMENT_OUTPUT != 0 } {
+        value_type == gobject_sys::G_TYPE_STRING
+            || value_type == gobject_sys::G_TYPE_POINTER
+            || value_type == vips_image_get_type()
+            || unsafe { gobject_sys::g_type_is_a(value_type, vips_image_get_type()) }
+                != glib_sys::GFALSE
+    } else {
+        false
+    };
     bool_to_gboolean(needs)
 }
 
@@ -1653,7 +2055,7 @@ pub extern "C" fn vips_object_argument_needsstring(
 pub extern "C" fn vips_object_get_argument_to_string(
     object: *mut VipsObject,
     name: *const c_char,
-    _arg: *const c_char,
+    arg: *const c_char,
 ) -> c_int {
     if object.is_null() || name.is_null() {
         return -1;
@@ -1663,6 +2065,46 @@ pub extern "C" fn vips_object_get_argument_to_string(
         .into_owned();
     if let Some(value) = unsafe { dynamic_value(object, &name) } {
         match value {
+            DynamicValue::Object(object_value)
+                if !arg.is_null()
+                    && !object_value.is_null()
+                    && unsafe {
+                        gobject_sys::g_type_check_instance_is_a(
+                            object_value.cast(),
+                            vips_image_get_type(),
+                        )
+                    } != glib_sys::GFALSE =>
+            {
+                let arg = unsafe { CStr::from_ptr(arg) };
+                let arg_text = arg.to_string_lossy();
+                let (filename, _) = crate::foreign::base::parse_embedded_options(&arg_text);
+                if filename.starts_with('.') && !filename.contains('/') {
+                    let target = crate::runtime::target::vips_target_new_to_descriptor(1);
+                    if target.is_null() {
+                        return -1;
+                    }
+                    let result = crate::runtime::image::safe_vips_image_write_to_target_internal(
+                        object_value.cast(),
+                        arg.as_ptr(),
+                        target,
+                    );
+                    unsafe {
+                        object_unref(target.cast::<VipsObject>());
+                    }
+                    if result != 0 {
+                        return -1;
+                    }
+                } else if unsafe {
+                    vips_image_write_to_file(
+                        object_value.cast(),
+                        arg.as_ptr(),
+                        ptr::null::<c_char>(),
+                    )
+                } != 0
+                {
+                    return -1;
+                }
+            }
             DynamicValue::String(text) => unsafe {
                 if !text.is_null() {
                     libc::printf(c"%s\n".as_ptr(), *text);
@@ -1757,7 +2199,7 @@ pub extern "C" fn vips_object_get_argument(
         return -1;
     }
 
-    let pspec = unsafe { gobject_sys::g_object_class_find_property(class.cast(), name) };
+    let pspec = unsafe { find_property_name(class, CStr::from_ptr(name)) };
     if pspec.is_null() {
         append_message_str(
             "vips_object_get_argument",
@@ -1816,6 +2258,28 @@ pub extern "C" fn vips_object_new_from_string(
             .map(|new_from_string| new_from_string(string))
             .unwrap_or(ptr::null_mut())
     }
+}
+
+#[no_mangle]
+pub extern "C" fn vips_interpolate_new(nickname: *const c_char) -> *mut VipsInterpolate {
+    if nickname.is_null() {
+        append_message_str("vips_interpolate_new", "nickname is NULL");
+        return ptr::null_mut();
+    }
+
+    let type_ = vips_type_find_unfiltered(c"VipsInterpolate".as_ptr(), nickname);
+    if type_ == 0 {
+        append_message_str(
+            "vips_interpolate_new",
+            &format!(
+                "unknown interpolator {}",
+                unsafe { CStr::from_ptr(nickname) }.to_string_lossy()
+            ),
+        );
+        return ptr::null_mut();
+    }
+
+    vips_object_new(type_, None, ptr::null_mut(), ptr::null_mut()).cast()
 }
 
 #[no_mangle]
@@ -2026,7 +2490,35 @@ pub extern "C" fn vips_class_find(
     if base == 0 {
         return ptr::null();
     }
-    vips_class_map_all(base, Some(test_name_cb), nickname as *mut c_void).cast()
+    let class: *mut VipsObjectClass =
+        vips_class_map_all(base, Some(test_name_cb), nickname as *mut c_void).cast();
+    if class.is_null() {
+        return ptr::null();
+    }
+    let is_operation = unsafe {
+        gobject_sys::g_type_is_a(
+            (*class.cast::<gobject_sys::GTypeClass>()).g_type,
+            vips_operation_get_type(),
+        ) != glib_sys::GFALSE
+    };
+    if !is_operation {
+        return class;
+    }
+    let nickname = unsafe {
+        if (*class).nickname.is_null() {
+            None
+        } else {
+            CStr::from_ptr((*class).nickname).to_str().ok()
+        }
+    };
+    if let Some(nickname) = nickname {
+        if crate::ops::is_manifest_supported_operation(nickname)
+            || crate::foreign::sniff::is_public_operation(nickname)
+        {
+            return class;
+        }
+    }
+    ptr::null()
 }
 
 #[no_mangle]
@@ -2035,6 +2527,36 @@ pub extern "C" fn vips_type_find(
     nickname: *const c_char,
 ) -> glib_sys::GType {
     let class = vips_class_find(basename, nickname);
+    if class.is_null() {
+        0
+    } else {
+        unsafe { (*class.cast::<gobject_sys::GTypeClass>()).g_type }
+    }
+}
+
+pub(crate) fn vips_type_find_unfiltered(
+    basename: *const c_char,
+    nickname: *const c_char,
+) -> glib_sys::GType {
+    if nickname.is_null() {
+        return 0;
+    }
+    let classname = if basename.is_null() {
+        "VipsObject"
+    } else {
+        unsafe { CStr::from_ptr(basename) }
+            .to_str()
+            .unwrap_or("VipsObject")
+    };
+    let Ok(classname) = CString::new(classname) else {
+        return 0;
+    };
+    let base = unsafe { gobject_sys::g_type_from_name(classname.as_ptr()) };
+    if base == 0 {
+        return 0;
+    }
+    let class: *mut VipsObjectClass =
+        vips_class_map_all(base, Some(test_name_cb), nickname as *mut c_void).cast();
     if class.is_null() {
         0
     } else {
@@ -2177,6 +2699,98 @@ pub extern "C" fn vips_object_get_description(object: *mut VipsObject) -> *const
             }
         }
     }
+}
+
+#[repr(C)]
+struct NameFlagsPair {
+    names: *mut *const c_char,
+    flags: *mut c_int,
+}
+
+unsafe extern "C" fn collect_object_args(
+    _object: *mut VipsObject,
+    pspec: *mut gobject_sys::GParamSpec,
+    argument_class: *mut VipsArgumentClass,
+    _argument_instance: *mut crate::abi::object::VipsArgumentInstance,
+    a: *mut c_void,
+    b: *mut c_void,
+) -> *mut c_void {
+    if pspec.is_null() || argument_class.is_null() || a.is_null() || b.is_null() {
+        return ptr::null_mut();
+    }
+    let pair = unsafe { &mut *a.cast::<NameFlagsPair>() };
+    let index = unsafe { &mut *b.cast::<usize>() };
+    unsafe {
+        *pair.names.add(*index) = gobject_sys::g_param_spec_get_name(pspec);
+        *pair.flags.add(*index) = (*argument_class).flags as c_int;
+    }
+    *index += 1;
+    ptr::null_mut()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_object_get_args(
+    object: *mut VipsObject,
+    names: *mut *mut *const c_char,
+    flags: *mut *mut c_int,
+    n_args: *mut c_int,
+) -> c_int {
+    if object.is_null() {
+        return -1;
+    }
+    let class = unsafe { object_class(object) };
+    if class.is_null() {
+        return -1;
+    }
+
+    let count =
+        unsafe { glib_sys::g_slist_length((*class).argument_table_traverse) }.max(0) as usize;
+    let names_ptr = if count == 0 {
+        ptr::null_mut()
+    } else {
+        unsafe { glib_sys::g_malloc0_n(count, size_of::<*const c_char>()) }.cast::<*const c_char>()
+    };
+    let flags_ptr = if count == 0 {
+        ptr::null_mut()
+    } else {
+        unsafe { glib_sys::g_malloc0_n(count, size_of::<c_int>()) }.cast::<c_int>()
+    };
+    if count != 0 && (names_ptr.is_null() || flags_ptr.is_null()) {
+        unsafe {
+            if !names_ptr.is_null() {
+                glib_sys::g_free(names_ptr.cast());
+            }
+            if !flags_ptr.is_null() {
+                glib_sys::g_free(flags_ptr.cast());
+            }
+        }
+        return -1;
+    }
+
+    let mut pair = NameFlagsPair {
+        names: names_ptr,
+        flags: flags_ptr,
+    };
+    let mut index = 0usize;
+    vips_argument_map(
+        object,
+        Some(collect_object_args),
+        (&mut pair as *mut NameFlagsPair).cast(),
+        (&mut index as *mut usize).cast(),
+    );
+
+    unsafe {
+        if !names.is_null() {
+            *names = names_ptr;
+        }
+        if !flags.is_null() {
+            *flags = flags_ptr;
+        }
+        if !n_args.is_null() {
+            *n_args = count as c_int;
+        }
+    }
+    0
 }
 
 #[no_mangle]

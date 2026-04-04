@@ -1,3 +1,4 @@
+use std::ffi::CString;
 use std::mem::size_of;
 use std::ptr;
 use std::sync::OnceLock;
@@ -133,12 +134,14 @@ fn register_enum_type(
     name: &'static [u8],
     values: &[(c_int, &'static [u8], &'static [u8])],
 ) -> glib_sys::GType {
+    let prefix = enum_prefix(values);
     let mut raw = Vec::with_capacity(values.len() + 1);
-    for (value, value_name, value_nick) in values {
+    for (value, value_name, _value_nick) in values {
+        let nick = leak_enum_nick(enum_nick_name(value_name, &prefix));
         raw.push(gobject_sys::GEnumValue {
             value: *value,
             value_name: value_name.as_ptr().cast::<c_char>(),
-            value_nick: value_nick.as_ptr().cast::<c_char>(),
+            value_nick: nick,
         });
     }
     raw.push(gobject_sys::GEnumValue {
@@ -155,12 +158,14 @@ fn register_flags_type(
     name: &'static [u8],
     values: &[(c_int, &'static [u8], &'static [u8])],
 ) -> glib_sys::GType {
+    let prefix = enum_prefix(values);
     let mut raw = Vec::with_capacity(values.len() + 1);
-    for (value, value_name, value_nick) in values {
+    for (value, value_name, _value_nick) in values {
+        let nick = leak_enum_nick(enum_nick_name(value_name, &prefix));
         raw.push(gobject_sys::GFlagsValue {
             value: *value as u32,
             value_name: value_name.as_ptr().cast::<c_char>(),
-            value_nick: value_nick.as_ptr().cast::<c_char>(),
+            value_nick: nick,
         });
     }
     raw.push(gobject_sys::GFlagsValue {
@@ -171,6 +176,53 @@ fn register_flags_type(
 
     let raw = Box::leak(raw.into_boxed_slice());
     unsafe { gobject_sys::g_flags_register_static(name.as_ptr().cast::<c_char>(), raw.as_ptr()) }
+}
+
+fn strip_nul(bytes: &'static [u8]) -> &'static str {
+    let bytes = bytes.strip_suffix(b"\0").unwrap_or(bytes);
+    std::str::from_utf8(bytes).expect("enum name utf8")
+}
+
+fn enum_prefix(values: &[(c_int, &'static [u8], &'static [u8])]) -> String {
+    let Some((_, first, _)) = values.first() else {
+        return String::new();
+    };
+    let mut prefix = strip_nul(first).to_owned();
+    for (_, value_name, _) in values.iter().skip(1) {
+        let value_name = strip_nul(value_name);
+        while !value_name.starts_with(&prefix) {
+            if prefix.pop().is_none() {
+                return String::new();
+            }
+        }
+    }
+    if let Some(index) = prefix.rfind('_') {
+        prefix.truncate(index + 1);
+        prefix
+    } else {
+        String::new()
+    }
+}
+
+fn enum_nick_name(value_name: &'static [u8], prefix: &str) -> String {
+    let value_name = strip_nul(value_name);
+    value_name
+        .strip_prefix(prefix)
+        .unwrap_or(value_name)
+        .to_ascii_lowercase()
+        .replace('_', "-")
+}
+
+fn leak_enum_nick(nick: String) -> *mut c_char {
+    CString::new(nick).expect("enum nick").into_raw()
+}
+
+unsafe fn init_value_if_needed(value: *mut gobject_sys::GValue, gtype: glib_sys::GType) {
+    if !value.is_null() && unsafe { (*value).g_type } == 0 {
+        unsafe {
+            gobject_sys::g_value_init(value, gtype);
+        }
+    }
 }
 
 macro_rules! enum_getter {
@@ -1319,7 +1371,7 @@ pub extern "C" fn vips_value_set_area(
 ) {
     let area = vips_area_new(free_fn, data);
     unsafe {
-        gobject_sys::g_value_init(value, vips_area_get_type());
+        init_value_if_needed(value, vips_area_get_type());
         gobject_sys::g_value_set_boxed(value, area.cast::<c_void>());
     }
     vips_area_unref(area);
@@ -1351,7 +1403,7 @@ pub extern "C" fn vips_value_get_save_string(value: *const gobject_sys::GValue) 
 #[no_mangle]
 pub extern "C" fn vips_value_set_save_string(value: *mut gobject_sys::GValue, str_: *const c_char) {
     unsafe {
-        gobject_sys::g_value_init(value, vips_save_string_get_type());
+        init_value_if_needed(value, vips_save_string_get_type());
         let save = glib_sys::g_malloc0(size_of::<VipsSaveString>()).cast::<VipsSaveString>();
         if let Some(save) = save.as_mut() {
             save.s = if str_.is_null() {
@@ -1377,7 +1429,7 @@ pub extern "C" fn vips_value_get_ref_string(
 pub extern "C" fn vips_value_set_ref_string(value: *mut gobject_sys::GValue, str_: *const c_char) {
     let refstr = vips_ref_string_new(str_);
     unsafe {
-        gobject_sys::g_value_init(value, vips_ref_string_get_type());
+        init_value_if_needed(value, vips_ref_string_get_type());
         gobject_sys::g_value_set_boxed(value, refstr.cast::<c_void>());
     }
     vips_area_unref(refstr.cast::<VipsArea>());
@@ -1400,7 +1452,7 @@ pub extern "C" fn vips_value_set_blob(
 ) {
     let blob = vips_blob_new(free_fn, data, length);
     unsafe {
-        gobject_sys::g_value_init(value, vips_blob_get_type());
+        init_value_if_needed(value, vips_blob_get_type());
         gobject_sys::g_value_set_boxed(value, blob.cast::<c_void>());
     }
     vips_area_unref(blob.cast::<VipsArea>());
@@ -1428,7 +1480,7 @@ pub extern "C" fn vips_value_set_array(
         vips_area_new_array(type_, sizeof_type, n)
     };
     unsafe {
-        gobject_sys::g_value_init(value, vips_area_get_type());
+        init_value_if_needed(value, vips_area_get_type());
         gobject_sys::g_value_set_boxed(value, area.cast::<c_void>());
     }
     vips_area_unref(area);
@@ -1475,7 +1527,7 @@ pub extern "C" fn vips_value_set_array_double(
 ) {
     let area = vips_array_double_new(array, n);
     unsafe {
-        gobject_sys::g_value_init(value, vips_array_double_get_type());
+        init_value_if_needed(value, vips_array_double_get_type());
         gobject_sys::g_value_set_boxed(value, area.cast::<c_void>());
     }
     vips_area_unref(area.cast::<VipsArea>());
@@ -1497,7 +1549,28 @@ pub extern "C" fn vips_value_set_array_int(
 ) {
     let area = vips_array_int_new(array, n);
     unsafe {
-        gobject_sys::g_value_init(value, vips_array_int_get_type());
+        init_value_if_needed(value, vips_array_int_get_type());
+        gobject_sys::g_value_set_boxed(value, area.cast::<c_void>());
+    }
+    vips_area_unref(area.cast::<VipsArea>());
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_get_array_image(
+    value: *const gobject_sys::GValue,
+    n: *mut c_int,
+) -> *mut *mut VipsImage {
+    vips_value_get_array(value, n, ptr::null_mut(), ptr::null_mut()).cast::<*mut VipsImage>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_set_array_image(value: *mut gobject_sys::GValue, n: c_int) {
+    let area = vips_area_new_array_object(n);
+    if let Some(area_ref) = unsafe { area.as_mut() } {
+        area_ref.r#type = crate::runtime::object::vips_image_get_type();
+    }
+    unsafe {
+        init_value_if_needed(value, vips_array_image_get_type());
         gobject_sys::g_value_set_boxed(value, area.cast::<c_void>());
     }
     vips_area_unref(area.cast::<VipsArea>());

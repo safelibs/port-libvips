@@ -838,7 +838,17 @@ pub extern "C" fn vips_operation_new(name: *const c_char) -> *mut VipsOperation 
     if !ensure_generated_types() {
         return ptr::null_mut();
     }
-    let type_ = object::vips_type_find(c"VipsOperation".as_ptr(), name);
+    let requested = unsafe { CStr::from_ptr(name) }.to_string_lossy();
+    let lookup_name = if requested.eq_ignore_ascii_case("crop") {
+        c"extract_area".as_ptr()
+    } else {
+        name
+    };
+    let mut type_ = object::vips_type_find_unfiltered(c"VipsOperation".as_ptr(), lookup_name);
+    if type_ == 0 {
+        crate::foreign::modules::try_load_for_operation(requested.as_ref());
+        type_ = object::vips_type_find_unfiltered(c"VipsOperation".as_ptr(), lookup_name);
+    }
     if type_ == 0 {
         append_message_str(
             "vips_operation_new",
@@ -887,26 +897,33 @@ unsafe extern "C" fn call_argv_input(
     if flags & VIPS_ARGUMENT_REQUIRED != 0
         && flags & VIPS_ARGUMENT_CONSTRUCT != 0
         && flags & VIPS_ARGUMENT_DEPRECATED == 0
-        && flags & VIPS_ARGUMENT_INPUT != 0
     {
-        let Some(arg) = (unsafe { call_get_arg(call, call.index) }) else {
-            append_message_str(
-                unsafe { CStr::from_ptr((*object::object_class(object)).nickname) }
-                    .to_str()
-                    .unwrap_or("VipsOperation"),
-                "too few arguments",
-            );
-            return pspec.cast();
-        };
-        if object::vips_object_set_argument_from_string(
-            object,
-            unsafe { gobject_sys::g_param_spec_get_name(pspec) },
-            arg.as_ptr(),
-        ) != 0
+        if flags & VIPS_ARGUMENT_INPUT != 0 {
+            let Some(arg) = (unsafe { call_get_arg(call, call.index) }) else {
+                append_message_str(
+                    unsafe { CStr::from_ptr((*object::object_class(object)).nickname) }
+                        .to_str()
+                        .unwrap_or("VipsOperation"),
+                    "too few arguments",
+                );
+                return pspec.cast();
+            };
+            if object::vips_object_set_argument_from_string(
+                object,
+                unsafe { gobject_sys::g_param_spec_get_name(pspec) },
+                arg.as_ptr(),
+            ) != 0
+            {
+                return pspec.cast();
+            }
+            call.index += 1;
+        } else if flags & VIPS_ARGUMENT_OUTPUT != 0
+            && object::vips_object_argument_needsstring(object, unsafe {
+                gobject_sys::g_param_spec_get_name(pspec)
+            }) != glib_sys::GFALSE
         {
-            return pspec.cast();
+            call.index += 1;
         }
-        call.index += 1;
     }
     ptr::null_mut()
 }
@@ -927,11 +944,25 @@ unsafe extern "C" fn call_argv_output(
     if flags & VIPS_ARGUMENT_REQUIRED != 0
         && flags & VIPS_ARGUMENT_CONSTRUCT != 0
         && flags & VIPS_ARGUMENT_DEPRECATED == 0
-        && flags & VIPS_ARGUMENT_OUTPUT != 0
     {
         let output_name = unsafe { gobject_sys::g_param_spec_get_name(pspec) };
-        let arg =
+        if flags & VIPS_ARGUMENT_INPUT != 0 {
             if object::vips_object_argument_needsstring(object, output_name) != glib_sys::GFALSE {
+                let Some(_) = (unsafe { call_get_arg(call, call.index) }) else {
+                    append_message_str(
+                        unsafe { CStr::from_ptr((*object::object_class(object)).nickname) }
+                            .to_str()
+                            .unwrap_or("VipsOperation"),
+                        "too few arguments",
+                    );
+                    return pspec.cast();
+                };
+                call.index += 1;
+            }
+        } else if flags & VIPS_ARGUMENT_OUTPUT != 0 {
+            let arg = if object::vips_object_argument_needsstring(object, output_name)
+                != glib_sys::GFALSE
+            {
                 let Some(arg) = (unsafe { call_get_arg(call, call.index) }) else {
                     append_message_str(
                         unsafe { CStr::from_ptr((*object::object_class(object)).nickname) }
@@ -946,8 +977,9 @@ unsafe extern "C" fn call_argv_output(
             } else {
                 ptr::null()
             };
-        if object::vips_object_get_argument_to_string(object, output_name, arg) != 0 {
-            return pspec.cast();
+            if object::vips_object_get_argument_to_string(object, output_name, arg) != 0 {
+                return pspec.cast();
+            }
         }
     }
     ptr::null_mut()
@@ -1046,7 +1078,8 @@ pub extern "C" fn vips_operation_block_set(name: *const c_char, state: glib_sys:
         }
     }
 
-    let type_ = object::vips_type_find(c"VipsOperation".as_ptr(), object::leak_cstring(&name));
+    let type_ =
+        object::vips_type_find_unfiltered(c"VipsOperation".as_ptr(), object::leak_cstring(&name));
     if type_ != 0 {
         object::vips_class_map_all(
             type_,

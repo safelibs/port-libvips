@@ -320,6 +320,24 @@ fn render_wrapper_shim(wrappers: &[WrapperDefinition]) -> String {
         source.push_str(&parameter_list);
         source.push_str(")\n{\n");
 
+        for parameter in wrapper
+            .parameters
+            .iter()
+            .filter(|parameter| !parameter.variadic)
+        {
+            if parameter.name.as_deref() == Some("out")
+                && parameter.text.starts_with("VipsImage **")
+            {
+                source.push_str("    if (out)\n");
+                source.push_str("        *out = NULL;\n");
+            }
+        }
+        if wrapper.parameters.iter().any(|parameter| {
+            parameter.name.as_deref() == Some("out") && parameter.text.starts_with("VipsImage **")
+        }) {
+            source.push('\n');
+        }
+
         if wrapper.variadic {
             let last_fixed_name = wrapper
                 .last_fixed_name

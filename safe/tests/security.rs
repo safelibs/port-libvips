@@ -72,6 +72,17 @@ pub(crate) fn read_samples(image: *mut VipsImage) -> Vec<f64> {
     values
 }
 
+pub(crate) fn error_message() -> String {
+    let ptr = vips_error_buffer();
+    if ptr.is_null() {
+        String::new()
+    } else {
+        unsafe { std::ffi::CStr::from_ptr(ptr) }
+            .to_string_lossy()
+            .into_owned()
+    }
+}
+
 pub(crate) fn unref_image(image: *mut VipsImage) {
     unsafe {
         gobject_sys::g_object_unref(image.cast());
@@ -80,7 +91,13 @@ pub(crate) fn unref_image(image: *mut VipsImage) {
 
 #[path = "security/cve_2018_7998.rs"]
 mod cve_2018_7998;
+#[path = "security/cve_2019_6976.rs"]
+mod cve_2019_6976;
 #[path = "security/cve_2021_27847.rs"]
 mod cve_2021_27847;
+#[path = "security/cve_2023_40032.rs"]
+mod cve_2023_40032;
+#[path = "security/cve_2026_3146.rs"]
+mod cve_2026_3146;
 #[path = "security/cve_2026_3284.rs"]
 mod cve_2026_3284;
