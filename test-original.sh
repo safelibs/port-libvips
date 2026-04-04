@@ -218,9 +218,16 @@ build_and_test_photoqt() {
 
   (
     cd "${src_dir}"
+    # Keep libvips as the only non-Qt image backend in this test build so the
+    # smoke test cannot silently pass through an alternate loader fallback.
     cmake -S . -B build -G Ninja \
       -DCMAKE_BUILD_TYPE=Release \
+      -DDEVIL=OFF \
+      -DFREEIMAGE=OFF \
+      -DGRAPHICSMAGICK=OFF \
+      -DIMAGEMAGICK=OFF \
       -DLIBVIPS=ON \
+      -DPOPPLER=OFF \
       -DRESVG=OFF \
       -DTESTING=ON
     cmake --build build --parallel "${JOBS}"
