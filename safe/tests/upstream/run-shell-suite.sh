@@ -27,6 +27,14 @@ while IFS= read -r entry; do
   script_name="$(basename "${entry}")"
   (
     cd "${build_dir}/test"
-    "./${script_name}"
+    log_file="$(mktemp "${TMPDIR:-/tmp}/libvips-shell-suite.XXXXXX.log")"
+    trap 'rm -f "${log_file}"' EXIT
+    if ! "./${script_name}" >"${log_file}" 2>&1; then
+      cat "${log_file}" >&2
+      exit 1
+    fi
+    if [[ "${VIPS_UPSTREAM_VERBOSE:-0}" == "1" ]]; then
+      cat "${log_file}"
+    fi
   )
 done < "${LIST_FILE}"

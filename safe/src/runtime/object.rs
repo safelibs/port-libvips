@@ -17,8 +17,7 @@ use crate::abi::image::{VipsImage, VipsImageClass};
 use crate::abi::object::{
     VipsArgument, VipsArgumentClass, VipsArgumentClassMapFn, VipsArgumentFlags,
     VipsArgumentInstance, VipsArgumentMapFn, VipsArgumentTable, VipsClassMapFn, VipsObject,
-    VipsObjectClass, VipsObjectSetArguments, VipsTypeMap2Fn, VipsTypeMapFn,
-    VIPS_ARGUMENT_CONSTRUCT, VIPS_ARGUMENT_DEPRECATED, VIPS_ARGUMENT_INPUT, VIPS_ARGUMENT_OUTPUT,
+    VipsObjectClass, VipsObjectSetArguments, VipsTypeMap2Fn, VipsTypeMapFn, VIPS_ARGUMENT_DEPRECATED, VIPS_ARGUMENT_INPUT, VIPS_ARGUMENT_OUTPUT,
     VIPS_ARGUMENT_REQUIRED, VIPS_ARGUMENT_SET_ALWAYS, VIPS_ARGUMENT_SET_ONCE,
 };
 use crate::abi::operation::{
@@ -117,6 +116,14 @@ pub(crate) fn register_type(
 
 fn g_object_type() -> glib_sys::GType {
     unsafe { gobject_sys::g_object_get_type() }
+}
+
+unsafe fn type_map_callback_from_ptr(data: *mut c_void) -> VipsTypeMapFn {
+    unsafe { data.cast::<VipsTypeMapFn>().as_ref().copied().flatten() }
+}
+
+unsafe fn class_map_callback_from_ptr(data: *mut c_void) -> VipsClassMapFn {
+    unsafe { data.cast::<VipsClassMapFn>().as_ref().copied().flatten() }
 }
 
 macro_rules! object_type {
@@ -2153,9 +2160,7 @@ pub extern "C" fn vips_object_get_argument_to_string(
             DynamicValue::Double(number) => unsafe {
                 libc::printf(c"%g\n".as_ptr(), *number);
             },
-            DynamicValue::Object(object) => unsafe {
-                vips_object_print_summary((*object).cast());
-            },
+            DynamicValue::Object(object) => vips_object_print_summary((*object).cast()),
             DynamicValue::Pointer(pointer) => unsafe {
                 libc::printf(c"%p\n".as_ptr(), *pointer);
             },
@@ -2374,7 +2379,7 @@ unsafe extern "C" fn vips_type_map_all_cb(
     a: *mut c_void,
     b: *mut c_void,
 ) -> *mut c_void {
-    let fn_: VipsTypeMapFn = unsafe { std::mem::transmute(a) };
+    let fn_: VipsTypeMapFn = unsafe { type_map_callback_from_ptr(a) };
     if let Some(fn_) = fn_ {
         let result = unsafe { fn_(type_, b) };
         if !result.is_null() {
@@ -2397,14 +2402,15 @@ pub extern "C" fn vips_type_map_all(
     if !result.is_null() {
         return result;
     }
-    unsafe {
-        vips_type_map(
-            base,
-            Some(vips_type_map_all_cb),
-            std::mem::transmute(fn_),
-            a,
-        )
-    }
+    // vips_type_map recurses synchronously, so this borrowed callback pointer
+    // remains valid for the whole traversal.
+    let callback = Some(fn_);
+    vips_type_map(
+        base,
+        Some(vips_type_map_all_cb),
+        (&callback as *const VipsTypeMapFn).cast_mut().cast(),
+        a,
+    )
 }
 
 #[no_mangle]
@@ -2422,7 +2428,7 @@ unsafe extern "C" fn class_map_all_cb(
     a: *mut c_void,
     b: *mut c_void,
 ) -> *mut c_void {
-    let fn_: VipsClassMapFn = unsafe { std::mem::transmute(a) };
+    let fn_: VipsClassMapFn = unsafe { class_map_callback_from_ptr(a) };
     if unsafe { gobject_sys::g_type_test_flags(type_, gobject_sys::G_TYPE_FLAG_ABSTRACT) }
         == glib_sys::GFALSE
     {
@@ -2455,7 +2461,15 @@ pub extern "C" fn vips_class_map_all(
             return result;
         }
     }
-    unsafe { vips_type_map(type_, Some(class_map_all_cb), std::mem::transmute(fn_), a) }
+    // vips_type_map recurses synchronously, so this borrowed callback pointer
+    // remains valid for the whole traversal.
+    let callback = Some(fn_);
+    vips_type_map(
+        type_,
+        Some(class_map_all_cb),
+        (&callback as *const VipsClassMapFn).cast_mut().cast(),
+        a,
+    )
 }
 
 unsafe extern "C" fn test_name_cb(class: *mut VipsObjectClass, name: *mut c_void) -> *mut c_void {

@@ -12,7 +12,7 @@ use crate::abi::connection::{
 };
 use crate::abi::image::VipsImage;
 use crate::abi::object::{
-    VipsArgumentClass, VipsArgumentMapFn, VipsObject, VipsObjectClass, VIPS_ARGUMENT_CONSTRUCT,
+    VipsArgumentClass, VipsObject, VipsObjectClass, VIPS_ARGUMENT_CONSTRUCT,
     VIPS_ARGUMENT_DEPRECATED, VIPS_ARGUMENT_INPUT, VIPS_ARGUMENT_OUTPUT, VIPS_ARGUMENT_REQUIRED,
 };
 use crate::abi::operation::{

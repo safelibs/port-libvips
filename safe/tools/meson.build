@@ -9,6 +9,7 @@ vips_cli = executable(
   link_args: [runtime_link],
   link_depends: libvips_stage,
   build_rpath: runtime_libdir,
+  install_rpath: '$ORIGIN/../' + get_option('libdir') + ':$ORIGIN/../lib',
 )
 
 vipsedit_cli = executable(
@@ -22,6 +23,7 @@ vipsedit_cli = executable(
   link_args: [runtime_link],
   link_depends: libvips_stage,
   build_rpath: runtime_libdir,
+  install_rpath: '$ORIGIN/../' + get_option('libdir') + ':$ORIGIN/../lib',
 )
 
 vipsthumbnail_cli = executable(
@@ -35,6 +37,7 @@ vipsthumbnail_cli = executable(
   link_args: [runtime_link],
   link_depends: libvips_stage,
   build_rpath: runtime_libdir,
+  install_rpath: '$ORIGIN/../' + get_option('libdir') + ':$ORIGIN/../lib',
 )
 
 vipsheader_cli = executable(
@@ -48,6 +51,7 @@ vipsheader_cli = executable(
   link_args: [runtime_link],
   link_depends: libvips_stage,
   build_rpath: runtime_libdir,
+  install_rpath: '$ORIGIN/../' + get_option('libdir') + ':$ORIGIN/../lib',
 )
 
 vipsprofile = configure_file(

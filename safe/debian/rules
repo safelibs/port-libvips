@@ -16,8 +16,8 @@ export CARGO_TARGET_DIR = $(CURDIR)/target
 export PATH := $(CARGO_HOME)/bin:/usr/bin:$(PATH)
 export RUSTUP_HOME ?= $(HOME)/.rustup
 export RUSTUP_TOOLCHAIN ?= stable-x86_64-unknown-linux-gnu
-export CARGO = $(CARGO_HOME)/bin/cargo
-export RUSTC = $(CARGO_HOME)/bin/rustc
+export CARGO ?= cargo
+export RUSTC ?= rustc
 
 override_dh_clean:
 	rm -rf $(CARGO_TARGET_DIR)

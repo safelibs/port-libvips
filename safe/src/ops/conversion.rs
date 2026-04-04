@@ -2511,7 +2511,7 @@ unsafe fn op_byteswap(object: *mut VipsObject) -> Result<(), ()> {
     ensure_pixels(input)?;
     let source = unsafe { image_state(input) }.ok_or(())?;
     let sample_size = crate::pixels::format::format_bytes(unsafe { (*input).BandFmt });
-    let mut out = ImageBuffer::from_image(input)?;
+    let out = ImageBuffer::from_image(input)?;
     let out_image = out.to_image();
     copy_metadata(out_image, input);
     ensure_pixels(out_image)?;

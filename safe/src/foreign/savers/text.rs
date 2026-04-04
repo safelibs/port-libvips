@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use crate::abi::image::{VipsBandFormat, VipsImage, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR};
+use crate::abi::image::{VipsImage, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR};
 use crate::runtime::error::append_message_str;
 use crate::runtime::image::{ensure_pixels, image_state};
 

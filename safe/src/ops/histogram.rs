@@ -1,6 +1,6 @@
 use crate::abi::basic::{VipsCombine, VIPS_COMBINE_MAX, VIPS_COMBINE_MIN, VIPS_COMBINE_SUM};
 use crate::abi::image::{
-    VipsBandFormat, VIPS_FORMAT_CHAR, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT,
+    VipsBandFormat, VIPS_FORMAT_CHAR, VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT,
     VIPS_FORMAT_USHORT,
 };
 use crate::abi::object::VipsObject;

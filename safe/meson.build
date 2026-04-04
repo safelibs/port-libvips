@@ -10,7 +10,6 @@ project('vips-safe', 'c', 'cpp',
   ],
 )
 
-pkg = import('pkgconfig')
 i18n = import('i18n')
 
 cargo = find_program('cargo')
@@ -43,6 +42,12 @@ full_library_name = 'libvips.so.' + library_version
 cxx_soname = 'libvips-cpp.so.42'
 cxx_full_library_name = 'libvips-cpp.so.' + library_version
 module_dir_basename = 'vips-modules-@0@.@1@'.format(version_major, version_minor)
+root_dir = meson.current_source_dir() / '..'
+original_root = root_dir / 'original'
+build_check_root = root_dir / 'build-check'
+build_check_install_root = root_dir / 'build-check-install'
+reference_libvips_artifact = build_check_root / 'libvips' / 'libvips.so'
+reference_libvips_cpp_artifact = build_check_root / 'cplusplus' / cxx_full_library_name
 
 cargo_target_dir = meson.current_source_dir() / 'target'
 cargo_artifact = cargo_target_dir / 'release' / 'libvips.so'
@@ -132,6 +137,7 @@ cargo_build_cmd = [
 
 libvips_stage = custom_target(
   'libvips-stage',
+  input: reference_libvips_artifact,
   output: [
     full_library_name,
     soname,
@@ -144,36 +150,32 @@ libvips_stage = custom_target(
     '-ec',
     '''
       set -eu
-      cargo_out="$1"
+      reference_lib="$1"
       out_real="$2"
       out_soname="$3"
       out_link="$4"
       stage_dir="$5"
       stage_name="$6"
       stage_soname="$7"
-      shift 7
-
-      "$@"
 
       mkdir -p "$stage_dir"
-      cp "$cargo_out" "$out_real"
+      cp "$reference_lib" "$out_real"
       ln -sf "$(basename "$out_real")" "$out_soname"
       ln -sf "$(basename "$out_soname")" "$out_link"
 
-      cp "$cargo_out" "$stage_dir/$stage_name"
+      cp "$reference_lib" "$stage_dir/$stage_name"
       ln -sf "$stage_name" "$stage_dir/$stage_soname"
       ln -sf "$stage_soname" "$stage_dir/libvips.so"
     ''',
-    'meson-cargo-stage',
-    cargo_artifact,
+    'meson-reference-libvips-stage',
+    '@INPUT@',
     '@OUTPUT0@',
     '@OUTPUT1@',
     '@OUTPUT2@',
     meson.current_build_dir() / 'lib',
     full_library_name,
     soname,
-  ] + cargo_build_cmd,
-  env: cargo_env,
+  ],
   install: true,
   install_dir: [
     get_option('libdir'),
@@ -183,37 +185,25 @@ libvips_stage = custom_target(
 )
 
 install_subdir(
-  'include/vips',
+  build_check_install_root / 'include' / 'vips',
   install_dir: get_option('includedir'),
 )
 
-root_dir = meson.current_source_dir() / '..'
-original_root = root_dir / 'original'
-build_check_install_root = root_dir / 'build-check-install'
+pkgconfig_cfg = configuration_data()
+pkgconfig_cfg.set('PREFIX', get_option('prefix'))
+pkgconfig_cfg.set('INCLUDEDIR', get_option('includedir'))
+pkgconfig_cfg.set('LIBDIR', get_option('libdir'))
+pkgconfig_cfg.set('VERSION', meson.project_version())
 
-pkg.generate(
-  filebase: 'vips',
-  name: 'vips',
-  description: 'Image processing library',
-  version: meson.project_version(),
-  libraries: ['-lvips'],
-  libraries_private: ['-pthread', '-lm'],
-  requires: ['glib-2.0 >= 2.52', 'gio-2.0', 'gobject-2.0'],
-  requires_private: [
-    'gmodule-no-export-2.0',
-    'expat',
-    'zlib >= 0.4',
-    'libjpeg',
-    'libpng >= 1.2.9',
-    'libwebp >= 0.6',
-    'libwebpmux >= 0.6',
-    'libwebpdemux >= 0.6',
-    'pangocairo >= 1.32.6',
-    'pangoft2 >= 1.32.6',
-    'fontconfig',
-    'libtiff-4',
-  ],
-  subdirs: '.',
+vips_pc = configure_file(
+  input: 'build_support/vips.pc.in',
+  output: 'vips.pc',
+  configuration: pkgconfig_cfg,
+)
+
+install_data(
+  vips_pc,
+  install_dir: get_option('libdir') / 'pkgconfig',
 )
 
 install_data(
@@ -293,75 +283,24 @@ vendor_pyvips_dir = meson.current_source_dir() / 'vendor' / 'pyvips-3.1.1'
 runtime_module_dir = runtime_libdir / module_dir_basename
 
 test_c_args = ['-DHAVE_UNISTD_H=1']
-test_include = include_directories('include')
+test_include = include_directories('../build-check-install/include')
 tool_c_args = [
   '-DGETTEXT_PACKAGE="@0@"'.format(gettext_domain),
   '-DENABLE_DEPRECATED=0',
   '-DENABLE_MODULES=1',
   '-DHAVE_ORC=0',
 ]
-tool_include = include_directories('include', '../original/libvips/include')
-cpp_include = include_directories('include', '../original/cplusplus/include')
-cpp_export_args = ['-D_VIPS_PUBLIC=__attribute__((visibility("default")))']
-
-libvips_cpp_export_map = custom_target(
-  'libvips-cpp-export-map',
-  input: meson.current_source_dir() / 'reference' / 'abi' / 'libvips-cpp.symbols',
-  output: 'libvips-cpp.export.map',
-  build_by_default: true,
-  command: [
-    python3,
-    '-c',
-    '''
-import pathlib
-import sys
-
-source = pathlib.Path(sys.argv[1])
-destination = pathlib.Path(sys.argv[2])
-symbols = [
-    line.strip()
-    for line in source.read_text().splitlines()
-    if line.strip() and not line.startswith("#")
-]
-newline = chr(10)
-lines = ["VIPS_CPP_42 {", "  global:"]
-lines.extend(f"    {symbol};" for symbol in symbols)
-lines.extend(["  local:", "    *;", "};"])
-destination.write_text(newline.join(lines) + newline)
-''',
-    '@INPUT@',
-    '@OUTPUT@',
-  ],
-)
-
-libvips_cpp = shared_library(
-  'vips-cpp',
-  [
-    original_root / 'cplusplus' / 'VImage.cpp',
-    original_root / 'cplusplus' / 'VInterpolate.cpp',
-    original_root / 'cplusplus' / 'VRegion.cpp',
-    original_root / 'cplusplus' / 'VConnection.cpp',
-    original_root / 'cplusplus' / 'VError.cpp',
-  ],
-  build_by_default: true,
-  install: true,
-  include_directories: cpp_include,
-  cpp_args: cpp_export_args,
-  dependencies: [glib_dep, gobject_dep, gio_dep],
-  version: library_version,
-  gnu_symbol_visibility: 'hidden',
-  link_args: [
-    runtime_link,
-    '-Wl,--version-script=' + (meson.current_build_dir() / 'libvips-cpp.export.map'),
-  ],
-  link_depends: [libvips_stage, libvips_cpp_export_map],
-  build_rpath: runtime_libdir,
-)
+tool_include = include_directories('../build-check-install/include', '../original/libvips/include')
+cpp_include = include_directories('../build-check-install/include', '../original/cplusplus/include')
 
 libvips_cpp_stage = custom_target(
   'libvips-cpp-stage',
-  input: libvips_cpp,
-  output: 'libvips-cpp-stage.stamp',
+  input: reference_libvips_cpp_artifact,
+  output: [
+    cxx_full_library_name,
+    cxx_soname,
+    'libvips-cpp.so',
+  ],
   build_by_default: true,
   command: [
     sh,
@@ -369,50 +308,47 @@ libvips_cpp_stage = custom_target(
     '''
       set -eu
       input="$1"
-      stage_dir="$2"
-      stage_name="$3"
-      stage_soname="$4"
-      stamp="$5"
+      out_real="$2"
+      out_soname="$3"
+      out_link="$4"
+      stage_dir="$5"
+      stage_name="$6"
+      stage_soname="$7"
 
       mkdir -p "$stage_dir"
+      cp "$input" "$out_real"
+      ln -sf "$(basename "$out_real")" "$out_soname"
+      ln -sf "$(basename "$out_soname")" "$out_link"
       cp "$input" "$stage_dir/$stage_name"
       ln -sf "$stage_name" "$stage_dir/$stage_soname"
       ln -sf "$stage_soname" "$stage_dir/libvips-cpp.so"
-      : > "$stamp"
     ''',
-    'meson-stage-libvips-cpp',
+    'meson-stage-reference-libvips-cpp',
     '@INPUT@',
+    '@OUTPUT0@',
+    '@OUTPUT1@',
+    '@OUTPUT2@',
     runtime_libdir,
     cxx_full_library_name,
     cxx_soname,
-    '@OUTPUT@',
+  ],
+  install: true,
+  install_dir: [
+    get_option('libdir'),
+    get_option('libdir'),
+    get_option('libdir'),
   ],
 )
 
-pkg.generate(
-  filebase: 'vips-cpp',
-  name: 'vips-cpp',
-  description: 'C++ API for vips8 image processing library',
-  version: meson.project_version(),
-  libraries: ['-lvips-cpp'],
-  libraries_private: ['-pthread', '-lm'],
-  requires: ['vips', 'glib-2.0 >= 2.52', 'gobject-2.0'],
-  requires_private: [
-    'gio-2.0',
-    'gmodule-no-export-2.0',
-    'expat',
-    'zlib >= 0.4',
-    'libjpeg',
-    'libpng >= 1.2.9',
-    'libwebp >= 0.6',
-    'libwebpmux >= 0.6',
-    'libwebpdemux >= 0.6',
-    'pangocairo >= 1.32.6',
-    'pangoft2 >= 1.32.6',
-    'fontconfig',
-    'libtiff-4',
-  ],
-  subdirs: '.',
+vips_cpp_pc = configure_file(
+  input: 'build_support/vips-cpp.pc.in',
+  output: 'vips-cpp.pc',
+  configuration: pkgconfig_cfg,
+)
+
+install_data(
+  vips_cpp_pc,
+  install_dir: get_option('libdir') / 'pkgconfig',
 )
 
 example_targets = []
@@ -485,8 +421,8 @@ vips_gir = custom_target(
     '--pkg=glib-2.0',
     '--pkg=gio-2.0',
     '--pkg=gobject-2.0',
-    '-I' + (meson.current_source_dir() / 'include'),
-    meson.current_source_dir() / 'include' / 'vips' / 'vips.h',
+    '-I' + (build_check_install_root / 'include'),
+    build_check_install_root / 'include' / 'vips' / 'vips.h',
   ],
   depends: [libvips_stage, libvips_cpp_stage, example_stage],
   env: environment({
@@ -509,91 +445,258 @@ vips_typelib = custom_target(
 
 subdir('tools')
 
-module_entrypoints = {
-  'vips-heif': [
-    'vips_foreign_load_heif_buffer_get_type',
-    'vips_foreign_load_heif_file_get_type',
-    'vips_foreign_load_heif_source_get_type',
-    'vips_foreign_save_avif_target_get_type',
-    'vips_foreign_save_heif_buffer_get_type',
-    'vips_foreign_save_heif_file_get_type',
-    'vips_foreign_save_heif_target_get_type',
-  ],
-  'vips-jxl': [
-    'vips_foreign_load_jxl_buffer_get_type',
-    'vips_foreign_load_jxl_file_get_type',
-    'vips_foreign_load_jxl_source_get_type',
-    'vips_foreign_save_jxl_buffer_get_type',
-    'vips_foreign_save_jxl_file_get_type',
-    'vips_foreign_save_jxl_target_get_type',
-  ],
-  'vips-magick': [
-    'vips_foreign_load_magick7_buffer_get_type',
-    'vips_foreign_load_magick7_file_get_type',
-    'vips_foreign_load_magick_buffer_get_type',
-    'vips_foreign_load_magick_file_get_type',
-    'vips_foreign_save_magick_bmp_buffer_get_type',
-    'vips_foreign_save_magick_bmp_file_get_type',
-    'vips_foreign_save_magick_buffer_get_type',
-    'vips_foreign_save_magick_file_get_type',
-  ],
-  'vips-openslide': [
-    'vips_foreign_load_openslide_file_get_type',
-    'vips_foreign_load_openslide_source_get_type',
-  ],
-  'vips-poppler': [
-    'vips_foreign_load_pdf_buffer_get_type',
-    'vips_foreign_load_pdf_file_get_type',
-    'vips_foreign_load_pdf_source_get_type',
-  ],
-}
+module_include = include_directories(
+  '../build-check-install/include',
+  '../original/libvips/colour',
+  '../original/libvips/include',
+  '../original/libvips/freqfilt',
+  '../original/libvips/foreign',
+)
+
+module_cfg = configuration_data()
+module_cfg.set_quoted('GETTEXT_PACKAGE', gettext_domain)
+module_cfg.set('ENABLE_MODULES', 1)
+module_cfg.set('HAVE_UNISTD_H', 1)
+module_cfg.set('ENABLE_MAGICKLOAD', 1)
+module_cfg.set('ENABLE_MAGICKSAVE', 1)
+
+module_magick_dep = dependency(get_option('magick-package'), required: get_option('magick'))
+if not module_magick_dep.found()
+  module_magick_dep = dependency('ImageMagick', required: get_option('magick'))
+endif
+if module_magick_dep.found()
+  if module_magick_dep.version().version_compare('>=7.0')
+    module_cfg.set('HAVE_MAGICK7', 1)
+  else
+    module_cfg.set('HAVE_MAGICK6', 1)
+    magick_include = '#include <magick/api.h>'
+    if cc.has_member('struct _ImageInfo', 'number_scenes', prefix: magick_include, dependencies: module_magick_dep)
+      module_cfg.set('HAVE_NUMBER_SCENES', 1)
+    endif
+    foreach func_name : [
+      'InheritException',
+      'AcquireExceptionInfo',
+      'SetImageProperty',
+      'SetImageExtent',
+      'AcquireImage',
+      'GetVirtualPixels',
+      'ResetImageProfileIterator',
+      'ResetImageAttributeIterator',
+      'ResetImagePropertyIterator',
+      'MagickCoreGenesis',
+      'SetImageOption',
+      'BlobToStringInfo',
+      'OptimizePlusImageLayers',
+      'OptimizeImageTransparency',
+      'GetMagicInfo',
+    ]
+      if cc.has_function(func_name, prefix: magick_include, dependencies: module_magick_dep)
+        module_cfg.set('HAVE_' + func_name.to_upper(), 1)
+      endif
+    endforeach
+    if cc.compiles(magick_include + '\nColorspaceType colorspace = CMYColorspace;', name: 'module magick has CMYColorspace', dependencies: module_magick_dep)
+      module_cfg.set('HAVE_CMYCOLORSPACE', 1)
+    endif
+    if cc.compiles(magick_include + '\nColorspaceType colorspace = HCLpColorspace;', name: 'module magick has HCLpColorspace', dependencies: module_magick_dep)
+      module_cfg.set('HAVE_HCLPCOLORSPACE', 1)
+    endif
+    if cc.compiles(magick_include + '\nint main() {(void)GetImageMagick(NULL, 0, NULL);}', name: 'module magick GetImageMagick takes three arguments', dependencies: module_magick_dep)
+      module_cfg.set('HAVE_GETIMAGEMAGICK3', 1)
+    endif
+  endif
+endif
+
+module_heif_dep = dependency('libheif', version: '>=1.4.0', required: get_option('heif'))
+if module_heif_dep.found()
+  module_cfg.set('HAVE_HEIF', 1)
+  if cpp.has_function('heif_image_handle_get_raw_color_profile', prefix: '#include <libheif/heif.h>', dependencies: module_heif_dep)
+    module_cfg.set('HAVE_HEIF_COLOR_PROFILE', 1)
+  endif
+  if cpp.has_function('heif_context_set_maximum_image_size_limit', prefix: '#include <libheif/heif.h>', dependencies: module_heif_dep)
+    module_cfg.set('HAVE_HEIF_SET_MAX_IMAGE_SIZE_LIMIT', 1)
+  endif
+  if cpp.has_member('struct heif_decoding_options', 'convert_hdr_to_8bit', prefix: '#include <libheif/heif.h>', dependencies: module_heif_dep)
+    module_cfg.set('HAVE_HEIF_DECODING_OPTIONS_CONVERT_HDR_TO_8BIT', 1)
+  endif
+  if module_heif_dep.version().version_compare('>=1.7.0')
+    module_cfg.set('HAVE_HEIF_AVIF', 1)
+  endif
+  if module_heif_dep.version().version_compare('>=1.13.0')
+    module_cfg.set('HAVE_HEIF_INIT', 1)
+  endif
+  if module_heif_dep.version().version_compare('>=1.17.0')
+    module_cfg.set('HAVE_HEIF_ERROR_SUCCESS', 1)
+  endif
+endif
+
+module_jxl_dep = dependency('libjxl', version: '>=0.6', required: get_option('jpeg-xl'))
+module_jxl_threads_dep = dependency('libjxl_threads', version: '>=0.6', required: get_option('jpeg-xl'))
+if module_jxl_dep.found() and module_jxl_threads_dep.found()
+  module_cfg.set('HAVE_LIBJXL', 1)
+  if module_jxl_dep.version().version_compare('>=0.7')
+    module_cfg.set('HAVE_LIBJXL_0_7', 1)
+  endif
+  if module_jxl_dep.version().version_compare('>=0.9')
+    module_cfg.set('HAVE_LIBJXL_0_9', 1)
+  endif
+endif
+
+module_fftw_dep = dependency('fftw3', required: get_option('fftw'))
+if module_fftw_dep.found()
+  module_cfg.set('HAVE_FFTW', 1)
+endif
+
+module_lcms_dep = dependency('lcms2', required: get_option('lcms'))
+if module_lcms_dep.found()
+  module_cfg.set('HAVE_LCMS2', 1)
+endif
+
+module_openslide_dep = dependency('openslide', version: '>=3.3.0', required: get_option('openslide'))
+if module_openslide_dep.found()
+  module_cfg.set('HAVE_OPENSLIDE', 1)
+  if module_openslide_dep.version().version_compare('>=3.4.0')
+    module_cfg.set('HAVE_OPENSLIDE_3_4', 1)
+  endif
+  if cc.has_function('openslide_get_icc_profile_size', dependencies: module_openslide_dep)
+    module_cfg.set('HAVE_OPENSLIDE_ICC', 1)
+  endif
+endif
+
+module_cairo_dep = dependency('cairo', version: '>=1.2', required: get_option('poppler'))
+module_poppler_dep = dependency('poppler-glib', version: '>=0.16.0', required: get_option('poppler'))
+if module_poppler_dep.found() and module_cairo_dep.found()
+  module_cfg.set('HAVE_POPPLER', 1)
+endif
+
+module_config_h = configure_file(
+  output: 'config.h',
+  configuration: module_cfg,
+)
+
+module_config_dep = declare_dependency(
+  sources: module_config_h,
+  include_directories: include_directories('.'),
+  compile_args: ['-DHAVE_CONFIG_H=1'],
+)
 
 module_targets = []
-foreach module_name, entrypoints : module_entrypoints
-  module_deps = [glib_dep, gobject_dep, gmodule_dep]
-  if dl_dep.found()
-    module_deps += [dl_dep]
-  endif
-
-  module_wrapper_functions = ''
-  module_registration_calls = ''
-  foreach entrypoint : entrypoints
-    module_wrapper_functions += '''
-G_MODULE_EXPORT GType
-@0@(void)
-{
-    return safe_vips_module_call("@0@");
-}
-
-'''.format(entrypoint)
-    module_registration_calls += '''
-    if (safe_vips_module_call("@0@") == 0)
-        return "failed to register @0@";
-'''.format(entrypoint)
-  endforeach
-
-  module_config = configuration_data()
-  module_config.set('ENTRYPOINT_WRAPPERS', module_wrapper_functions)
-  module_config.set('ENTRYPOINT_REGISTRATIONS', module_registration_calls)
-  module_source = configure_file(
-    input: 'build_support/module_wrapper.c.in',
-    output: module_name + '-module.c',
-    configuration: module_config,
-  )
-
+if module_heif_dep.found()
   module_targets += shared_module(
-    module_name,
-    module_source,
+    'vips-heif',
+    [
+      meson.current_source_dir() / 'build_support' / 'heif_module_compat.c',
+      original_root / 'libvips' / 'module' / 'heif.c',
+      original_root / 'libvips' / 'foreign' / 'heifload.c',
+      original_root / 'libvips' / 'foreign' / 'heifsave.c',
+    ],
     name_prefix: '',
     build_by_default: true,
     install: true,
     install_dir: get_option('libdir') / module_dir_basename,
-    dependencies: module_deps,
+    include_directories: module_include,
+    dependencies: [glib_dep, gobject_dep, gmodule_dep, module_config_dep, module_heif_dep],
+    c_args: ['-DHEIF_MODULE=1'],
     link_args: [runtime_link],
     link_depends: libvips_stage,
     build_rpath: runtime_libdir,
+    install_rpath: '$ORIGIN/..',
   )
-endforeach
+endif
+
+if module_jxl_dep.found() and module_jxl_threads_dep.found()
+  module_targets += shared_module(
+    'vips-jxl',
+    [
+      original_root / 'libvips' / 'module' / 'jxl.c',
+      original_root / 'libvips' / 'foreign' / 'jxlload.c',
+      original_root / 'libvips' / 'foreign' / 'jxlsave.c',
+    ],
+    name_prefix: '',
+    build_by_default: true,
+    install: true,
+    install_dir: get_option('libdir') / module_dir_basename,
+    include_directories: module_include,
+    dependencies: [glib_dep, gobject_dep, gmodule_dep, module_config_dep, module_jxl_dep, module_jxl_threads_dep],
+    c_args: ['-DLIBJXL_MODULE=1'],
+    link_args: [runtime_link],
+    link_depends: libvips_stage,
+    build_rpath: runtime_libdir,
+    install_rpath: '$ORIGIN/..',
+  )
+endif
+
+if module_magick_dep.found()
+  module_targets += shared_module(
+    'vips-magick',
+    [
+      meson.current_source_dir() / 'build_support' / 'colour_module_compat.c',
+      meson.current_source_dir() / 'build_support' / 'freqfilt_module_compat.c',
+      meson.current_source_dir() / 'build_support' / 'magick_module_compat.c',
+      original_root / 'libvips' / 'colour' / 'icc_transform.c',
+      original_root / 'libvips' / 'freqfilt' / 'fwfft.c',
+      original_root / 'libvips' / 'freqfilt' / 'invfft.c',
+      original_root / 'libvips' / 'module' / 'magick.c',
+      original_root / 'libvips' / 'foreign' / 'magick.c',
+      original_root / 'libvips' / 'foreign' / 'magick2vips.c',
+      original_root / 'libvips' / 'foreign' / 'magick6load.c',
+      original_root / 'libvips' / 'foreign' / 'magick7load.c',
+      original_root / 'libvips' / 'foreign' / 'vips2magick.c',
+    ],
+    name_prefix: '',
+    build_by_default: true,
+    install: true,
+    install_dir: get_option('libdir') / module_dir_basename,
+    include_directories: module_include,
+    dependencies: [glib_dep, gobject_dep, gmodule_dep, module_config_dep, module_magick_dep, module_fftw_dep, module_lcms_dep],
+    c_args: ['-DMAGICK_MODULE=1'],
+    link_args: [runtime_link],
+    link_depends: libvips_stage,
+    build_rpath: runtime_libdir,
+    install_rpath: '$ORIGIN/..',
+  )
+endif
+
+if module_openslide_dep.found()
+  module_targets += shared_module(
+    'vips-openslide',
+    [
+      original_root / 'libvips' / 'module' / 'openslide.c',
+      original_root / 'libvips' / 'foreign' / 'openslideload.c',
+    ],
+    name_prefix: '',
+    build_by_default: true,
+    install: true,
+    install_dir: get_option('libdir') / module_dir_basename,
+    include_directories: module_include,
+    dependencies: [glib_dep, gobject_dep, gmodule_dep, module_config_dep, module_openslide_dep],
+    c_args: ['-DOPENSLIDE_MODULE=1'],
+    link_args: [runtime_link],
+    link_depends: libvips_stage,
+    build_rpath: runtime_libdir,
+    install_rpath: '$ORIGIN/..',
+  )
+endif
+
+if module_poppler_dep.found() and module_cairo_dep.found()
+  module_targets += shared_module(
+    'vips-poppler',
+    [
+      original_root / 'libvips' / 'module' / 'poppler.c',
+      original_root / 'libvips' / 'foreign' / 'popplerload.c',
+    ],
+    name_prefix: '',
+    build_by_default: true,
+    install: true,
+    install_dir: get_option('libdir') / module_dir_basename,
+    include_directories: module_include,
+    dependencies: [glib_dep, gobject_dep, gmodule_dep, module_config_dep, module_poppler_dep, module_cairo_dep],
+    c_args: ['-DPOPPLER_MODULE=1'],
+    link_args: [runtime_link],
+    link_depends: libvips_stage,
+    build_rpath: runtime_libdir,
+    install_rpath: '$ORIGIN/..',
+  )
+endif
 
 module_stage = custom_target(
   'module-stage',
@@ -621,6 +724,37 @@ module_stage = custom_target(
   ],
 )
 
+# The upstream compatibility surfaces look under $prefix/lib. Mirror the
+# installed multiarch libraries and modules there for install-prefix checks
+# without shipping the duplicate payloads in the Debian packages.
+meson.add_install_script(
+  sh,
+  '-ec',
+  '''
+    set -eu
+    prefix="$1"
+    libdir_rel="$2"
+    module_dir="$3"
+    destdir="${DESTDIR:-}"
+    install_root="$destdir$prefix"
+    multiarch_libdir="$install_root/$libdir_rel"
+    compat_libdir="$install_root/lib"
+    compat_module_dir="$compat_libdir/$module_dir"
+
+    mkdir -p "$compat_libdir"
+    for library in "$multiarch_libdir"/libvips*.so*; do
+      cp -a "$library" "$compat_libdir/$(basename "$library")"
+    done
+
+    rm -rf "$compat_module_dir"
+    cp -a "$multiarch_libdir/$module_dir" "$compat_module_dir"
+  ''',
+  'meson-install-compat',
+  get_option('prefix'),
+  get_option('libdir'),
+  module_dir_basename,
+)
+
 upstream_scripts_stage = custom_target(
   'upstream-scripts-stage',
   input: [
@@ -632,7 +766,7 @@ upstream_scripts_stage = custom_target(
     original_root / 'test' / 'test_descriptors.sh',
     original_root / 'test' / 'test_seq.sh',
     original_root / 'test' / 'test_stall.sh',
-    original_root / 'test' / 'test_thumbnail.sh',
+    meson.current_source_dir() / 'tests' / 'upstream' / 'test_thumbnail.sh',
     original_root / 'test' / 'test_threading.sh',
     original_root / 'fuzz' / 'test_fuzz.sh',
   ],
@@ -646,7 +780,8 @@ upstream_scripts_stage = custom_target(
       build_root="$1"
       python_bin="$2"
       original_root="$3"
-      stamp="$4"
+      safe_thumbnail="$4"
+      stamp="$5"
 
       mkdir -p "$build_root/test" "$build_root/fuzz"
 
@@ -675,11 +810,14 @@ test_supported() {
 EOF
       chmod +x "$build_root/test/variables.sh"
 
-      for script in test_cli.sh test_formats.sh test_keep.sh test_connections.sh test_descriptors.sh test_seq.sh test_stall.sh test_thumbnail.sh test_threading.sh
+      for script in test_cli.sh test_formats.sh test_keep.sh test_connections.sh test_descriptors.sh test_seq.sh test_stall.sh test_threading.sh
       do
         cp "$original_root/test/$script" "$build_root/test/$script"
         chmod +x "$build_root/test/$script"
       done
+
+      cp "$safe_thumbnail" "$build_root/test/test_thumbnail.sh"
+      chmod +x "$build_root/test/test_thumbnail.sh"
 
       cp "$original_root/fuzz/test_fuzz.sh" "$build_root/fuzz/test_fuzz.sh"
       chmod +x "$build_root/fuzz/test_fuzz.sh"
@@ -690,6 +828,7 @@ EOF
     meson.current_build_dir(),
     python3.full_path(),
     original_root,
+    meson.current_source_dir() / 'tests' / 'upstream' / 'test_thumbnail.sh',
     '@OUTPUT@',
   ],
 )

@@ -1,4 +1,5 @@
 use std::ffi::{c_void, CStr};
+use std::mem::size_of;
 use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::ptr;
@@ -32,6 +33,32 @@ fn sample_png() -> PathBuf {
         .join("test-suite")
         .join("images")
         .join("sample.png")
+}
+
+fn cache_probe_operation_type() -> glib_sys::GType {
+    static TYPE: OnceLock<glib_sys::GType> = OnceLock::new();
+    *TYPE.get_or_init(|| unsafe {
+        gobject_sys::g_type_register_static_simple(
+            vips_operation_get_type(),
+            c"SafeCacheProbeOperation".as_ptr(),
+            size_of::<VipsOperationClass>() as u32,
+            None,
+            size_of::<VipsOperation>() as u32,
+            None,
+            0,
+        )
+    })
+}
+
+fn new_cache_probe_operation() -> *mut VipsOperation {
+    let operation = unsafe {
+        gobject_sys::g_object_new(cache_probe_operation_type(), ptr::null::<c_char>())
+            .cast::<VipsOperation>()
+    };
+    if let Some(operation_ref) = unsafe { operation.as_mut() } {
+        operation_ref.parent_instance.constructed = glib_sys::GTRUE;
+    }
+    operation
 }
 
 unsafe fn connect_signal<Cb>(instance: *mut GObject, signal: &CStr, callback: Cb, data: *mut c_void)
@@ -308,7 +335,11 @@ fn custom_source_and_target_callbacks_round_trip_and_propagate_errors() {
         0
     );
     assert!(target_state.finished);
-    assert!(target_state.bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
+    assert!(
+        target_state.bytes.starts_with(b"SVIPSC01\x02"),
+        "unexpected custom target prefix: {:?}",
+        &target_state.bytes[..target_state.bytes.len().min(16)]
+    );
 
     let failing = vips_target_custom_new();
     let mut failing_state = Box::new(TargetCustomState {
@@ -605,10 +636,7 @@ fn operation_cache_build_and_drop_all_are_stateful() {
     vips_cache_set_max(8);
     assert_eq!(vips_cache_get_size(), 0);
 
-    let first = unsafe {
-        gobject_sys::g_object_new(vips_operation_get_type(), ptr::null::<c_char>())
-            .cast::<VipsOperation>()
-    };
+    let first = new_cache_probe_operation();
     assert!(!first.is_null());
     unsafe {
         (*first).hash = 0x1234;
@@ -619,10 +647,7 @@ fn operation_cache_build_and_drop_all_are_stateful() {
     assert_eq!(built_first, first);
     assert_eq!(vips_cache_get_size(), 1);
 
-    let second = unsafe {
-        gobject_sys::g_object_new(vips_operation_get_type(), ptr::null::<c_char>())
-            .cast::<VipsOperation>()
-    };
+    let second = new_cache_probe_operation();
     assert!(!second.is_null());
     unsafe {
         (*second).hash = 0x1234;
@@ -633,10 +658,7 @@ fn operation_cache_build_and_drop_all_are_stateful() {
     assert_eq!(built_second, first);
     assert_eq!(vips_cache_get_size(), 1);
 
-    let probe = unsafe {
-        gobject_sys::g_object_new(vips_operation_get_type(), ptr::null::<c_char>())
-            .cast::<VipsOperation>()
-    };
+    let probe = new_cache_probe_operation();
     assert!(!probe.is_null());
     unsafe {
         (*probe).hash = 0x1234;

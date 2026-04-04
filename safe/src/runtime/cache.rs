@@ -179,14 +179,12 @@ unsafe fn operation_key(operation: *mut VipsOperation) -> OperationKey {
         hash: 0xcbf29ce484222325,
     };
     mix_u64(&mut state.hash, type_ as u64);
-    unsafe {
-        vips_argument_map(
-            operation.cast::<VipsObject>(),
-            Some(hash_operation_arg),
-            (&mut state as *mut SignatureState).cast(),
-            ptr::null_mut(),
-        );
-    }
+    vips_argument_map(
+        operation.cast::<VipsObject>(),
+        Some(hash_operation_arg),
+        (&mut state as *mut SignatureState).cast(),
+        ptr::null_mut(),
+    );
     OperationKey {
         type_,
         signature: SignatureHash(state.hash | 1),
@@ -234,9 +232,7 @@ unsafe fn operation_flags(operation: *mut VipsOperation) -> VipsOperationFlags {
 }
 
 unsafe fn bypass_operation_cache(operation: *mut VipsOperation, flags: VipsOperationFlags) -> bool {
-    let _ = operation;
-    let _ = flags;
-    true
+    (flags & VIPS_OPERATION_NOCACHE) != 0 || unsafe { bool_property(operation, c"nocache") }
 }
 
 unsafe fn build_operation(operation: *mut VipsOperation) -> libc::c_int {

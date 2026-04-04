@@ -205,7 +205,7 @@ pub(crate) fn read_all_bytes(source: *mut VipsSource) -> Result<Vec<u8>, ()> {
         }
         SourceKind::Blob { blob } => {
             let mut length = 0usize;
-            let data = unsafe { crate::runtime::r#type::vips_blob_get(*blob, &mut length) };
+            let data = crate::runtime::r#type::vips_blob_get(*blob, &mut length);
             source_ref.data = data.cast::<c_void>();
             source_ref.length = length as i64;
             source_ref.blob = *blob;
