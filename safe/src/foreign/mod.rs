@@ -1066,7 +1066,7 @@ pub fn dispatch_operation(
                 store_cached_file_load(cache_key, result.clone());
                 result
             };
-            let image = unsafe { crate::runtime::image::vips_image_new() };
+            let image = crate::runtime::image::vips_image_new();
             let out = apply_load_result(image, result, Some(&cfilename));
             if out.is_null() {
                 unsafe {
@@ -1091,7 +1091,7 @@ pub fn dispatch_operation(
         ) =>
         {
             let bytes = unsafe { get_blob_bytes(object, "buffer")? };
-            let out = unsafe { crate::runtime::image::vips_image_new() };
+            let out = crate::runtime::image::vips_image_new();
             let Some(kind) = buffer_load_kind(nickname) else {
                 unsafe {
                     object::object_unref(out);
@@ -1133,7 +1133,7 @@ pub fn dispatch_operation(
         {
             let source = unsafe { get_object_ref::<VipsSource>(object, "source")? };
             let hint = filename_hint_from_source(source);
-            let out = unsafe { crate::runtime::image::vips_image_new() };
+            let out = crate::runtime::image::vips_image_new();
             let Some(kind) = source_load_kind(nickname, hint.as_deref()) else {
                 unsafe {
                     object::object_unref(source);
@@ -1264,16 +1264,14 @@ pub fn dispatch_operation(
             let bytes = std::fs::read(filename).map_err(|err| {
                 append_message_str("rawload", &err.to_string());
             })?;
-            let out = unsafe {
-                crate::runtime::image::vips_image_new_from_memory_copy(
-                    bytes.as_ptr().cast(),
-                    bytes.len(),
-                    width,
-                    height,
-                    bands,
-                    crate::abi::image::VIPS_FORMAT_UCHAR,
-                )
-            };
+            let out = crate::runtime::image::vips_image_new_from_memory_copy(
+                bytes.as_ptr().cast(),
+                bytes.len(),
+                width,
+                height,
+                bands,
+                crate::abi::image::VIPS_FORMAT_UCHAR,
+            );
             if out.is_null() {
                 return Err(());
             }

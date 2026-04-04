@@ -13,8 +13,7 @@ unsafe extern "C" {
 }
 
 fn loader_name(bytes: &[u8]) -> Option<String> {
-    let name =
-        unsafe { vips_foreign_find_load_buffer(bytes.as_ptr().cast::<c_void>(), bytes.len()) };
+    let name = vips_foreign_find_load_buffer(bytes.as_ptr().cast::<c_void>(), bytes.len());
     if name.is_null() {
         None
     } else {

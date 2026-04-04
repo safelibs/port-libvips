@@ -1871,7 +1871,7 @@ unsafe fn op_premultiply(object: *mut VipsObject) -> Result<(), ()> {
     let max_alpha = if unsafe { argument_assigned(object, "max_alpha")? } {
         unsafe { get_double(object, "max_alpha")? }
     } else {
-        unsafe { vips_interpretation_max_alpha(input.spec.interpretation) }
+        vips_interpretation_max_alpha(input.spec.interpretation)
     };
     let out = premultiply_buffer(&input, max_alpha);
     let image = unsafe { get_image_ref(object, "in")? };
@@ -1900,7 +1900,7 @@ unsafe fn op_flatten(object: *mut VipsObject) -> Result<(), ()> {
     let max_alpha = if unsafe { argument_assigned(object, "max_alpha")? } {
         unsafe { get_double(object, "max_alpha")? }
     } else {
-        unsafe { vips_interpretation_max_alpha(input.spec.interpretation) }
+        vips_interpretation_max_alpha(input.spec.interpretation)
     };
     let bg = background_values(&background, input.spec.bands - 1);
     let mut out = input.with_shape(input.spec.width, input.spec.height, input.spec.bands - 1);
@@ -1936,7 +1936,7 @@ unsafe fn op_unpremultiply(object: *mut VipsObject) -> Result<(), ()> {
     let max_alpha = if unsafe { argument_assigned(object, "max_alpha")? } {
         unsafe { get_double(object, "max_alpha")? }
     } else {
-        unsafe { vips_interpretation_max_alpha(input.spec.interpretation) }
+        vips_interpretation_max_alpha(input.spec.interpretation)
     };
     let alpha_band = if unsafe { argument_assigned(object, "alpha_band")? } {
         usize::try_from(unsafe { get_int(object, "alpha_band")? }).map_err(|_| ())?
@@ -2315,7 +2315,7 @@ fn smartcrop_attention_position(
     _premultiplied: bool,
 ) -> Result<(usize, usize), ()> {
     let working = if input.spec.bands >= 4 {
-        let max_alpha = unsafe { vips_interpretation_max_alpha(input.spec.interpretation) };
+        let max_alpha = vips_interpretation_max_alpha(input.spec.interpretation);
         flatten_buffer(input, &[max_alpha], max_alpha)
     } else {
         input.clone()

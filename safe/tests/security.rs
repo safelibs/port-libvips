@@ -33,28 +33,26 @@ pub(crate) fn guard() -> std::sync::MutexGuard<'static, ()> {
 
 pub(crate) fn init_vips() {
     static INIT: Once = Once::new();
-    INIT.call_once(|| unsafe {
+    INIT.call_once(|| {
         assert_eq!(vips_init(c"security".as_ptr()), 0);
     });
 }
 
 pub(crate) fn image_from_uchar(width: i32, height: i32, bytes: &[u8]) -> *mut VipsImage {
-    unsafe {
-        vips_image_new_from_memory_copy(
-            bytes.as_ptr().cast(),
-            bytes.len(),
-            width,
-            height,
-            1,
-            VIPS_FORMAT_UCHAR,
-        )
-    }
+    vips_image_new_from_memory_copy(
+        bytes.as_ptr().cast(),
+        bytes.len(),
+        width,
+        height,
+        1,
+        VIPS_FORMAT_UCHAR,
+    )
 }
 
 pub(crate) fn read_samples(image: *mut VipsImage) -> Vec<f64> {
-    let format = unsafe { vips_image_get_format(image) };
+    let format = vips_image_get_format(image);
     let mut len = 0usize;
-    let ptr = unsafe { vips_image_write_to_memory(image, &mut len) };
+    let ptr = vips_image_write_to_memory(image, &mut len);
     let bytes = unsafe { slice::from_raw_parts(ptr.cast::<u8>(), len) };
     let values = match format {
         VIPS_FORMAT_UCHAR => bytes.iter().map(|value| *value as f64).collect(),

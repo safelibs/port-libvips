@@ -18,13 +18,11 @@ fn copy_blob(image: *mut VipsImage, name: &[u8]) -> Option<Vec<u8>> {
 }
 
 pub fn install_metadata(image: *mut VipsImage, loader_name: &str, metadata: &ForeignMetadata) {
-    unsafe {
-        vips_image_set_string(
-            image,
-            c"vips-loader".as_ptr(),
-            crate::runtime::object::leak_cstring(loader_name),
-        );
-    }
+    vips_image_set_string(
+        image,
+        c"vips-loader".as_ptr(),
+        crate::runtime::object::leak_cstring(loader_name),
+    );
     for (name, value) in &metadata.blobs {
         if let Ok(name) = std::ffi::CString::new(name.as_str()) {
             vips_image_set_blob_copy(image, name.as_ptr(), value.as_ptr().cast(), value.len());

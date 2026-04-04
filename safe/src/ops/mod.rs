@@ -262,15 +262,13 @@ unsafe fn argument_info(
     }
     let mut pspec = ptr::null_mut();
     let mut instance = ptr::null_mut();
-    if unsafe {
-        object::vips_object_get_argument(
-            object,
-            name.as_ptr(),
-            &mut pspec,
-            ptr::null_mut(),
-            &mut instance,
-        )
-    } != 0
+    if object::vips_object_get_argument(
+        object,
+        name.as_ptr(),
+        &mut pspec,
+        ptr::null_mut(),
+        &mut instance,
+    ) != 0
     {
         return Ok((fallback, ptr::null_mut()));
     }
@@ -393,7 +391,7 @@ pub(crate) unsafe fn get_array_double(object: *mut VipsObject, name: &str) -> Re
         return Err(());
     }
     let mut n = 0;
-    let data = unsafe { vips_array_double_get(array, &mut n) };
+    let data = vips_array_double_get(array, &mut n);
     if n < 0 || (data.is_null() && n != 0) {
         return Err(());
     }
@@ -436,7 +434,7 @@ pub(crate) unsafe fn get_blob_bytes(object: *mut VipsObject, name: &str) -> Resu
         return Err(());
     }
     let mut len = 0usize;
-    let ptr = unsafe { vips_blob_get(blob, &mut len) };
+    let ptr = vips_blob_get(blob, &mut len);
     if ptr.is_null() && len != 0 {
         return Err(());
     }
@@ -512,9 +510,7 @@ pub(crate) unsafe fn set_output_blob(
             gobject_sys::g_value_set_boxed(gvalue, blob.cast::<c_void>());
         })
     };
-    unsafe {
-        crate::runtime::r#type::vips_area_unref(blob.cast::<crate::abi::r#type::VipsArea>());
-    }
+    crate::runtime::r#type::vips_area_unref(blob.cast::<crate::abi::r#type::VipsArea>());
     result
 }
 
@@ -530,9 +526,7 @@ pub(crate) unsafe fn set_output_array_double(
             gobject_sys::g_value_set_boxed(gvalue, array.cast::<c_void>());
         })
     };
-    unsafe {
-        crate::runtime::r#type::vips_area_unref(array.cast::<crate::abi::r#type::VipsArea>());
-    }
+    crate::runtime::r#type::vips_area_unref(array.cast::<crate::abi::r#type::VipsArea>());
     result
 }
 
@@ -594,7 +588,7 @@ unsafe fn dispatch_operation(object: *mut VipsObject, nickname: &str) -> Result<
     if unsafe { resample::dispatch(object, nickname)? } {
         return Ok(true);
     }
-    if unsafe { crate::foreign::dispatch_operation(object, nickname)? } {
+    if crate::foreign::dispatch_operation(object, nickname)? {
         return Ok(true);
     }
     Ok(false)
@@ -605,11 +599,11 @@ unsafe fn dispatch_png(object: *mut VipsObject, nickname: &str) -> Result<bool, 
         "pngload" => {
             let filename = unsafe { get_string(object, "filename")? }.ok_or(())?;
             let cfilename = cstring(&filename)?;
-            let source = unsafe { vips_source_new_from_file(cfilename.as_ptr()) };
+            let source = vips_source_new_from_file(cfilename.as_ptr());
             if source.is_null() {
                 return Err(());
             }
-            let out = unsafe { safe_vips_image_new_from_source_internal(source, ptr::null(), 0) };
+            let out = safe_vips_image_new_from_source_internal(source, ptr::null(), 0);
             unsafe {
                 object::object_unref(source);
             }
@@ -621,13 +615,11 @@ unsafe fn dispatch_png(object: *mut VipsObject, nickname: &str) -> Result<bool, 
         }
         "pngload_buffer" => {
             let bytes = unsafe { get_blob_bytes(object, "buffer")? };
-            let source = unsafe {
-                vips_source_new_from_memory(bytes.as_ptr().cast::<c_void>(), bytes.len())
-            };
+            let source = vips_source_new_from_memory(bytes.as_ptr().cast::<c_void>(), bytes.len());
             if source.is_null() {
                 return Err(());
             }
-            let out = unsafe { safe_vips_image_new_from_source_internal(source, ptr::null(), 0) };
+            let out = safe_vips_image_new_from_source_internal(source, ptr::null(), 0);
             unsafe {
                 object::object_unref(source);
             }
@@ -639,7 +631,7 @@ unsafe fn dispatch_png(object: *mut VipsObject, nickname: &str) -> Result<bool, 
         }
         "pngload_source" => {
             let source = unsafe { get_object_ref::<VipsSource>(object, "source")? };
-            let out = unsafe { safe_vips_image_new_from_source_internal(source, ptr::null(), 0) };
+            let out = safe_vips_image_new_from_source_internal(source, ptr::null(), 0);
             unsafe {
                 object::object_unref(source);
             }
@@ -653,16 +645,14 @@ unsafe fn dispatch_png(object: *mut VipsObject, nickname: &str) -> Result<bool, 
             let image = unsafe { get_image_ref(object, "in")? };
             let filename = unsafe { get_string(object, "filename")? }.ok_or(())?;
             let cfilename = cstring(&filename)?;
-            let target = unsafe { vips_target_new_to_file(cfilename.as_ptr()) };
+            let target = vips_target_new_to_file(cfilename.as_ptr());
             if target.is_null() {
                 unsafe {
                     object::object_unref(image);
                 }
                 return Err(());
             }
-            let result = unsafe {
-                safe_vips_image_write_to_target_internal(image, c".png".as_ptr(), target)
-            };
+            let result = safe_vips_image_write_to_target_internal(image, c".png".as_ptr(), target);
             unsafe {
                 object::object_unref(target);
                 object::object_unref(image);
@@ -675,7 +665,7 @@ unsafe fn dispatch_png(object: *mut VipsObject, nickname: &str) -> Result<bool, 
         "pngsave_buffer" => {
             let image = unsafe { get_image_ref(object, "in")? };
             let mut len = 0usize;
-            let ptr = unsafe { crate::runtime::image::vips_image_write_to_memory(image, &mut len) };
+            let ptr = crate::runtime::image::vips_image_write_to_memory(image, &mut len);
             unsafe {
                 object::object_unref(image);
             }
@@ -700,9 +690,7 @@ unsafe fn dispatch_png(object: *mut VipsObject, nickname: &str) -> Result<bool, 
                 }
                 return Err(());
             }
-            let result = unsafe {
-                safe_vips_image_write_to_target_internal(image, c".png".as_ptr(), target)
-            };
+            let result = safe_vips_image_write_to_target_internal(image, c".png".as_ptr(), target);
             unsafe {
                 object::object_unref(target);
                 object::object_unref(image);

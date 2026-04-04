@@ -84,7 +84,7 @@ fn manifest_dir() -> &'static Path {
 fn init_vips() {
     static INIT: Once = Once::new();
     INIT.call_once(|| {
-        assert_eq!(unsafe { vips_init(c"operation_registry".as_ptr()) }, 0);
+        assert_eq!(vips_init(c"operation_registry".as_ptr()), 0);
     });
 }
 
@@ -117,7 +117,7 @@ unsafe extern "C" fn collect_types_cb(
     let class = unsafe { gobject_sys::g_type_class_ref(type_) }.cast::<VipsObjectClass>();
     let parent = unsafe { gobject_sys::g_type_parent(type_) };
     collector.entries.push(ManifestEntry {
-        depth: unsafe { vips_type_depth(type_) },
+        depth: vips_type_depth(type_),
         description: unsafe { CStr::from_ptr((*class).description) }
             .to_string_lossy()
             .into_owned(),
@@ -139,13 +139,11 @@ fn collect_live_entries(root: glib_sys::GType) -> Vec<ManifestEntry> {
         root,
         entries: Vec::new(),
     };
-    unsafe {
-        vips_type_map_all(
-            root,
-            Some(collect_types_cb),
-            (&mut collector as *mut TypeCollector).cast(),
-        );
-    }
+    vips_type_map_all(
+        root,
+        Some(collect_types_cb),
+        (&mut collector as *mut TypeCollector).cast(),
+    );
     collector.entries.sort();
     collector.entries
 }
@@ -423,14 +421,12 @@ fn collect_live_args(type_name: &str) -> Vec<LiveArgManifest> {
     assert_ne!(type_, 0, "missing live type {type_name}");
     let class = unsafe { gobject_sys::g_type_class_ref(type_) }.cast::<VipsObjectClass>();
     let mut collector = ArgCollector::default();
-    unsafe {
-        vips_argument_class_map(
-            class,
-            Some(collect_args_cb),
-            (&mut collector as *mut ArgCollector).cast(),
-            ptr::null_mut(),
-        );
-    }
+    vips_argument_class_map(
+        class,
+        Some(collect_args_cb),
+        (&mut collector as *mut ArgCollector).cast(),
+        ptr::null_mut(),
+    );
     collector.args.sort();
     collector.args
 }
@@ -539,9 +535,8 @@ fn live_registry_matches_reference_manifests() {
         serde_json::from_value(reference_operations["entries"].clone()).expect("operation entries");
     expected_types.sort();
 
-    let live_types = collect_live_entries(unsafe { vips_object_get_type() });
-    let live_operations =
-        project_operations(collect_live_entries(unsafe { vips_operation_get_type() }));
+    let live_types = collect_live_entries(vips_object_get_type());
+    let live_operations = project_operations(collect_live_entries(vips_operation_get_type()));
     let expected_operations = project_operations(expected_operations);
 
     assert_eq!(live_types, expected_types, "live type tree mismatch");
@@ -556,7 +551,7 @@ fn live_operation_arguments_match_generated_manifest() {
     init_vips();
 
     let manifest: GeneratedManifest = read_json("src/generated/operations.json");
-    for entry in collect_live_entries(unsafe { vips_operation_get_type() }) {
+    for entry in collect_live_entries(vips_operation_get_type()) {
         let live_args = collect_live_args(&entry.type_name);
         let expected_args = expected_live_args(&manifest, &entry.type_name);
         assert_eq!(

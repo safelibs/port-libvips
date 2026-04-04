@@ -14,8 +14,7 @@ fn cve_2019_6976_matrix_header_requires_scale_and_offset() {
     vips_error_clear();
 
     let payload = b"3 2 1\n1 2 3\n4 5 6\n";
-    let source =
-        unsafe { vips_source_new_from_memory(payload.as_ptr().cast::<c_void>(), payload.len()) };
+    let source = vips_source_new_from_memory(payload.as_ptr().cast::<c_void>(), payload.len());
     assert!(!source.is_null());
 
     let mut out = ptr::null_mut();

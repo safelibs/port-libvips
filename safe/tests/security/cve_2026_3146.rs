@@ -14,8 +14,7 @@ fn cve_2026_3146_failed_matrix_parse_clears_output_image() {
     vips_error_clear();
 
     let payload = b"2 2 1 0\n1 2 3\n";
-    let source =
-        unsafe { vips_source_new_from_memory(payload.as_ptr().cast::<c_void>(), payload.len()) };
+    let source = vips_source_new_from_memory(payload.as_ptr().cast::<c_void>(), payload.len());
     assert!(!source.is_null());
 
     let mut out = 1usize as *mut VipsImage;

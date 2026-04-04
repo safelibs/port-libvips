@@ -61,28 +61,26 @@ fn guard() -> std::sync::MutexGuard<'static, ()> {
 
 fn init_vips() {
     static INIT: Once = Once::new();
-    INIT.call_once(|| unsafe {
+    INIT.call_once(|| {
         assert_eq!(vips_init(c"ops_core".as_ptr()), 0);
     });
 }
 
 fn image_from_uchar(width: i32, height: i32, bands: i32, bytes: &[u8]) -> *mut VipsImage {
-    unsafe {
-        vips_image_new_from_memory_copy(
-            bytes.as_ptr().cast(),
-            bytes.len(),
-            width,
-            height,
-            bands,
-            VIPS_FORMAT_UCHAR,
-        )
-    }
+    vips_image_new_from_memory_copy(
+        bytes.as_ptr().cast(),
+        bytes.len(),
+        width,
+        height,
+        bands,
+        VIPS_FORMAT_UCHAR,
+    )
 }
 
 fn read_samples(image: *mut VipsImage) -> Vec<f64> {
-    let format = unsafe { vips_image_get_format(image) };
+    let format = vips_image_get_format(image);
     let mut len = 0usize;
-    let ptr = unsafe { vips_image_write_to_memory(image, &mut len) };
+    let ptr = vips_image_write_to_memory(image, &mut len);
     let bytes = unsafe { slice::from_raw_parts(ptr.cast::<u8>(), len) };
     let values = match format {
         VIPS_FORMAT_UCHAR => bytes.iter().map(|value| *value as f64).collect(),
@@ -129,7 +127,7 @@ fn arithmetic_and_extract_area_flow() {
         unsafe { vips_add(left, right, &mut added, ptr::null::<c_char>()) },
         0
     );
-    assert_eq!(unsafe { vips_image_get_format(added) }, VIPS_FORMAT_USHORT);
+    assert_eq!(vips_image_get_format(added), VIPS_FORMAT_USHORT);
     assert_eq!(read_samples(added), vec![11.0, 22.0, 33.0, 44.0]);
 
     let a = [2.0];
@@ -149,7 +147,7 @@ fn arithmetic_and_extract_area_flow() {
         0
     );
     let linear_values = read_samples(linear);
-    assert_eq!(unsafe { vips_image_get_format(linear) }, VIPS_FORMAT_FLOAT);
+    assert_eq!(vips_image_get_format(linear), VIPS_FORMAT_FLOAT);
     assert!((linear_values[0] - 3.0).abs() < 1e-6);
     assert!((linear_values[3] - 9.0).abs() < 1e-6);
 
@@ -158,8 +156,8 @@ fn arithmetic_and_extract_area_flow() {
         unsafe { vips_crop(added, &mut crop, 1, 0, 1, 2, ptr::null::<c_char>()) },
         0
     );
-    assert_eq!(unsafe { vips_image_get_width(crop) }, 1);
-    assert_eq!(unsafe { vips_image_get_height(crop) }, 2);
+    assert_eq!(vips_image_get_width(crop), 1);
+    assert_eq!(vips_image_get_height(crop), 2);
     assert_eq!(read_samples(crop), vec![22.0, 44.0]);
 
     unref_image(crop);
@@ -188,29 +186,29 @@ fn create_convolution_histogram_morphology_and_freqfilt_flow() {
         },
         0
     );
-    assert_eq!(unsafe { vips_image_get_format(grey) }, VIPS_FORMAT_UCHAR);
+    assert_eq!(vips_image_get_format(grey), VIPS_FORMAT_UCHAR);
 
     let mut gauss = ptr::null_mut();
     assert_eq!(
         unsafe { vips_gaussmat(&mut gauss, 1.0, 0.2, ptr::null::<c_char>()) },
         0
     );
-    assert_eq!(unsafe { vips_image_get_width(gauss) }, 3);
+    assert_eq!(vips_image_get_width(gauss), 3);
 
     let mut blurred = ptr::null_mut();
     assert_eq!(
         unsafe { vips_conv(grey, &mut blurred, gauss, ptr::null::<c_char>()) },
         0
     );
-    assert_eq!(unsafe { vips_image_get_width(blurred) }, 4);
-    assert_eq!(unsafe { vips_image_get_height(blurred) }, 4);
+    assert_eq!(vips_image_get_width(blurred), 4);
+    assert_eq!(vips_image_get_height(blurred), 4);
 
     let mut hist_equal = ptr::null_mut();
     assert_eq!(
         unsafe { vips_hist_equal(grey, &mut hist_equal, ptr::null::<c_char>()) },
         0
     );
-    assert_eq!(unsafe { vips_image_get_width(hist_equal) }, 4);
+    assert_eq!(vips_image_get_width(hist_equal), 4);
 
     let mut mask = ptr::null_mut();
     assert_eq!(
@@ -223,7 +221,7 @@ fn create_convolution_histogram_morphology_and_freqfilt_flow() {
         unsafe { vips_freqmult(blurred, mask, &mut filtered, ptr::null::<c_char>()) },
         0
     );
-    assert_eq!(unsafe { vips_image_get_width(filtered) }, 4);
+    assert_eq!(vips_image_get_width(filtered), 4);
 
     let morph_mask = image_from_uchar(3, 3, 1, &[1, 1, 1, 1, 1, 1, 1, 1, 1]);
     let mut morphed = ptr::null_mut();

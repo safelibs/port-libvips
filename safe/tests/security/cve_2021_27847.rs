@@ -13,8 +13,8 @@ fn cve_2021_27847_eye_handles_degenerate_dimensions() {
     if result == 0 {
         let values = read_samples(eye);
         assert!(values.iter().all(|value| value.is_finite()));
-        assert!(unsafe { vips_image_get_width(eye) } >= 1);
-        assert!(unsafe { vips_image_get_height(eye) } >= 1);
+        assert!(vips_image_get_width(eye) >= 1);
+        assert!(vips_image_get_height(eye) >= 1);
         unref_image(eye);
     }
 }
@@ -30,8 +30,8 @@ fn cve_2021_27847_mask_handles_degenerate_dimensions() {
     if result == 0 {
         let values = read_samples(mask);
         assert!(values.iter().all(|value| value.is_finite()));
-        assert!(unsafe { vips_image_get_width(mask) } >= 1);
-        assert!(unsafe { vips_image_get_height(mask) } >= 1);
+        assert!(vips_image_get_width(mask) >= 1);
+        assert!(vips_image_get_height(mask) >= 1);
         unref_image(mask);
     }
 }

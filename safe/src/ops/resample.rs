@@ -1119,9 +1119,7 @@ unsafe fn op_thumbnail(object: *mut VipsObject) -> Result<(), ()> {
     let (path, options) = crate::foreign::base::parse_embedded_options(&filename);
     let path = std::ffi::CString::new(path).map_err(|_| ())?;
     let options = std::ffi::CString::new(options).map_err(|_| ())?;
-    let source = unsafe {
-        vips_source_new_from_file(path.as_ptr())
-    };
+    let source = vips_source_new_from_file(path.as_ptr());
     if source.is_null() {
         return Err(());
     }
@@ -1130,7 +1128,7 @@ unsafe fn op_thumbnail(object: *mut VipsObject) -> Result<(), ()> {
     } else {
         options.as_ptr()
     };
-    let image = unsafe { safe_vips_image_new_from_source_internal(source, option_ptr, 0) };
+    let image = safe_vips_image_new_from_source_internal(source, option_ptr, 0);
     unsafe {
         object_unref(source);
     }
@@ -1147,12 +1145,11 @@ unsafe fn op_thumbnail(object: *mut VipsObject) -> Result<(), ()> {
 
 unsafe fn op_thumbnail_buffer(object: *mut VipsObject) -> Result<(), ()> {
     let bytes = unsafe { get_blob_bytes(object, "buffer")? };
-    let source =
-        unsafe { vips_source_new_from_memory(bytes.as_ptr().cast::<c_void>(), bytes.len()) };
+    let source = vips_source_new_from_memory(bytes.as_ptr().cast::<c_void>(), bytes.len());
     if source.is_null() {
         return Err(());
     }
-    let image = unsafe { safe_vips_image_new_from_source_internal(source, ptr::null(), 0) };
+    let image = safe_vips_image_new_from_source_internal(source, ptr::null(), 0);
     unsafe {
         object_unref(source);
     }
@@ -1179,7 +1176,7 @@ unsafe fn op_thumbnail_image(object: *mut VipsObject) -> Result<(), ()> {
 
 unsafe fn op_thumbnail_source(object: *mut VipsObject) -> Result<(), ()> {
     let source = unsafe { get_object_ref::<VipsSource>(object, "source")? };
-    let image = unsafe { safe_vips_image_new_from_source_internal(source, ptr::null(), 0) };
+    let image = safe_vips_image_new_from_source_internal(source, ptr::null(), 0);
     unsafe {
         object_unref(source);
     }

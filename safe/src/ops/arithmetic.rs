@@ -1512,7 +1512,7 @@ unsafe fn op_getpoint(object: *mut VipsObject) -> Result<(), ()> {
     }
     let x = x as usize;
     let y = y as usize;
-    unsafe { ensure_pixels(image)? };
+    ensure_pixels(image)?;
     let Some(image_ref) = (unsafe { image.as_ref() }) else {
         unsafe {
             crate::runtime::object::object_unref(image);
