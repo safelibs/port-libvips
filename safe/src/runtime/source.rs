@@ -2,7 +2,7 @@ use std::ffi::{c_void, CStr};
 use std::mem::offset_of;
 use std::os::raw::c_char;
 use std::ptr;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 use gobject_sys::{GTypeClass, G_TYPE_INT, G_TYPE_INT64, G_TYPE_POINTER};
 
@@ -42,12 +42,18 @@ enum SourceKind {
 }
 
 struct SourceState {
+    inner: Mutex<SourceInner>,
+}
+
+struct SourceInner {
     kind: SourceKind,
+    custom_cache: Option<Result<Vec<u8>, ()>>,
 }
 
 impl Drop for SourceState {
     fn drop(&mut self) {
-        match &mut self.kind {
+        let inner = self.inner.get_mut().expect("source state");
+        match &mut inner.kind {
             SourceKind::Blob { blob } => {
                 if !blob.is_null() {
                     crate::runtime::r#type::vips_area_unref((*blob).cast::<VipsArea>());
@@ -69,8 +75,19 @@ fn source_quark() -> glib_sys::GQuark {
     qdata_quark(SOURCE_STATE_QUARK)
 }
 
-unsafe fn source_state(source: *mut VipsSource) -> Option<&'static mut SourceState> {
-    unsafe { get_qdata_ptr::<SourceState>(source.cast(), source_quark()).as_mut() }
+unsafe fn source_state(source: *mut VipsSource) -> Option<&'static SourceState> {
+    unsafe { get_qdata_ptr::<SourceState>(source.cast(), source_quark()).as_ref() }
+}
+
+fn is_custom_source(source: *mut VipsSource) -> bool {
+    let Some(state) = (unsafe { source_state(source) }) else {
+        return false;
+    };
+    let inner = state.inner.lock().expect("source state");
+    match &inner.kind {
+        SourceKind::Custom => true,
+        _ => false,
+    }
 }
 
 fn load_fd(fd: libc::c_int) -> Result<Vec<u8>, ()> {
@@ -107,8 +124,9 @@ unsafe fn ensure_loaded(source: *mut VipsSource) -> Result<(), ()> {
     let Some(source_ref) = (unsafe { source.as_mut() }) else {
         return Err(());
     };
+    let mut inner = source_state.inner.lock().expect("source state");
 
-    match &mut source_state.kind {
+    match &mut inner.kind {
         SourceKind::File { path, bytes } => {
             if bytes.is_none() {
                 *bytes = Some(read_all_from_path(path.as_c_str())?);
@@ -148,10 +166,129 @@ unsafe fn ensure_loaded(source: *mut VipsSource) -> Result<(), ()> {
                 source_ref.length = bytes.len() as i64;
             }
         }
-        SourceKind::Custom => return Err(()),
+        SourceKind::Custom => {
+            let Some(Ok(bytes)) = inner.custom_cache.as_ref() else {
+                return Err(());
+            };
+            source_ref.data = bytes.as_ptr().cast::<c_void>();
+            source_ref.length = bytes.len() as i64;
+        }
     }
 
     Ok(())
+}
+
+pub(crate) fn read_all_bytes(source: *mut VipsSource) -> Result<Vec<u8>, ()> {
+    let Some(source_state) = (unsafe { source_state(source) }) else {
+        append_message_str("vips_source_read", "source state missing");
+        return Err(());
+    };
+    let Some(source_ref) = (unsafe { source.as_mut() }) else {
+        return Err(());
+    };
+
+    let mut inner = source_state.inner.lock().expect("source state");
+    match &mut inner.kind {
+        SourceKind::File { path, bytes } => {
+            if bytes.is_none() {
+                *bytes = Some(read_all_from_path(path.as_c_str())?);
+            }
+            let bytes_ref = bytes.as_ref().ok_or(())?;
+            source_ref.data = bytes_ref.as_ptr().cast::<c_void>();
+            source_ref.length = bytes_ref.len() as i64;
+            Ok(bytes_ref.clone())
+        }
+        SourceKind::Memory { bytes } => {
+            source_ref.data = bytes.as_ptr().cast::<c_void>();
+            source_ref.length = bytes.len() as i64;
+            Ok(bytes.clone())
+        }
+        SourceKind::Blob { blob } => {
+            let mut length = 0usize;
+            let data = unsafe { crate::runtime::r#type::vips_blob_get(*blob, &mut length) };
+            source_ref.data = data.cast::<c_void>();
+            source_ref.length = length as i64;
+            source_ref.blob = *blob;
+            if data.is_null() && length != 0 {
+                return Err(());
+            }
+            Ok(if length == 0 {
+                Vec::new()
+            } else {
+                unsafe { std::slice::from_raw_parts(data.cast::<u8>(), length) }.to_vec()
+            })
+        }
+        SourceKind::Descriptor {
+            fd,
+            close_on_drop,
+            bytes,
+        } => {
+            if bytes.is_none() {
+                *bytes = Some(load_fd(*fd)?);
+                if *close_on_drop && *fd >= 0 {
+                    vips_tracked_close(*fd);
+                    *fd = -1;
+                    source_ref.parent_object.tracked_descriptor = -1;
+                    source_ref.parent_object.descriptor = -1;
+                }
+            }
+            let bytes_ref = bytes.as_ref().ok_or(())?;
+            source_ref.data = bytes_ref.as_ptr().cast::<c_void>();
+            source_ref.length = bytes_ref.len() as i64;
+            Ok(bytes_ref.clone())
+        }
+        SourceKind::Custom => {
+            if let Some(cached) = inner.custom_cache.as_ref() {
+                return match cached {
+                    Ok(bytes) => {
+                        source_ref.data = bytes.as_ptr().cast::<c_void>();
+                        source_ref.length = bytes.len() as i64;
+                        source_ref.read_position = 0;
+                        Ok(bytes.clone())
+                    }
+                    Err(()) => Err(()),
+                };
+            }
+
+            if source_ref.read_position != 0
+                && unsafe { emit_seek(source, 0, libc::SEEK_SET) } < 0
+            {
+                inner.custom_cache = Some(Err(()));
+                return Err(());
+            }
+            source_ref.read_position = 0;
+
+            let mut bytes = Vec::new();
+            let mut buffer = [0u8; 8192];
+            loop {
+                let read = unsafe { emit_read(source, buffer.as_mut_ptr().cast::<c_void>(), buffer.len()) };
+                if read < 0 {
+                    inner.custom_cache = Some(Err(()));
+                    return Err(());
+                }
+                if read == 0 {
+                    break;
+                }
+                bytes.extend_from_slice(&buffer[..read as usize]);
+                if pipe_read_limit() >= 0 && bytes.len() as i64 > pipe_read_limit() {
+                    append_message_str("vips_source_read", "pipe read limit exceeded");
+                    inner.custom_cache = Some(Err(()));
+                    return Err(());
+                }
+            }
+
+            if unsafe { emit_seek(source, 0, libc::SEEK_SET) } >= 0 {
+                source_ref.read_position = 0;
+            }
+            inner.custom_cache = Some(Ok(bytes));
+            let Some(Ok(bytes)) = inner.custom_cache.as_ref() else {
+                return Err(());
+            };
+            source_ref.data = bytes.as_ptr().cast::<c_void>();
+            source_ref.length = bytes.len() as i64;
+            Ok(bytes.clone())
+        }
+    }
 }
 
 unsafe fn emit_read(source: *mut VipsSource, data: *mut c_void, length: usize) -> i64 {
@@ -310,7 +447,10 @@ pub extern "C" fn vips_source_custom_new() -> *mut VipsSourceCustom {
             source.cast(),
             source_quark(),
             SourceState {
-                kind: SourceKind::Custom,
+                inner: Mutex::new(SourceInner {
+                    kind: SourceKind::Custom,
+                    custom_cache: None,
+                }),
             },
         );
     }
@@ -335,15 +475,19 @@ pub extern "C" fn vips_source_new_from_file(filename: *const c_char) -> *mut Vip
             source.cast(),
             source_quark(),
             SourceState {
-                kind: SourceKind::File {
-                    path: filename.to_owned(),
-                    bytes: None,
-                },
+                inner: Mutex::new(SourceInner {
+                    kind: SourceKind::File {
+                        path: filename.to_owned(),
+                        bytes: None,
+                    },
+                    custom_cache: None,
+                }),
             },
         );
     }
     if let Some(state) = unsafe { source_state(source) } {
-        if let SourceKind::File { path, .. } = &state.kind {
+        let inner = state.inner.lock().expect("source state");
+        if let SourceKind::File { path, .. } = &inner.kind {
             source_ref.parent_object.filename = path.as_ptr().cast_mut();
         }
     }
@@ -375,7 +519,10 @@ pub extern "C" fn vips_source_new_from_memory(data: *const c_void, size: usize) 
             source.cast(),
             source_quark(),
             SourceState {
-                kind: SourceKind::Memory { bytes },
+                inner: Mutex::new(SourceInner {
+                    kind: SourceKind::Memory { bytes },
+                    custom_cache: None,
+                }),
             },
         );
     }
@@ -401,7 +548,10 @@ pub extern "C" fn vips_source_new_from_blob(blob: *mut VipsBlob) -> *mut VipsSou
             source.cast(),
             source_quark(),
             SourceState {
-                kind: SourceKind::Blob { blob },
+                inner: Mutex::new(SourceInner {
+                    kind: SourceKind::Blob { blob },
+                    custom_cache: None,
+                }),
             },
         );
     }
@@ -429,11 +579,14 @@ pub extern "C" fn vips_source_new_from_descriptor(descriptor: libc::c_int) -> *m
             source.cast(),
             source_quark(),
             SourceState {
-                kind: SourceKind::Descriptor {
-                    fd,
-                    close_on_drop: true,
-                    bytes: None,
-                },
+                inner: Mutex::new(SourceInner {
+                    kind: SourceKind::Descriptor {
+                        fd,
+                        close_on_drop: true,
+                        bytes: None,
+                    },
+                    custom_cache: None,
+                }),
             },
         );
     }
@@ -459,10 +612,7 @@ pub extern "C" fn vips_source_minimise(_source: *mut VipsSource) {}
 
 #[no_mangle]
 pub extern "C" fn vips_source_unminimise(source: *mut VipsSource) -> libc::c_int {
-    if matches!(
-        unsafe { source_state(source) }.map(|state| &state.kind),
-        Some(SourceKind::Custom)
-    ) {
+    if is_custom_source(source) {
         return 0;
     }
     match unsafe { ensure_loaded(source) } {
@@ -492,10 +642,35 @@ pub extern "C" fn vips_source_read(
         return -1;
     }
 
-    if matches!(
-        unsafe { source_state(source) }.map(|state| &state.kind),
-        Some(SourceKind::Custom)
-    ) {
+    if is_custom_source(source) {
+        let cached = unsafe { source_state(source) }.and_then(|state| {
+            let inner = state.inner.lock().expect("source state");
+            match &inner.kind {
+                SourceKind::Custom => Some(
+                    inner
+                        .custom_cache
+                        .as_ref()
+                        .map(|result| result.as_ref().map(|bytes| bytes.clone()).map_err(|_| ())),
+                ),
+                _ => None,
+            }
+        });
+        if let Some(Some(result)) = cached {
+            let Ok(bytes) = result else {
+                return -1;
+            };
+            let start = source_ref.read_position.max(0) as usize;
+            let remaining = bytes.len().saturating_sub(start);
+            let to_copy = remaining.min(length);
+            if to_copy > 0 {
+                unsafe {
+                    ptr::copy_nonoverlapping(bytes[start..].as_ptr(), data.cast::<u8>(), to_copy);
+                }
+            }
+            source_ref.read_position = source_ref.read_position.saturating_add(to_copy as i64);
+            return to_copy as i64;
+        }
+
         let bytes = unsafe { emit_read(source, data, length) };
         if bytes >= 0 {
             source_ref.read_position = source_ref.read_position.saturating_add(bytes);
@@ -527,11 +702,7 @@ pub extern "C" fn vips_source_read(
 
 #[no_mangle]
 pub extern "C" fn vips_source_is_mappable(source: *mut VipsSource) -> glib_sys::gboolean {
-    let custom = matches!(
-        unsafe { source_state(source) }.map(|state| &state.kind),
-        Some(SourceKind::Custom)
-    );
-    if custom {
+    if is_custom_source(source) {
         glib_sys::GFALSE
     } else {
         glib_sys::GTRUE
@@ -549,6 +720,9 @@ pub extern "C" fn vips_source_is_file(source: *mut VipsSource) -> glib_sys::gboo
 
 #[no_mangle]
 pub extern "C" fn vips_source_map(source: *mut VipsSource, length: *mut usize) -> *const c_void {
+    if is_custom_source(source) && read_all_bytes(source).is_err() {
+        return ptr::null();
+    }
     if unsafe { ensure_loaded(source) }.is_err() {
         return ptr::null();
     }
@@ -565,6 +739,9 @@ pub extern "C" fn vips_source_map(source: *mut VipsSource, length: *mut usize) -
 
 #[no_mangle]
 pub extern "C" fn vips_source_map_blob(source: *mut VipsSource) -> *mut VipsBlob {
+    if is_custom_source(source) && read_all_bytes(source).is_err() {
+        return ptr::null_mut();
+    }
     if unsafe { ensure_loaded(source) }.is_err() {
         return ptr::null_mut();
     }
@@ -587,10 +764,31 @@ pub extern "C" fn vips_source_seek(
         return -1;
     };
 
-    if matches!(
-        unsafe { source_state(source) }.map(|state| &state.kind),
-        Some(SourceKind::Custom)
-    ) {
+    if is_custom_source(source) {
+        let cached = unsafe { source_state(source) }.and_then(|state| {
+            let inner = state.inner.lock().expect("source state");
+            match &inner.kind {
+                SourceKind::Custom => Some(
+                    inner
+                        .custom_cache
+                        .as_ref()
+                        .map(|result| result.as_ref().map(|bytes| bytes.len()).map_err(|_| ())),
+                ),
+                _ => None,
+            }
+        });
+        if let Some(Some(result)) = cached {
+            let Ok(length) = result else {
+                return -1;
+            };
+            let new_pos = clipped_seek(source_ref.read_position, length as i64, offset, whence);
+            if new_pos < 0 {
+                append_message_str("vips_source_seek", "bad whence");
+                return -1;
+            }
+            source_ref.read_position = new_pos;
+            return new_pos;
+        }
         let new_pos = unsafe { emit_seek(source, offset, whence) };
         if new_pos >= 0 {
             source_ref.read_position = new_pos;
@@ -654,6 +852,9 @@ pub extern "C" fn vips_source_sniff(source: *mut VipsSource, length: usize) -> *
 
 #[no_mangle]
 pub extern "C" fn vips_source_length(source: *mut VipsSource) -> i64 {
+    if is_custom_source(source) && read_all_bytes(source).is_err() {
+        return -1;
+    }
     if unsafe { ensure_loaded(source) }.is_ok() {
         unsafe { source.as_ref() }.map_or(-1, |source| source.length)
     } else {

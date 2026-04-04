@@ -1,7 +1,5 @@
 use std::ffi::CStr;
 use std::ptr;
-use std::sync::{Mutex, OnceLock};
-
 use libc::{c_char, c_int, c_void};
 
 use crate::runtime::error::append_message_str;
@@ -97,16 +95,14 @@ pub extern "C" fn vips_isprefix(a: *const c_char, b: *const c_char) -> glib_sys:
 #[no_mangle]
 pub extern "C" fn vips_add_option_entries(_option_group: *mut glib_sys::GOptionGroup) {}
 
-fn vector_state() -> &'static Mutex<bool> {
-    static ENABLED: OnceLock<Mutex<bool>> = OnceLock::new();
-    ENABLED.get_or_init(|| Mutex::new(true))
-}
-
 static VECTOR_NONE: &[u8] = b"none\0";
+static VECTOR_SCALAR: &[u8] = b"scalar\0";
+static VECTOR_SIMD128: &[u8] = b"simd128\0";
+static VECTOR_SIMD256: &[u8] = b"simd256\0";
 
 #[no_mangle]
 pub extern "C" fn vips_vector_isenabled() -> glib_sys::gboolean {
-    if *vector_state().lock().expect("vector state") {
+    if crate::simd::vector::is_enabled() {
         glib_sys::GTRUE
     } else {
         glib_sys::GFALSE
@@ -115,23 +111,30 @@ pub extern "C" fn vips_vector_isenabled() -> glib_sys::gboolean {
 
 #[no_mangle]
 pub extern "C" fn vips_vector_set_enabled(enabled: glib_sys::gboolean) {
-    *vector_state().lock().expect("vector state") = enabled != glib_sys::GFALSE;
+    crate::simd::vector::set_enabled(enabled != glib_sys::GFALSE);
 }
 
 #[no_mangle]
 pub extern "C" fn vips_vector_get_builtin_targets() -> i64 {
-    0
+    crate::simd::vector::builtin_targets()
 }
 
 #[no_mangle]
 pub extern "C" fn vips_vector_get_supported_targets() -> i64 {
-    0
+    crate::simd::vector::supported_targets()
 }
 
 #[no_mangle]
-pub extern "C" fn vips_vector_target_name(_target: i64) -> *const c_char {
-    VECTOR_NONE.as_ptr().cast()
+pub extern "C" fn vips_vector_target_name(target: i64) -> *const c_char {
+    match crate::simd::vector::target_name(target) {
+        Some("scalar") => VECTOR_SCALAR.as_ptr().cast(),
+        Some("simd128") => VECTOR_SIMD128.as_ptr().cast(),
+        Some("simd256") => VECTOR_SIMD256.as_ptr().cast(),
+        _ => VECTOR_NONE.as_ptr().cast(),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn vips_vector_disable_targets(_disabled_targets: i64) {}
+pub extern "C" fn vips_vector_disable_targets(disabled_targets: i64) {
+    crate::simd::vector::disable_targets(disabled_targets);
+}

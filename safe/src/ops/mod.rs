@@ -1,10 +1,14 @@
 mod arithmetic;
+mod colour;
 mod conversion;
 mod convolution;
 mod create;
+mod draw;
 mod freqfilt;
 mod histogram;
+mod mosaicing;
 mod morphology;
+mod resample;
 
 use std::ffi::{c_void, CStr, CString};
 use std::mem::ManuallyDrop;
@@ -41,12 +45,20 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "boolean",
     "byteswap",
     "cast",
+    "colourspace",
     "compass",
     "conv",
     "convsep",
     "copy",
     "countlines",
     "crop",
+    "draw_circle",
+    "draw_flood",
+    "draw_image",
+    "draw_line",
+    "draw_mask",
+    "draw_rect",
+    "draw_smudge",
     "divide",
     "embed",
     "extract_area",
@@ -56,6 +68,7 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "gaussblur",
     "gaussmat",
     "grey",
+    "HSV2sRGB",
     "hist_cum",
     "hist_entropy",
     "hist_equal",
@@ -72,6 +85,9 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "mask_ideal",
     "math",
     "math2",
+    "match",
+    "mosaic",
+    "mosaic1",
     "morph",
     "multiply",
     "pngload",
@@ -81,16 +97,41 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "pngsave_buffer",
     "pngsave_target",
     "percent",
+    "profile",
+    "profile_load",
     "prewitt",
     "rank",
     "relational",
+    "reduce",
+    "reduceh",
+    "reducev",
     "remainder",
+    "resize",
     "round",
+    "sRGB2HSV",
+    "sRGB2scRGB",
     "scharr",
+    "scRGB2BW",
+    "scRGB2sRGB",
+    "scRGB2XYZ",
     "sign",
+    "shrink",
+    "shrinkh",
+    "shrinkv",
     "sobel",
     "subtract",
     "sum",
+    "thumbnail",
+    "thumbnail_buffer",
+    "thumbnail_image",
+    "thumbnail_source",
+    "XYZ2Lab",
+    "XYZ2scRGB",
+    "XYZ2Yxy",
+    "Lab2XYZ",
+    "Lab2LCh",
+    "LCh2Lab",
+    "Yxy2XYZ",
     "xyz",
 ];
 
@@ -347,14 +388,19 @@ pub(crate) unsafe fn set_output_image(object: *mut VipsObject, name: &str, image
 }
 
 pub(crate) unsafe fn set_output_blob(object: *mut VipsObject, name: &str, bytes: Vec<u8>) -> Result<(), ()> {
-    let len = bytes.len();
-    let boxed = bytes.into_boxed_slice();
-    let data = Box::into_raw(boxed) as *mut u8;
-    unsafe {
+    let blob = crate::runtime::r#type::vips_blob_copy(
+        bytes.as_ptr().cast::<c_void>(),
+        bytes.len(),
+    );
+    let result = unsafe {
         set_property(object, name, |gvalue| {
-            crate::runtime::r#type::vips_value_set_blob_free(gvalue, data.cast::<c_void>(), len);
+            gobject_sys::g_value_set_boxed(gvalue, blob.cast::<c_void>());
         })
+    };
+    unsafe {
+        crate::runtime::r#type::vips_area_unref(blob.cast::<crate::abi::r#type::VipsArea>());
     }
+    result
 }
 
 pub(crate) unsafe fn set_output_image_like(
@@ -385,6 +431,9 @@ unsafe fn dispatch_operation(object: *mut VipsObject, nickname: &str) -> Result<
     if unsafe { arithmetic::dispatch(object, nickname)? } {
         return Ok(true);
     }
+    if unsafe { colour::dispatch(object, nickname)? } {
+        return Ok(true);
+    }
     if unsafe { conversion::dispatch(object, nickname)? } {
         return Ok(true);
     }
@@ -394,13 +443,22 @@ unsafe fn dispatch_operation(object: *mut VipsObject, nickname: &str) -> Result<
     if unsafe { create::dispatch(object, nickname)? } {
         return Ok(true);
     }
+    if unsafe { draw::dispatch(object, nickname)? } {
+        return Ok(true);
+    }
     if unsafe { histogram::dispatch(object, nickname)? } {
+        return Ok(true);
+    }
+    if unsafe { mosaicing::dispatch(object, nickname)? } {
         return Ok(true);
     }
     if unsafe { morphology::dispatch(object, nickname)? } {
         return Ok(true);
     }
     if unsafe { freqfilt::dispatch(object, nickname)? } {
+        return Ok(true);
+    }
+    if unsafe { resample::dispatch(object, nickname)? } {
         return Ok(true);
     }
     Ok(false)

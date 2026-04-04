@@ -3,6 +3,7 @@
 pub mod abi;
 pub mod pixels;
 pub mod runtime;
+pub mod simd;
 pub(crate) mod ops;
 
 pub use abi::basic::*;

@@ -1,0 +1,120 @@
+use std::collections::HashMap;
+use std::ffi::c_void;
+use std::ptr;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
+
+use super::*;
+
+unsafe extern "C" {
+    fn vips_thumbnail_source(
+        source: *mut VipsSource,
+        out: *mut *mut VipsImage,
+        width: i32,
+        ...
+    ) -> i32;
+}
+
+struct FailingSourceState {
+    read_calls: AtomicUsize,
+}
+
+fn states() -> &'static Mutex<HashMap<usize, Arc<FailingSourceState>>> {
+    static STATES: OnceLock<Mutex<HashMap<usize, Arc<FailingSourceState>>>> = OnceLock::new();
+    STATES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+unsafe extern "C" fn read_cb(
+    source: *mut VipsSourceCustom,
+    _data: *mut c_void,
+    _length: i64,
+    _user_data: glib_sys::gpointer,
+) -> i64 {
+    if let Some(state) = states().lock().expect("states").get(&(source as usize)).cloned() {
+        state.read_calls.fetch_add(1, Ordering::SeqCst);
+    }
+    -1
+}
+
+unsafe extern "C" fn seek_cb(
+    _source: *mut VipsSourceCustom,
+    offset: i64,
+    whence: i32,
+    _user_data: glib_sys::gpointer,
+) -> i64 {
+    if offset == 0 && whence == libc::SEEK_SET {
+        0
+    } else {
+        -1
+    }
+}
+
+fn failing_source() -> (*mut VipsSource, Arc<FailingSourceState>) {
+    let source = vips_source_custom_new().cast::<VipsSource>();
+    let state = Arc::new(FailingSourceState {
+        read_calls: AtomicUsize::new(0),
+    });
+    states()
+        .lock()
+        .expect("states")
+        .insert(source as usize, Arc::clone(&state));
+
+    unsafe {
+        gobject_sys::g_signal_connect_data(
+            source.cast(),
+            c"read".as_ptr(),
+            Some(std::mem::transmute::<
+                unsafe extern "C" fn(*mut VipsSourceCustom, *mut c_void, i64, glib_sys::gpointer) -> i64,
+                unsafe extern "C" fn(),
+            >(read_cb)),
+            ptr::null_mut(),
+            None,
+            0,
+        );
+        gobject_sys::g_signal_connect_data(
+            source.cast(),
+            c"seek".as_ptr(),
+            Some(std::mem::transmute::<
+                unsafe extern "C" fn(*mut VipsSourceCustom, i64, i32, glib_sys::gpointer) -> i64,
+                unsafe extern "C" fn(),
+            >(seek_cb)),
+            ptr::null_mut(),
+            None,
+            0,
+        );
+    }
+
+    (source, state)
+}
+
+fn cleanup_source(source: *mut VipsSource) {
+    states().lock().expect("states").remove(&(source as usize));
+    unsafe {
+        gobject_sys::g_object_unref(source.cast());
+    }
+}
+
+#[test]
+fn cve_2018_7998_thumbnail_source_caches_delayed_load_failure() {
+    let _guard = guard();
+    init_vips();
+
+    let (source, state) = failing_source();
+
+    let mut first = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_thumbnail_source(source, &mut first, 16, ptr::null::<std::ffi::c_char>()) },
+        -1
+    );
+    assert!(first.is_null());
+
+    let mut second = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_thumbnail_source(source, &mut second, 16, ptr::null::<std::ffi::c_char>()) },
+        -1
+    );
+    assert!(second.is_null());
+    assert_eq!(state.read_calls.load(Ordering::SeqCst), 1);
+
+    cleanup_source(source);
+}

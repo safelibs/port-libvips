@@ -270,33 +270,7 @@ fn encode_png(image: &VipsImage, pixels: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 fn read_source_bytes(source: *mut VipsSource) -> Result<Vec<u8>, ()> {
-    let mapped = crate::runtime::source::vips_source_map(source, ptr::null_mut());
-    if !mapped.is_null() {
-        let length = crate::runtime::source::vips_source_length(source);
-        if length < 0 {
-            return Err(());
-        }
-        let bytes = unsafe { std::slice::from_raw_parts(mapped.cast::<u8>(), length as usize) };
-        return Ok(bytes.to_vec());
-    }
-
-    let mut bytes = Vec::new();
-    let mut buffer = [0u8; 8192];
-    loop {
-        let read = crate::runtime::source::vips_source_read(
-            source,
-            buffer.as_mut_ptr().cast::<c_void>(),
-            buffer.len(),
-        );
-        if read < 0 {
-            return Err(());
-        }
-        if read == 0 {
-            break;
-        }
-        bytes.extend_from_slice(&buffer[..read as usize]);
-    }
-    Ok(bytes)
+    crate::runtime::source::read_all_bytes(source)
 }
 
 #[no_mangle]
@@ -498,6 +472,7 @@ pub extern "C" fn vips_image_write_prepare(image: *mut VipsImage) -> libc::c_int
     }
     image_ref.dtype = VIPS_IMAGE_SETBUF;
     sync_pixels(image);
+    vips_image_invalidate_all(image);
     0
 }
 
@@ -526,6 +501,7 @@ pub extern "C" fn vips_image_write_line(
         ptr::copy_nonoverlapping(linebuffer, state.pixels[offset..].as_mut_ptr(), line);
     }
     sync_pixels(image);
+    vips_image_invalidate_all(image);
     0
 }
 
@@ -617,7 +593,12 @@ pub extern "C" fn vips_image_isMSBfirst(_image: *mut VipsImage) -> glib_sys::gbo
 pub extern "C" fn vips_image_minimise_all(_image: *mut VipsImage) {}
 
 #[no_mangle]
-pub extern "C" fn vips_image_invalidate_all(_image: *mut VipsImage) {}
+pub extern "C" fn vips_image_invalidate_all(image: *mut VipsImage) {
+    if let Some(image_ref) = unsafe { image.as_mut() } {
+        image_ref.serial = image_ref.serial.wrapping_add(1);
+    }
+    crate::runtime::cache::vips_cache_drop_all();
+}
 
 #[no_mangle]
 pub extern "C" fn vips_image_is_sequential(_image: *mut VipsImage) -> glib_sys::gboolean {
