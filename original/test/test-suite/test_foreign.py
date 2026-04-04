@@ -193,6 +193,56 @@ class TestForeign:
             y = x.get("orientation")
             assert y == 1
 
+            # can set, save and reload ASCII string fields
+            x = pyvips.Image.new_from_file(JPEG_FILE)
+            x = x.copy()
+
+            x.set_type(pyvips.GValue.gstr_type,
+                       "exif-ifd0-ImageDescription", "hello world")
+
+            filename = temp_filename(self.tempdir, '.jpg')
+            x.write_to_file(filename)
+
+            x = pyvips.Image.new_from_file(filename)
+            y = x.get("exif-ifd0-ImageDescription")
+            # can't use == since the string will have an extra " (xx, yy, zz)"
+            # format area at the end
+            assert y.startswith("hello world")
+
+            # can set, save and reload UTF16 string fields ... pyvips is
+            # utf8, but it will be coded as utf16 and back for the XP* fields
+            x = pyvips.Image.new_from_file(JPEG_FILE)
+            x = x.copy()
+
+            x.set_type(pyvips.GValue.gstr_type, "exif-ifd0-XPComment", u"йцук")
+
+            filename = temp_filename(self.tempdir, '.jpg')
+            x.write_to_file(filename)
+
+            x = pyvips.Image.new_from_file(filename)
+            y = x.get("exif-ifd0-XPComment")
+            # can't use == since the string will have an extra " (xx, yy, zz)"
+            # format area at the end
+            assert y.startswith(u"йцук")
+
+            # can set/save/load UserComment, a tag which has the
+            # encoding in the first 8 bytes ... though libexif only supports
+            # ASCII for this
+            x = pyvips.Image.new_from_file(JPEG_FILE)
+            x = x.copy()
+
+            x.set_type(pyvips.GValue.gstr_type,
+                       "exif-ifd2-UserComment", "hello world")
+
+            filename = temp_filename(self.tempdir, '.jpg')
+            x.write_to_file(filename)
+
+            x = pyvips.Image.new_from_file(filename)
+            y = x.get("exif-ifd2-UserComment")
+            # can't use == since the string will have an extra " (xx, yy, zz)"
+            # format area at the end
+            assert y.startswith("hello world")
+
             # autorotate load works
             x = pyvips.Image.new_from_file(JPEG_FILE)
             x = x.copy()
@@ -260,6 +310,19 @@ class TestForeign:
 
     @skip_if_no("jpegsave")
     def test_jpegsave_exif(self):
+        def exif_valid(im):
+            assert im.get("exif-ifd2-UserComment").find(
+                "Undefined, 21 components, 21 bytes") != -1
+            assert im.get("exif-ifd0-Software").find(
+                "ASCII, 14 components, 14 bytes") != -1
+            assert im.get("exif-ifd0-XPComment").find(
+                "Byte, 28 components, 28 bytes") != -1
+
+        def exif_removed(im):
+            assert im.get_typeof("exif-ifd2-UserComment") == 0
+            assert im.get_typeof("exif-ifd0-Software") == 0
+            assert im.get_typeof("exif-ifd0-XPComment") == 0
+
         # first make sure we have exif support
         im = pyvips.Image.new_from_file(JPEG_FILE)
         if im.get_typeof("exif-ifd0-Orientation") != 0:
@@ -284,6 +347,29 @@ class TestForeign:
             im = pyvips.Image.new_from_buffer(buf, "")
             assert im.get_typeof("exif-data") != 0
             assert im.get("orientation") == 1
+
+            x = pyvips.Image.new_from_file(JPEG_FILE).copy()
+            x.set_type(pyvips.GValue.gstr_type, "exif-ifd2-UserComment",
+                       "hello ( there")  # tag_is_encoding
+            x.set_type(pyvips.GValue.gstr_type, "exif-ifd0-Software",
+                       "hello ( there")  # tag_is_ascii
+            x.set_type(pyvips.GValue.gstr_type, "exif-ifd0-XPComment",
+                       "hello ( there")  # tag_is_utf16
+            buf = x.jpegsave_buffer()
+            y = pyvips.Image.new_from_buffer(buf, "")
+            exif_valid(y)
+            # Reproduce https://github.com/libvips/libvips/issues/2388
+            buf = y.jpegsave_buffer()
+            z = pyvips.Image.new_from_buffer(buf, "")
+            exif_valid(z)
+            # Try whether we can remove EXIF, just to be sure
+            z = z.copy()
+            z.remove("exif-ifd2-UserComment")
+            z.remove("exif-ifd0-Software")
+            z.remove("exif-ifd0-XPComment")
+            buf = z.jpegsave_buffer()
+            im = pyvips.Image.new_from_buffer(buf, "")
+            exif_removed(im)
 
     @skip_if_no("jpegload")
     def test_truncated(self):
@@ -357,6 +443,15 @@ class TestForeign:
             x = pyvips.Image.new_from_file(filename)
             y = x.get("orientation")
             assert y == 2
+
+            # Add EXIF to new PNG
+            im1 = pyvips.Image.black(8, 8)
+            im1.set_type(pyvips.GValue.gstr_type,
+                         "exif-ifd0-ImageDescription", "test description")
+            im2 = pyvips.Image.new_from_buffer(
+                im1.write_to_buffer(".png"), "")
+            assert im2.get("exif-ifd0-ImageDescription").startswith(
+                "test description")
 
     @skip_if_no("tiffload")
     def test_tiff(self):
@@ -1281,6 +1376,13 @@ class TestForeign:
         x = pyvips.Image.new_from_file(JPEG_FILE)
         if x.get_typeof("exif-ifd0-Orientation") != 0:
             x = x.copy()
+            x.set_type(pyvips.GValue.gstr_type, "exif-ifd0-XPComment",
+                       "banana")
+            buf = x.heifsave_buffer(Q=10, compression="av1")
+            y = pyvips.Image.new_from_buffer(buf, "")
+            assert y.get("exif-ifd0-XPComment").startswith("banana")
+
+            x = pyvips.Image.new_from_file(JPEG_FILE).copy()
             x.set("orientation", 6)
             buf = x.heifsave_buffer(Q=10, compression="av1")
             y = pyvips.Image.new_from_buffer(buf, "")
