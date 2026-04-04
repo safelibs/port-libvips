@@ -371,6 +371,83 @@ class TestForeign:
             im = pyvips.Image.new_from_buffer(buf, "")
             exif_removed(im)
 
+    @skip_if_no("jpegsave")
+    def test_jpegsave_exif_2_3_ascii(self):
+        def exif_valid(exif_tags, im):
+            for exif_tag in exif_tags:
+                assert im.get(exif_tag).find(
+                    "ASCII, 14 components, 14 bytes") != -1
+
+        # first make sure we have exif support
+        im = pyvips.Image.new_from_file(JPEG_FILE)
+        if im.get_typeof("exif-ifd0-Orientation") == 0:
+            pytest.skip("requires EXIF orientation support")
+
+        x = im.copy()
+        exif_tags = [
+            "exif-ifd2-CameraOwnerName",
+            "exif-ifd2-BodySerialNumber",
+            "exif-ifd2-LensMake",
+            "exif-ifd2-LensModel",
+            "exif-ifd2-LensSerialNumber",
+        ]
+
+        try:
+            for exif_tag in exif_tags:
+                x.set_type(pyvips.GValue.gstr_type, exif_tag,
+                           "hello ( there")
+            buf = x.jpegsave_buffer()
+            y = pyvips.Image.new_from_buffer(buf, "")
+        except pyvips.Error:
+            pytest.xfail("requires libexif >= 0.6.22")
+
+        exif_valid(exif_tags, y)
+
+    @skip_if_no("jpegsave")
+    def test_jpegsave_exif_2_3_ascii_2(self):
+        def exif_valid(exif_tags, im):
+            for exif_tag in exif_tags:
+                assert im.get(exif_tag).find(
+                    "ASCII, 14 components, 14 bytes") != -1
+
+        # first make sure we have exif support
+        im = pyvips.Image.new_from_file(JPEG_FILE)
+        if im.get_typeof("exif-ifd0-Orientation") == 0:
+            pytest.skip("requires EXIF orientation support")
+
+        x = im.copy()
+        exif_tags = [
+            "exif-ifd2-OffsetTime",
+            "exif-ifd2-OffsetTimeOriginal",
+            "exif-ifd2-OffsetTimeDigitized",
+            "exif-ifd3-GPSLatitudeRef",
+            "exif-ifd3-GPSLongitudeRef",
+            "exif-ifd3-GPSSatellites",
+            "exif-ifd3-GPSStatus",
+            "exif-ifd3-GPSMeasureMode",
+            "exif-ifd3-GPSSpeedRef",
+            "exif-ifd3-GPSTrackRef",
+            "exif-ifd3-GPSImgDirectionRef",
+            "exif-ifd3-GPSMapDatum",
+            "exif-ifd3-GPSDestLatitudeRef",
+            "exif-ifd3-GPSDestLongitudeRef",
+            "exif-ifd3-GPSDestBearingRef",
+            "exif-ifd3-GPSDestDistanceRef",
+            "exif-ifd3-GPSDateStamp",
+        ]
+
+        try:
+            for exif_tag in exif_tags:
+                x.set_type(pyvips.GValue.gstr_type, exif_tag,
+                           "hello ( there")
+
+            buf = x.jpegsave_buffer()
+            y = pyvips.Image.new_from_buffer(buf, "")
+        except pyvips.Error:
+            pytest.xfail("requires libexif >= 0.6.23")
+
+        exif_valid(exif_tags, y)
+
     @skip_if_no("jpegload")
     def test_truncated(self):
         # This should open (there's enough there for the header)
