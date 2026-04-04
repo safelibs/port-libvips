@@ -703,6 +703,45 @@ class TestConversion:
         assert im.height == max_height
         assert im.bands == max_bands
 
+    def test_join(self):
+        left = pyvips.Image.black(3, 4) + [10, 20, 30]
+        right = pyvips.Image.black(2, 2) + [1, 2, 3]
+
+        cropped = left.join(right, pyvips.Direction.HORIZONTAL,
+                            shim=1,
+                            background=[99, 98, 97],
+                            align=pyvips.Align.LOW)
+        assert cropped.width == 6
+        assert cropped.height == 2
+        assert_almost_equal_objects(cropped(0, 0), [10, 20, 30])
+        assert_almost_equal_objects(cropped(3, 0), [99, 98, 97])
+        assert_almost_equal_objects(cropped(4, 1), [1, 2, 3])
+
+        expanded = left.join(right, pyvips.Direction.HORIZONTAL,
+                             expand=True,
+                             shim=1,
+                             background=[99, 98, 97],
+                             align=pyvips.Align.HIGH)
+        assert expanded.width == 6
+        assert expanded.height == 4
+        assert_almost_equal_objects(expanded(0, 3), [10, 20, 30])
+        assert_almost_equal_objects(expanded(4, 0), [99, 98, 97])
+        assert_almost_equal_objects(expanded(4, 3), [1, 2, 3])
+
+        top = pyvips.Image.black(4, 3) + [10, 20, 30]
+        bottom = pyvips.Image.black(2, 2) + [1, 2, 3]
+        stacked = top.join(bottom, pyvips.Direction.VERTICAL,
+                           expand=True,
+                           shim=1,
+                           background=[99, 98, 97],
+                           align=pyvips.Align.CENTRE)
+        assert stacked.width == 4
+        assert stacked.height == 6
+        assert_almost_equal_objects(stacked(0, 0), [10, 20, 30])
+        assert_almost_equal_objects(stacked(0, 3), [99, 98, 97])
+        assert_almost_equal_objects(stacked(1, 4), [1, 2, 3])
+        assert_almost_equal_objects(stacked(0, 4), [99, 98, 97])
+
     def test_msb(self):
         for fmt in unsigned_formats:
             mx = max_value[fmt]

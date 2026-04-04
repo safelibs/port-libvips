@@ -56,6 +56,20 @@ class TestIofuncs:
         assert len(fields) > 10
         assert fields[0] == 'width'
 
+    def test_hasalpha(self):
+        mono = pyvips.Image.black(2, 2)
+        rgb = mono.bandjoin([1, 2]).copy(interpretation='srgb')
+        rgba = rgb.bandjoin(255)
+        laba = (pyvips.Image.black(2, 2) + [50, 0, 0, 42]).copy(
+            interpretation='lab')
+        cmyk = rgb.bandjoin(4).copy(interpretation='cmyk')
+
+        assert mono.hasalpha() == 0
+        assert rgb.hasalpha() == 0
+        assert rgba.hasalpha() == 1
+        assert laba.hasalpha() == 1
+        assert cmyk.hasalpha() == 0
+
     def test_write_to_memory(self):
         s = bytearray(200)
         im = pyvips.Image.new_from_memory(s, 20, 10, 1, 'uchar')

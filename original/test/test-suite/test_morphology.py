@@ -19,6 +19,29 @@ class TestMorphology:
         assert opts['segments'] == 3
         assert mask.max() == 2
 
+    def test_fill_nearest(self):
+        im = pyvips.Image.black(7, 1, bands=3)
+        im = im.draw_rect([10, 20, 30], 0, 0, 1, 1, fill=True)
+        im = im.draw_rect([100, 110, 120], 6, 0, 1, 1, fill=True)
+        filled, opts = im.fill_nearest(distance=True)
+
+        distance = opts['distance']
+
+        assert filled.width == im.width
+        assert filled.height == im.height
+        assert filled.bands == im.bands
+        assert distance.width == im.width
+        assert distance.height == im.height
+        assert distance.bands == 1
+        assert distance.format == pyvips.BandFormat.FLOAT
+
+        assert filled(0, 0) == [10.0, 20.0, 30.0]
+        assert filled(2, 0) == [10.0, 20.0, 30.0]
+        assert filled(5, 0) == [100.0, 110.0, 120.0]
+        assert distance(0, 0)[0] == pytest.approx(0.0)
+        assert distance(2, 0)[0] == pytest.approx(2.0)
+        assert distance(5, 0)[0] == pytest.approx(1.0)
+
     def test_erode(self):
         im = pyvips.Image.black(100, 100)
         im = im.draw_circle(255, 50, 50, 25, fill=True)
