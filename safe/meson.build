@@ -124,19 +124,30 @@ libvips_stage = custom_target(
       out_real="$2"
       out_soname="$3"
       out_link="$4"
-      shift 4
+      stage_dir="$5"
+      stage_name="$6"
+      stage_soname="$7"
+      shift 7
 
       "$@"
 
+      mkdir -p "$stage_dir"
       cp "$cargo_out" "$out_real"
       ln -sf "$(basename "$out_real")" "$out_soname"
       ln -sf "$(basename "$out_soname")" "$out_link"
+
+      cp "$cargo_out" "$stage_dir/$stage_name"
+      ln -sf "$stage_name" "$stage_dir/$stage_soname"
+      ln -sf "$stage_soname" "$stage_dir/libvips.so"
     ''',
     'meson-cargo-stage',
     cargo_artifact,
     '@OUTPUT0@',
     '@OUTPUT1@',
     '@OUTPUT2@',
+    meson.current_build_dir() / 'lib',
+    full_library_name,
+    soname,
   ] + cargo_build_cmd,
   env: cargo_env,
   install: true,
