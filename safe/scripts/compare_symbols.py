@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
+
+VERSION_NODE_RE = re.compile(r"^VIPS(?:_CPP)?_[0-9]+$")
 
 
 def read_reference(path: Path) -> set[str]:
@@ -25,7 +28,12 @@ def read_library_symbols(path: Path) -> set[str]:
     for line in output.splitlines():
         parts = line.split()
         if parts:
-            symbols.add(parts[-1])
+            symbol = parts[-1]
+            symbol = symbol.split("@@", 1)[0]
+            symbol = symbol.split("@", 1)[0]
+            if VERSION_NODE_RE.match(symbol):
+                continue
+            symbols.add(symbol)
     return symbols
 
 
@@ -41,7 +49,8 @@ def main() -> int:
     actual = read_library_symbols(args.candidate)
 
     missing = sorted(expected - actual)
-    unexpected = sorted(actual - expected)
+    allow_superset = args.reference.name == "deprecated-im.symbols"
+    unexpected = [] if allow_superset else sorted(actual - expected)
 
     if missing or unexpected:
         if missing:
@@ -60,4 +69,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

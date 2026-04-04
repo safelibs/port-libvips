@@ -1,0 +1,50 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# Enable all hardening options.
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/buildflags.mk
+
+DESTDIR = $(CURDIR)/debian/tmp
+MESON_BUILD_DIR = obj-$(DEB_BUILD_GNU_TYPE)
+export CARGO_HOME ?= $(HOME)/.cargo
+export CARGO_TARGET_DIR = $(CURDIR)/target
+export PATH := $(CARGO_HOME)/bin:/usr/bin:$(PATH)
+export RUSTUP_HOME ?= $(HOME)/.rustup
+export RUSTUP_TOOLCHAIN ?= stable-x86_64-unknown-linux-gnu
+export CARGO = $(CARGO_HOME)/bin/cargo
+export RUSTC = $(CARGO_HOME)/bin/rustc
+
+override_dh_clean:
+	rm -rf $(CARGO_TARGET_DIR)
+	dh_clean
+
+override_dh_auto_test:
+	LD_LIBRARY_PATH=$(CURDIR)/$(MESON_BUILD_DIR)/lib \
+		$(CURDIR)/tests/upstream/run-meson-suite.sh $(MESON_BUILD_DIR) --timeout-multiplier=10
+	LD_LIBRARY_PATH=$(CURDIR)/$(MESON_BUILD_DIR)/lib \
+		$(CURDIR)/tests/upstream/run-shell-suite.sh $(MESON_BUILD_DIR)
+
+override_dh_auto_configure:
+	dh_auto_configure --builddirectory=$(MESON_BUILD_DIR) -- \
+		-Ddoxygen=true \
+		-Dgtk_doc=true \
+		-Dintrospection=enabled
+
+override_dh_auto_build:
+	$(CARGO) build --manifest-path $(CURDIR)/Cargo.toml --release --target-dir $(CARGO_TARGET_DIR)
+	dh_auto_build --builddirectory=$(MESON_BUILD_DIR)
+
+override_dh_auto_install:
+	dh_auto_install --builddirectory=$(MESON_BUILD_DIR)
+	perl $(CURDIR)/debian/scripts/create_missing_manual_pages
+
+%:
+	dh $@ --buildsystem=meson --with gir
+
+.PHONY: override_dh_clean override_dh_auto_build override_dh_auto_configure \
+	override_dh_auto_test override_dh_auto_install

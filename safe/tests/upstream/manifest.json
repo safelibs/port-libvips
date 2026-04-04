@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "upstream_root": "original",
+  "wrappers": {
+    "meson": "run-meson-suite.sh",
+    "shell": "run-shell-suite.sh",
+    "pytest": "run-pytest-suite.sh",
+    "fuzz": "run-fuzz-suite.sh"
+  },
+  "meson_tests": [
+    "cli",
+    "formats",
+    "seq",
+    "stall",
+    "threading",
+    "keep",
+    "connections",
+    "descriptors",
+    "webpsave_timeout",
+    "fuzz"
+  ],
+  "standalone_shell_tests": [
+    "original/test/test_thumbnail.sh"
+  ],
+  "python_files": [
+    "test/test-suite/__init__.py",
+    "test/test-suite/conftest.py",
+    "test/test-suite/helpers/helpers.py",
+    "test/test-suite/test_arithmetic.py",
+    "test/test-suite/test_colour.py",
+    "test/test-suite/test_connection.py",
+    "test/test-suite/test_conversion.py",
+    "test/test-suite/test_convolution.py",
+    "test/test-suite/test_create.py",
+    "test/test-suite/test_draw.py",
+    "test/test-suite/test_foreign.py",
+    "test/test-suite/test_histogram.py",
+    "test/test-suite/test_iofuncs.py",
+    "test/test-suite/test_morphology.py",
+    "test/test-suite/test_mosaicing.py",
+    "test/test-suite/test_resample.py"
+  ],
+  "python_requirements": [
+    "pyvips==3.1.1"
+  ],
+  "fuzz_targets": [
+    "jpegsave_file_fuzzer",
+    "jpegsave_buffer_fuzzer",
+    "pngsave_buffer_fuzzer",
+    "webpsave_buffer_fuzzer",
+    "gifsave_buffer_fuzzer",
+    "sharpen_fuzzer",
+    "thumbnail_fuzzer",
+    "smartcrop_fuzzer",
+    "mosaic_fuzzer"
+  ],
+  "tools": [
+    "vips",
+    "vipsedit",
+    "vipsthumbnail",
+    "vipsheader",
+    "vipsprofile"
+  ],
+  "examples": [
+    "annotate-animated",
+    "new-from-buffer",
+    "progress-cancel",
+    "use-vips-func"
+  ]
+}

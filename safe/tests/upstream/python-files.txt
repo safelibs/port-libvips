@@ -1,0 +1,19 @@
+# baseline_passed=220
+# baseline_skipped=32
+# total=16
+test/test-suite/__init__.py
+test/test-suite/conftest.py
+test/test-suite/helpers/helpers.py
+test/test-suite/test_arithmetic.py
+test/test-suite/test_colour.py
+test/test-suite/test_connection.py
+test/test-suite/test_conversion.py
+test/test-suite/test_convolution.py
+test/test-suite/test_create.py
+test/test-suite/test_draw.py
+test/test-suite/test_foreign.py
+test/test-suite/test_histogram.py
+test/test-suite/test_iofuncs.py
+test/test-suite/test_morphology.py
+test/test-suite/test_mosaicing.py
+test/test-suite/test_resample.py

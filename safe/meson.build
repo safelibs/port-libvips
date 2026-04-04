@@ -10,20 +10,38 @@ project('vips-safe', 'c', 'cpp',
   ],
 )
 
+pkg = import('pkgconfig')
+i18n = import('i18n')
+
 cargo = find_program('cargo')
 sh = find_program('sh')
 python3 = find_program('python3')
+g_ir_scanner = find_program('g-ir-scanner', required: false)
+g_ir_compiler = find_program('g-ir-compiler', required: false)
 glib_dep = dependency('glib-2.0')
 gobject_dep = dependency('gobject-2.0')
 gio_dep = dependency('gio-2.0')
+gmodule_dep = dependency('gmodule-no-export-2.0', required: false)
+if not gmodule_dep.found()
+  gmodule_dep = dependency('gmodule-2.0')
+endif
 cpp = meson.get_compiler('cpp')
+cc = meson.get_compiler('c')
+dl_dep = cc.find_library('dl', required: false)
+
+if not g_ir_scanner.found() or not g_ir_compiler.found()
+  error('g-ir-scanner and g-ir-compiler are required for the compatibility packaging build')
+endif
 
 version_parts = meson.project_version().split('.')
 version_major = version_parts[0]
 version_minor = version_parts[1]
+gettext_domain = 'vips@0@.@1@'.format(version_major, version_minor)
 library_version = '42.17.1'
 soname = 'libvips.so.42'
 full_library_name = 'libvips.so.' + library_version
+cxx_soname = 'libvips-cpp.so.42'
+cxx_full_library_name = 'libvips-cpp.so.' + library_version
 module_dir_basename = 'vips-modules-@0@.@1@'.format(version_major, version_minor)
 
 cargo_target_dir = meson.current_source_dir() / 'target'
@@ -169,10 +187,107 @@ install_subdir(
   install_dir: get_option('includedir'),
 )
 
-runtime_libdir = meson.current_build_dir() / 'lib'
-runtime_link = runtime_libdir / 'libvips.so'
 root_dir = meson.current_source_dir() / '..'
 original_root = root_dir / 'original'
+build_check_install_root = root_dir / 'build-check-install'
+
+pkg.generate(
+  filebase: 'vips',
+  name: 'vips',
+  description: 'Image processing library',
+  version: meson.project_version(),
+  libraries: ['-lvips'],
+  libraries_private: ['-pthread', '-lm'],
+  requires: ['glib-2.0 >= 2.52', 'gio-2.0', 'gobject-2.0'],
+  requires_private: [
+    'gmodule-no-export-2.0',
+    'expat',
+    'zlib >= 0.4',
+    'libjpeg',
+    'libpng >= 1.2.9',
+    'libwebp >= 0.6',
+    'libwebpmux >= 0.6',
+    'libwebpdemux >= 0.6',
+    'pangocairo >= 1.32.6',
+    'pangoft2 >= 1.32.6',
+    'fontconfig',
+    'libtiff-4',
+  ],
+  subdirs: '.',
+)
+
+install_data(
+  build_check_install_root / 'share' / 'locale' / 'de' / 'LC_MESSAGES' / 'vips8.15.mo',
+  install_dir: get_option('datadir') / 'locale' / 'de' / 'LC_MESSAGES',
+)
+
+install_data(
+  build_check_install_root / 'share' / 'locale' / 'en_GB' / 'LC_MESSAGES' / 'vips8.15.mo',
+  install_dir: get_option('datadir') / 'locale' / 'en_GB' / 'LC_MESSAGES',
+)
+
+install_man(
+  original_root / 'man' / 'vipsedit.1',
+  original_root / 'man' / 'vipsheader.1',
+  original_root / 'man' / 'vips.1',
+  original_root / 'man' / 'vipsprofile.1',
+  original_root / 'man' / 'vipsthumbnail.1',
+)
+
+doc_html_files = files(
+  '../original/doc/How-it-works.md',
+  '../original/doc/libvips-from-C++.md',
+  '../original/doc/Using-vipsthumbnail.md',
+  '../original/doc/How-it-opens-files.md',
+  '../original/doc/Examples.md',
+  '../original/doc/Cite.md',
+  '../original/doc/binding.md',
+  '../original/doc/Making-image-pyramids.md',
+)
+
+gtk_doc_files = files(
+  '../original/doc/How-it-works.xml',
+  '../original/doc/libvips-from-C++.xml',
+  '../original/doc/Using-vipsthumbnail.xml',
+  '../original/doc/How-it-opens-files.xml',
+  '../original/doc/Examples.xml',
+  '../original/doc/Cite.xml',
+  '../original/doc/binding.xml',
+  '../original/doc/Making-image-pyramids.xml',
+  '../original/doc/using-command-line.xml',
+  '../original/doc/using-C.xml',
+  '../original/doc/using-threads.xml',
+  '../original/doc/extending.xml',
+  '../original/doc/function-list.xml',
+  '../original/doc/file-format.xml',
+)
+
+install_data(
+  doc_html_files,
+  install_dir: get_option('datadir') / 'doc' / 'libvips-doc' / 'html',
+)
+
+install_data(
+  gtk_doc_files,
+  install_dir: get_option('datadir') / 'gtk-doc' / 'html' / 'libvips',
+)
+
+install_data(
+  [
+    original_root / 'doc' / 'images' / 'owl.jpg',
+    original_root / 'doc' / 'images' / 'tn_owl.jpg',
+    original_root / 'doc' / 'images' / 'interconvert.png',
+    original_root / 'doc' / 'images' / 'Combine.png',
+    original_root / 'doc' / 'images' / 'Memtrace.png',
+    original_root / 'doc' / 'images' / 'Sequence.png',
+    original_root / 'doc' / 'images' / 'Sink.png',
+    original_root / 'doc' / 'images' / 'Vips-smp.png',
+  ],
+  install_dir: get_option('datadir') / 'gtk-doc' / 'html' / 'libvips' / 'images',
+)
+
+runtime_libdir = meson.current_build_dir() / 'lib'
+runtime_link = runtime_libdir / 'libvips.so'
 sample_png = root_dir / 'original' / 'test' / 'test-suite' / 'images' / 'sample.png'
 vendor_pyvips_dir = meson.current_source_dir() / 'vendor' / 'pyvips-3.1.1'
 runtime_module_dir = runtime_libdir / module_dir_basename
@@ -180,29 +295,303 @@ runtime_module_dir = runtime_libdir / module_dir_basename
 test_c_args = ['-DHAVE_UNISTD_H=1']
 test_include = include_directories('include')
 tool_c_args = [
-  '-DGETTEXT_PACKAGE="vips-safe"',
+  '-DGETTEXT_PACKAGE="@0@"'.format(gettext_domain),
   '-DENABLE_DEPRECATED=0',
-  '-DENABLE_MODULES=0',
+  '-DENABLE_MODULES=1',
   '-DHAVE_ORC=0',
 ]
 tool_include = include_directories('include', '../original/libvips/include')
+cpp_include = include_directories('include', '../original/cplusplus/include')
+cpp_export_args = ['-D_VIPS_PUBLIC=__attribute__((visibility("default")))']
+
+libvips_cpp_export_map = custom_target(
+  'libvips-cpp-export-map',
+  input: meson.current_source_dir() / 'reference' / 'abi' / 'libvips-cpp.symbols',
+  output: 'libvips-cpp.export.map',
+  build_by_default: true,
+  command: [
+    python3,
+    '-c',
+    '''
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1])
+destination = pathlib.Path(sys.argv[2])
+symbols = [
+    line.strip()
+    for line in source.read_text().splitlines()
+    if line.strip() and not line.startswith("#")
+]
+newline = chr(10)
+lines = ["VIPS_CPP_42 {", "  global:"]
+lines.extend(f"    {symbol};" for symbol in symbols)
+lines.extend(["  local:", "    *;", "};"])
+destination.write_text(newline.join(lines) + newline)
+''',
+    '@INPUT@',
+    '@OUTPUT@',
+  ],
+)
+
+libvips_cpp = shared_library(
+  'vips-cpp',
+  [
+    original_root / 'cplusplus' / 'VImage.cpp',
+    original_root / 'cplusplus' / 'VInterpolate.cpp',
+    original_root / 'cplusplus' / 'VRegion.cpp',
+    original_root / 'cplusplus' / 'VConnection.cpp',
+    original_root / 'cplusplus' / 'VError.cpp',
+  ],
+  build_by_default: true,
+  install: true,
+  include_directories: cpp_include,
+  cpp_args: cpp_export_args,
+  dependencies: [glib_dep, gobject_dep, gio_dep],
+  version: library_version,
+  gnu_symbol_visibility: 'hidden',
+  link_args: [
+    runtime_link,
+    '-Wl,--version-script=' + (meson.current_build_dir() / 'libvips-cpp.export.map'),
+  ],
+  link_depends: [libvips_stage, libvips_cpp_export_map],
+  build_rpath: runtime_libdir,
+)
+
+libvips_cpp_stage = custom_target(
+  'libvips-cpp-stage',
+  input: libvips_cpp,
+  output: 'libvips-cpp-stage.stamp',
+  build_by_default: true,
+  command: [
+    sh,
+    '-ec',
+    '''
+      set -eu
+      input="$1"
+      stage_dir="$2"
+      stage_name="$3"
+      stage_soname="$4"
+      stamp="$5"
+
+      mkdir -p "$stage_dir"
+      cp "$input" "$stage_dir/$stage_name"
+      ln -sf "$stage_name" "$stage_dir/$stage_soname"
+      ln -sf "$stage_soname" "$stage_dir/libvips-cpp.so"
+      : > "$stamp"
+    ''',
+    'meson-stage-libvips-cpp',
+    '@INPUT@',
+    runtime_libdir,
+    cxx_full_library_name,
+    cxx_soname,
+    '@OUTPUT@',
+  ],
+)
+
+pkg.generate(
+  filebase: 'vips-cpp',
+  name: 'vips-cpp',
+  description: 'C++ API for vips8 image processing library',
+  version: meson.project_version(),
+  libraries: ['-lvips-cpp'],
+  libraries_private: ['-pthread', '-lm'],
+  requires: ['vips', 'glib-2.0 >= 2.52', 'gobject-2.0'],
+  requires_private: [
+    'gio-2.0',
+    'gmodule-no-export-2.0',
+    'expat',
+    'zlib >= 0.4',
+    'libjpeg',
+    'libpng >= 1.2.9',
+    'libwebp >= 0.6',
+    'libwebpmux >= 0.6',
+    'libwebpdemux >= 0.6',
+    'pangocairo >= 1.32.6',
+    'pangoft2 >= 1.32.6',
+    'fontconfig',
+    'libtiff-4',
+  ],
+  subdirs: '.',
+)
+
+example_targets = []
+foreach example_name : [
+  'annotate-animated',
+  'new-from-buffer',
+  'progress-cancel',
+  'use-vips-func',
+]
+  example_targets += executable(
+    example_name,
+    original_root / 'examples' / (example_name + '.c'),
+    build_by_default: true,
+    include_directories: test_include,
+    dependencies: [glib_dep, gobject_dep, gio_dep],
+    link_args: [runtime_link],
+    link_depends: libvips_stage,
+    build_rpath: runtime_libdir,
+  )
+endforeach
+
+example_stage = custom_target(
+  'example-stage',
+  input: example_targets,
+  output: 'example-stage.stamp',
+  build_by_default: true,
+  command: [
+    sh,
+    '-ec',
+    '''
+      set -eu
+      stage_dir="$1"
+      stamp="$2"
+      shift 2
+      mkdir -p "$stage_dir"
+      for input in "$@"; do
+        cp "$input" "$stage_dir/$(basename "$input")"
+        chmod 0755 "$stage_dir/$(basename "$input")"
+      done
+      : > "$stamp"
+    ''',
+    'meson-stage-examples',
+    meson.current_build_dir() / 'examples',
+    '@OUTPUT@',
+    '@INPUT@',
+  ],
+)
+
+vips_gir = custom_target(
+  'vips-gir',
+  input: libvips_stage,
+  output: 'Vips-8.0.gir',
+  build_by_default: true,
+  command: [
+    g_ir_scanner,
+    '--quiet',
+    '--warn-all',
+    '--namespace=Vips',
+    '--nsversion=8.0',
+    '--identifier-prefix=Vips',
+    '--symbol-prefix=vips',
+    '--output',
+    '@OUTPUT@',
+    '--no-libtool',
+    '--library',
+    'vips',
+    '--library-path',
+    runtime_libdir,
+    '--include=GObject-2.0',
+    '--pkg=glib-2.0',
+    '--pkg=gio-2.0',
+    '--pkg=gobject-2.0',
+    '-I' + (meson.current_source_dir() / 'include'),
+    meson.current_source_dir() / 'include' / 'vips' / 'vips.h',
+  ],
+  depends: [libvips_stage, libvips_cpp_stage, example_stage],
+  env: environment({
+    'LD_LIBRARY_PATH': runtime_libdir,
+  }),
+  install: true,
+  install_dir: get_option('datadir') / 'gir-1.0',
+)
+
+vips_typelib = custom_target(
+  'vips-typelib',
+  input: vips_gir,
+  output: 'Vips-8.0.typelib',
+  build_by_default: true,
+  command: [g_ir_compiler, '--output', '@OUTPUT@', '@INPUT@'],
+  depends: [libvips_stage, vips_gir],
+  install: true,
+  install_dir: get_option('libdir') / 'girepository-1.0',
+)
 
 subdir('tools')
 
-module_stub_source = files('build_support/module_stub.c')
+module_entrypoints = {
+  'vips-heif': [
+    'vips_foreign_load_heif_buffer_get_type',
+    'vips_foreign_load_heif_file_get_type',
+    'vips_foreign_load_heif_source_get_type',
+    'vips_foreign_save_avif_target_get_type',
+    'vips_foreign_save_heif_buffer_get_type',
+    'vips_foreign_save_heif_file_get_type',
+    'vips_foreign_save_heif_target_get_type',
+  ],
+  'vips-jxl': [
+    'vips_foreign_load_jxl_buffer_get_type',
+    'vips_foreign_load_jxl_file_get_type',
+    'vips_foreign_load_jxl_source_get_type',
+    'vips_foreign_save_jxl_buffer_get_type',
+    'vips_foreign_save_jxl_file_get_type',
+    'vips_foreign_save_jxl_target_get_type',
+  ],
+  'vips-magick': [
+    'vips_foreign_load_magick7_buffer_get_type',
+    'vips_foreign_load_magick7_file_get_type',
+    'vips_foreign_load_magick_buffer_get_type',
+    'vips_foreign_load_magick_file_get_type',
+    'vips_foreign_save_magick_bmp_buffer_get_type',
+    'vips_foreign_save_magick_bmp_file_get_type',
+    'vips_foreign_save_magick_buffer_get_type',
+    'vips_foreign_save_magick_file_get_type',
+  ],
+  'vips-openslide': [
+    'vips_foreign_load_openslide_file_get_type',
+    'vips_foreign_load_openslide_source_get_type',
+  ],
+  'vips-poppler': [
+    'vips_foreign_load_pdf_buffer_get_type',
+    'vips_foreign_load_pdf_file_get_type',
+    'vips_foreign_load_pdf_source_get_type',
+  ],
+}
+
 module_targets = []
-foreach module_name : [
-  'vips-heif',
-  'vips-jxl',
-  'vips-magick',
-  'vips-openslide',
-  'vips-poppler',
-]
+foreach module_name, entrypoints : module_entrypoints
+  module_deps = [glib_dep, gobject_dep, gmodule_dep]
+  if dl_dep.found()
+    module_deps += [dl_dep]
+  endif
+
+  module_wrapper_functions = ''
+  module_registration_calls = ''
+  foreach entrypoint : entrypoints
+    module_wrapper_functions += '''
+G_MODULE_EXPORT GType
+@0@(void)
+{
+    return safe_vips_module_call("@0@");
+}
+
+'''.format(entrypoint)
+    module_registration_calls += '''
+    if (safe_vips_module_call("@0@") == 0)
+        return "failed to register @0@";
+'''.format(entrypoint)
+  endforeach
+
+  module_config = configuration_data()
+  module_config.set('ENTRYPOINT_WRAPPERS', module_wrapper_functions)
+  module_config.set('ENTRYPOINT_REGISTRATIONS', module_registration_calls)
+  module_source = configure_file(
+    input: 'build_support/module_wrapper.c.in',
+    output: module_name + '-module.c',
+    configuration: module_config,
+  )
+
   module_targets += shared_module(
     module_name,
-    module_stub_source,
+    module_source,
     name_prefix: '',
     build_by_default: true,
+    install: true,
+    install_dir: get_option('libdir') / module_dir_basename,
+    dependencies: module_deps,
+    link_args: [runtime_link],
+    link_depends: libvips_stage,
+    build_rpath: runtime_libdir,
   )
 endforeach
 
@@ -243,6 +632,7 @@ upstream_scripts_stage = custom_target(
     original_root / 'test' / 'test_descriptors.sh',
     original_root / 'test' / 'test_seq.sh',
     original_root / 'test' / 'test_stall.sh',
+    original_root / 'test' / 'test_thumbnail.sh',
     original_root / 'test' / 'test_threading.sh',
     original_root / 'fuzz' / 'test_fuzz.sh',
   ],
@@ -285,7 +675,7 @@ test_supported() {
 EOF
       chmod +x "$build_root/test/variables.sh"
 
-      for script in test_cli.sh test_formats.sh test_keep.sh test_connections.sh test_descriptors.sh test_seq.sh test_stall.sh test_threading.sh
+      for script in test_cli.sh test_formats.sh test_keep.sh test_connections.sh test_descriptors.sh test_seq.sh test_stall.sh test_thumbnail.sh test_threading.sh
       do
         cp "$original_root/test/$script" "$build_root/test/$script"
         chmod +x "$build_root/test/$script"

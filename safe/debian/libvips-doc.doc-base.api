@@ -1,0 +1,10 @@
+Document: libvips-programming
+Title: libvips C++ binding
+Author: John Cupitt, Kirk Martinez
+Abstract: The VIPS Application Programmer's Guide explains how to call
+ VIPS library functions from C++ programs.
+Section: Programming/C++
+
+Format: HTML
+Index: /usr/share/doc/libvips-doc/html/index.html
+Files: /usr/share/doc/libvips-doc/html/*

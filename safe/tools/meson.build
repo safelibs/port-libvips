@@ -5,7 +5,7 @@ vips_cli = executable(
   install: true,
   c_args: tool_c_args,
   include_directories: tool_include,
-  dependencies: [glib_dep, gobject_dep, gio_dep],
+  dependencies: [glib_dep, gobject_dep, gio_dep, gmodule_dep],
   link_args: [runtime_link],
   link_depends: libvips_stage,
   build_rpath: runtime_libdir,
@@ -18,7 +18,7 @@ vipsedit_cli = executable(
   install: true,
   c_args: tool_c_args,
   include_directories: tool_include,
-  dependencies: [glib_dep, gobject_dep, gio_dep],
+  dependencies: [glib_dep, gobject_dep, gio_dep, gmodule_dep],
   link_args: [runtime_link],
   link_depends: libvips_stage,
   build_rpath: runtime_libdir,
@@ -31,7 +31,7 @@ vipsthumbnail_cli = executable(
   install: true,
   c_args: tool_c_args,
   include_directories: tool_include,
-  dependencies: [glib_dep, gobject_dep, gio_dep],
+  dependencies: [glib_dep, gobject_dep, gio_dep, gmodule_dep],
   link_args: [runtime_link],
   link_depends: libvips_stage,
   build_rpath: runtime_libdir,
@@ -44,7 +44,7 @@ vipsheader_cli = executable(
   install: true,
   c_args: tool_c_args,
   include_directories: tool_include,
-  dependencies: [glib_dep, gobject_dep, gio_dep],
+  dependencies: [glib_dep, gobject_dep, gio_dep, gmodule_dep],
   link_args: [runtime_link],
   link_depends: libvips_stage,
   build_rpath: runtime_libdir,
@@ -54,6 +54,12 @@ vipsprofile = configure_file(
   input: root_dir / 'original' / 'tools' / 'vipsprofile',
   output: 'vipsprofile',
   copy: true,
+)
+
+install_data(
+  vipsprofile,
+  install_dir: get_option('bindir'),
+  install_mode: 'rwxr-xr-x',
 )
 
 tool_targets = [

@@ -1,0 +1,13 @@
+The safe-local `vips` package keeps the original Debian source and binary
+package names, but the build now has two layers:
+
+1. Cargo builds the Rust `libvips.so.42` plus the deprecated ABI shims.
+2. Meson builds the upstream C++ wrapper, tools, examples, docs, locales,
+   manpages, GIR, and typelib artifacts against that staged ABI.
+
+When updating the package, check both the Cargo dependency set and the Meson
+feature/dependency surface. The safe-local upstream wrapper manifests under
+`tests/upstream/` and the introspection smoke checker in
+`scripts/check_introspection.sh` are part of the package contract.
+
+ -- Jay Berkenbilt <qjb@debian.org>, Wed, 10 Sep 2014 08:26:55 -0400

@@ -2,10 +2,12 @@ use std::ffi::{c_void, CStr, CString};
 use std::io::Cursor;
 use std::os::raw::c_char;
 use std::ptr;
+use std::slice;
 use std::sync::Mutex;
 
 use crate::abi::connection::{VipsSource, VipsTarget};
 use crate::abi::image::*;
+use crate::pixels::format::write_sample;
 use crate::foreign::base::PendingDecode;
 use crate::runtime::error::append_message_str;
 use crate::runtime::header::{copy_metadata, MetaStore};
@@ -384,6 +386,118 @@ pub extern "C" fn vips_image_new_from_memory_copy(
 }
 
 #[no_mangle]
+pub extern "C" fn vips_image_new_from_image(
+    image: *mut VipsImage,
+    values: *const f64,
+    n_values: libc::c_int,
+) -> *mut VipsImage {
+    let Some(input) = (unsafe { image.as_ref() }) else {
+        append_message_str("vips_image_new_from_image", "image is NULL");
+        return ptr::null_mut();
+    };
+    if input.Xsize <= 0 || input.Ysize <= 0 || input.Bands <= 0 {
+        append_message_str("vips_image_new_from_image", "image has invalid dimensions");
+        return ptr::null_mut();
+    }
+    if values.is_null() || n_values <= 0 {
+        append_message_str("vips_image_new_from_image", "pixel array is NULL");
+        return ptr::null_mut();
+    }
+
+    let band_count = input.Bands as usize;
+    let value_count = n_values as usize;
+    if value_count != 1 && value_count != band_count {
+        append_message_str(
+            "vips_image_new_from_image",
+            "pixel array must contain either one value or one value per band",
+        );
+        return ptr::null_mut();
+    }
+
+    let sample_bytes = format_sizeof(input.BandFmt);
+    if sample_bytes == 0 {
+        append_message_str("vips_image_new_from_image", "unsupported band format");
+        return ptr::null_mut();
+    }
+
+    let pixel_count = input.Xsize as usize * input.Ysize as usize;
+    let bytes_per_pixel = sample_bytes * band_count;
+    let values = unsafe { slice::from_raw_parts(values, value_count) };
+    let out = vips_image_new_memory();
+    crate::runtime::header::vips_image_init_fields(
+        out,
+        input.Xsize,
+        input.Ysize,
+        input.Bands,
+        input.BandFmt,
+        input.Coding,
+        input.Type,
+        input.Xres,
+        input.Yres,
+    );
+
+    let Some(state) = (unsafe { image_state(out) }) else {
+        return ptr::null_mut();
+    };
+
+    let mut pixel = vec![0u8; bytes_per_pixel];
+    for band in 0..band_count {
+        let value = if value_count == 1 {
+            values[0]
+        } else {
+            values[band]
+        };
+        if !write_sample(
+            &mut pixel[band * sample_bytes..(band + 1) * sample_bytes],
+            input.BandFmt,
+            value,
+        ) {
+            unsafe {
+                crate::runtime::object::object_unref(out);
+            }
+            append_message_str("vips_image_new_from_image", "failed to encode constant pixel");
+            return ptr::null_mut();
+        }
+    }
+
+    state.pixels = pixel.repeat(pixel_count);
+    sync_pixels(out);
+    copy_metadata(out, image);
+    out
+}
+
+#[no_mangle]
+pub extern "C" fn vips_image_new_from_image1(image: *mut VipsImage, value: f64) -> *mut VipsImage {
+    vips_image_new_from_image(image, &value, 1)
+}
+
+#[no_mangle]
+pub extern "C" fn vips_image_new_matrix(width: libc::c_int, height: libc::c_int) -> *mut VipsImage {
+    if width <= 0 || height <= 0 {
+        append_message_str("vips_image_new_matrix", "matrix dimensions must be positive");
+        return ptr::null_mut();
+    }
+
+    let image = vips_image_new_memory();
+    crate::runtime::header::vips_image_init_fields(
+        image,
+        width,
+        height,
+        1,
+        VIPS_FORMAT_DOUBLE,
+        VIPS_CODING_NONE,
+        VIPS_INTERPRETATION_MATRIX,
+        1.0,
+        1.0,
+    );
+    if let Some(state) = unsafe { image_state(image) } {
+        state.pixels = vec![0; width as usize * height as usize * format_sizeof(VIPS_FORMAT_DOUBLE)];
+    }
+    sync_pixels(image);
+    image
+}
+
+#[no_mangle]
 pub extern "C" fn vips_image_new_matrix_from_array(
     width: libc::c_int,
     height: libc::c_int,
@@ -507,6 +621,15 @@ pub extern "C" fn vips_image_write_to_memory(
         ptr::copy_nonoverlapping(state.pixels.as_ptr(), out.cast::<u8>(), state.pixels.len());
     }
     out
+}
+
+#[no_mangle]
+pub extern "C" fn vips_image_free_buffer(_image: *mut VipsImage, buffer: *mut c_void) {
+    if !buffer.is_null() {
+        unsafe {
+            libc::free(buffer);
+        }
+    }
 }
 
 #[no_mangle]

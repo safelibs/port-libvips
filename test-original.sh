@@ -64,15 +64,15 @@ PY
   log "Testing dependents from dependents.json: ${DEPENDENTS[*]}"
 }
 
-build_and_install_original_libvips() {
+build_and_install_safe_libvips() {
   log "Installing libvips build dependencies"
   apt-get build-dep -y vips
 
   rm -rf /tmp/libvips-build
   mkdir -p /tmp/libvips-build
-  rsync -a --delete /work/original/ /tmp/libvips-build/source/
+  rsync -a --delete /work/safe/ /tmp/libvips-build/source/
 
-  log "Building original libvips Ubuntu packages"
+  log "Building safe libvips Ubuntu packages"
   (
     cd /tmp/libvips-build/source
     export DEB_BUILD_OPTIONS=nocheck
@@ -264,7 +264,7 @@ main() {
   enable_source_repositories
   install_base_tools
   load_dependents
-  build_and_install_original_libvips
+  build_and_install_safe_libvips
 
   local dep
   for dep in "${DEPENDENTS[@]}"; do

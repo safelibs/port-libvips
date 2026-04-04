@@ -1,0 +1,43 @@
+#include <dlfcn.h>
+#include <glib-object.h>
+#include <gmodule.h>
+
+typedef GType (*SafeVipsGetTypeFn)(void);
+
+static void *
+safe_vips_module_handle(void)
+{
+    static void *handle = NULL;
+
+    if (!handle)
+        handle = dlopen("libvips.so.42", RTLD_LAZY | RTLD_LOCAL);
+
+    return handle;
+}
+
+static GType
+safe_vips_module_call(const char *symbol_name)
+{
+    SafeVipsGetTypeFn fn;
+    void *handle;
+
+    handle = safe_vips_module_handle();
+    if (!handle)
+        return 0;
+
+    fn = (SafeVipsGetTypeFn) dlsym(handle, symbol_name);
+    if (!fn)
+        return 0;
+
+    return fn();
+}
+
+@ENTRYPOINT_WRAPPERS@
+
+G_MODULE_EXPORT const gchar *
+g_module_check_init(GModule *module)
+{
+    (void) module;
+@ENTRYPOINT_REGISTRATIONS@
+    return NULL;
+}

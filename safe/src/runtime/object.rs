@@ -1975,7 +1975,7 @@ pub extern "C" fn vips_object_set_argument_from_string(
     name: *const c_char,
     value: *const c_char,
 ) -> c_int {
-    if object.is_null() || name.is_null() || value.is_null() {
+    if object.is_null() || name.is_null() {
         return -1;
     }
     let class = unsafe { object_class(object) };
@@ -1995,17 +1995,35 @@ pub extern "C" fn vips_object_set_argument_from_string(
     }
 
     let mut gvalue: gobject_sys::GValue = unsafe { std::mem::zeroed() };
-    let input = unsafe { CStr::from_ptr(value) };
-    let result = unsafe { parse_string_for_value(pspec, input, &mut gvalue) };
+    let input = if value.is_null() {
+        None
+    } else {
+        Some(unsafe { CStr::from_ptr(value) })
+    };
+    let result = if value.is_null() && unsafe { (*pspec).value_type == gobject_sys::G_TYPE_BOOLEAN } {
+        unsafe {
+            gobject_sys::g_value_init(&mut gvalue, gobject_sys::G_TYPE_BOOLEAN);
+            gobject_sys::g_value_set_boolean(&mut gvalue, glib_sys::GTRUE);
+        }
+        Ok(())
+    } else if let Some(input) = input {
+        unsafe { parse_string_for_value(pspec, input, &mut gvalue) }
+    } else {
+        Err(())
+    };
     if result.is_err() {
-        append_message_str(
-            "vips_object_set_argument_from_string",
-            &format!(
-                "unable to parse {} for {}",
-                input.to_string_lossy(),
-                unsafe { CStr::from_ptr(name) }.to_string_lossy()
-            ),
-        );
+        let name = unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned();
+        if let Some(input) = input {
+            append_message_str(
+                "vips_object_set_argument_from_string",
+                &format!("unable to parse {} for {}", input.to_string_lossy(), name),
+            );
+        } else {
+            append_message_str(
+                "vips_object_set_argument_from_string",
+                &format!("no value supplied for argument '{}'", name),
+            );
+        }
         return -1;
     }
     unsafe {
