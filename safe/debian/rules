@@ -8,6 +8,7 @@
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/buildflags.mk
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 
 DESTDIR = $(CURDIR)/debian/tmp
 MESON_BUILD_DIR = obj-$(DEB_BUILD_GNU_TYPE)
@@ -43,8 +44,18 @@ override_dh_auto_install:
 	dh_auto_install --builddirectory=$(MESON_BUILD_DIR)
 	perl $(CURDIR)/debian/scripts/create_missing_manual_pages
 
+override_dh_install:
+	dh_install
+	runtime_libdir="$(CURDIR)/debian/libvips42t64/usr/lib/$(DEB_HOST_MULTIARCH)"; \
+	if [ -d "$$runtime_libdir" ]; then \
+		vips_alias="$$(printf 'libvips\tso\t42')"; \
+		vips_cpp_alias="$$(printf 'libvips-cpp\tso\t42')"; \
+		ln -sf libvips.so.42 "$$runtime_libdir/$$vips_alias"; \
+		ln -sf libvips-cpp.so.42 "$$runtime_libdir/$$vips_cpp_alias"; \
+	fi
+
 %:
 	dh $@ --buildsystem=meson --with gir
 
 .PHONY: override_dh_clean override_dh_auto_build override_dh_auto_configure \
-	override_dh_auto_test override_dh_auto_install
+	override_dh_auto_test override_dh_auto_install override_dh_install
