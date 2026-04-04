@@ -637,6 +637,14 @@ unsafe fn argument_instance(
     unsafe { hash_table_lookup(object_ref.argument_table, (*class).parent.pspec.cast()) }
 }
 
+#[no_mangle]
+pub extern "C" fn vips__argument_get_instance(
+    argument_class: *mut VipsArgumentClass,
+    object: *mut VipsObject,
+) -> *mut VipsArgumentInstance {
+    unsafe { argument_instance(object, argument_class) }
+}
+
 unsafe fn set_assigned(
     object: *mut VipsObject,
     pspec: *mut gobject_sys::GParamSpec,
@@ -1640,27 +1648,68 @@ pub extern "C" fn vips_object_new(
 }
 
 #[no_mangle]
-pub extern "C" fn vips_object_set_valist(
-    _object: *mut VipsObject,
-    _ap: *mut c_void,
+pub extern "C" fn vips_object_get_argument(
+    object: *mut VipsObject,
+    name: *const c_char,
+    pspec_out: *mut *mut gobject_sys::GParamSpec,
+    argument_class_out: *mut *mut VipsArgumentClass,
+    argument_instance_out: *mut *mut VipsArgumentInstance,
 ) -> c_int {
-    append_message_str("vips_object_set_valist", "not implemented");
-    -1
-}
+    if object.is_null() || name.is_null() {
+        append_message_str("vips_object_get_argument", "object or name is NULL");
+        return -1;
+    }
 
-#[no_mangle]
-pub extern "C" fn vips_object_set(_object: *mut VipsObject) -> c_int {
-    append_message_str("vips_object_set", "not implemented");
-    -1
-}
+    let class = unsafe { object_class(object) };
+    if class.is_null() {
+        append_message_str("vips_object_get_argument", "object class is NULL");
+        return -1;
+    }
 
-#[no_mangle]
-pub extern "C" fn vips_object_set_from_string(
-    _object: *mut VipsObject,
-    _string: *const c_char,
-) -> c_int {
-    append_message_str("vips_object_set_from_string", "not implemented");
-    -1
+    let pspec =
+        unsafe { gobject_sys::g_object_class_find_property(class.cast(), name) };
+    if pspec.is_null() {
+        append_message_str(
+            "vips_object_get_argument",
+            &format!(
+                "unknown argument {}",
+                unsafe { CStr::from_ptr(name) }.to_string_lossy()
+            ),
+        );
+        return -1;
+    }
+
+    let argument_class = unsafe { find_argument_class(class, pspec) };
+    if argument_class.is_null() {
+        append_message_str(
+            "vips_object_get_argument",
+            &format!(
+                "argument metadata missing for {}",
+                unsafe { CStr::from_ptr(gobject_sys::g_param_spec_get_name(pspec)) }
+                    .to_string_lossy()
+            ),
+        );
+        return -1;
+    }
+
+    let argument_instance = unsafe { argument_instance(object, argument_class) };
+    if !pspec_out.is_null() {
+        unsafe {
+            *pspec_out = pspec;
+        }
+    }
+    if !argument_class_out.is_null() {
+        unsafe {
+            *argument_class_out = argument_class;
+        }
+    }
+    if !argument_instance_out.is_null() {
+        unsafe {
+            *argument_instance_out = argument_instance;
+        }
+    }
+
+    0
 }
 
 #[no_mangle]

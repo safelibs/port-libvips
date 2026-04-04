@@ -839,23 +839,6 @@ pub extern "C" fn vips_operation_new(name: *const c_char) -> *mut VipsOperation 
     unsafe { object::object_new::<VipsOperation>(type_) }
 }
 
-#[no_mangle]
-pub extern "C" fn vips_call_required_optional(
-    _operation: *mut *mut VipsOperation,
-    _required: *mut c_void,
-    _optional: *mut c_void,
-) -> c_int {
-    append_message_str("vips_call_required_optional", "not implemented");
-    -1
-}
-
-#[no_mangle]
-pub extern "C" fn vips_call_options(
-    _group: *mut glib_sys::GOptionGroup,
-    _operation: *mut VipsOperation,
-) {
-}
-
 struct CallState {
     operation: *mut VipsOperation,
     argc: c_int,

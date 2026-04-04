@@ -8,6 +8,7 @@ const EXPORT_MAP_NAME: &str = "export.map";
 const CORE_BOOTSTRAP_PATH: &str = "reference/abi/core-bootstrap.symbols";
 const ERROR_SHIM_NAME: &str = "error_shim.c";
 const API_SHIM_NAME: &str = "api_shim.c";
+const API_TEMPLATE_PATH: &str = "build_support/api_shim.c";
 
 const PHASE4_SYMBOLS: &[&str] = &[
     "vips_add_option_entries",
@@ -25,6 +26,7 @@ const PHASE4_SYMBOLS: &[&str] = &[
     "vips_nickname_find",
     "vips_object_argument_needsstring",
     "vips_object_build",
+    "vips_object_get_argument",
     "vips_object_class_install_argument",
     "vips_object_dump",
     "vips_object_get_argument_to_string",
@@ -77,6 +79,7 @@ const PHASE4_SYMBOLS: &[&str] = &[
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={CORE_BOOTSTRAP_PATH}");
+    println!("cargo:rerun-if-changed={API_TEMPLATE_PATH}");
 
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
     let generated_dir = manifest_dir.join(GENERATED_DIR);
@@ -401,159 +404,5 @@ exit(1);
 }
 
 fn render_api_shim() -> &'static str {
-    r#"#include <glib.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
-#include <vips/vips.h>
-
-#if defined(__GNUC__)
-#define VIPS_PUBLIC __attribute__((visibility("default")))
-#else
-#define VIPS_PUBLIC
-#endif
-
-extern VipsImage *safe_vips_image_new_from_source_internal(
-    VipsSource *source, const char *option_string, int access);
-extern int safe_vips_image_write_to_target_internal(
-    VipsImage *image, const char *suffix, VipsTarget *target);
-extern int safe_vips_crop_internal(
-    VipsImage *in, VipsImage **out, int left, int top, int width, int height);
-extern int safe_vips_avg_internal(VipsImage *image, double *out);
-
-VIPS_PUBLIC VipsImage *
-vips_image_new_from_source(VipsSource *source, const char *option_string, ...)
-{
-    va_list ap;
-    const char *name;
-    int access = VIPS_ACCESS_RANDOM;
-
-    va_start(ap, option_string);
-    while ((name = va_arg(ap, const char *))) {
-        if (strcmp(name, "access") == 0)
-            access = va_arg(ap, int);
-        else
-            (void) va_arg(ap, void *);
-    }
-    va_end(ap);
-
-    return safe_vips_image_new_from_source_internal(source, option_string, access);
-}
-
-VIPS_PUBLIC int
-vips_image_write_to_target(VipsImage *in, const char *suffix, VipsTarget *target, ...)
-{
-    return safe_vips_image_write_to_target_internal(in, suffix, target);
-}
-
-VIPS_PUBLIC int
-vips_crop(VipsImage *in, VipsImage **out, int left, int top, int width, int height, ...)
-{
-    return safe_vips_crop_internal(in, out, left, top, width, height);
-}
-
-VIPS_PUBLIC int
-vips_avg(VipsImage *in, double *out, ...)
-{
-    return safe_vips_avg_internal(in, out);
-}
-
-VIPS_PUBLIC gboolean
-vips_buf_vappendf(VipsBuf *buf, const char *fmt, va_list ap)
-{
-    char *line;
-    gboolean ok;
-
-    line = g_strdup_vprintf(fmt, ap);
-    ok = vips_buf_appends(buf, line);
-    g_free(line);
-
-    return ok;
-}
-
-VIPS_PUBLIC gboolean
-vips_buf_appendf(VipsBuf *buf, const char *fmt, ...)
-{
-    va_list ap;
-    gboolean ok;
-
-    va_start(ap, fmt);
-    ok = vips_buf_vappendf(buf, fmt, ap);
-    va_end(ap);
-
-    return ok;
-}
-
-VIPS_PUBLIC gboolean
-vips_dbuf_writef(VipsDbuf *dbuf, const char *fmt, ...)
-{
-    va_list ap;
-    char *line;
-    gboolean ok;
-
-    va_start(ap, fmt);
-    line = g_strdup_vprintf(fmt, ap);
-    va_end(ap);
-
-    ok = vips_dbuf_write(dbuf, (const unsigned char *) line, strlen(line));
-    g_free(line);
-
-    return ok;
-}
-
-VIPS_PUBLIC int
-vips_image_pipelinev(VipsImage *image, VipsDemandStyle hint, ...)
-{
-    va_list ap;
-    VipsImage *value;
-    VipsImage **inputs;
-    int n = 0;
-    int i;
-    int result;
-
-    va_start(ap, hint);
-    while ((value = va_arg(ap, VipsImage *)))
-        n += 1;
-    va_end(ap);
-
-    inputs = g_new0(VipsImage *, n + 1);
-    va_start(ap, hint);
-    for (i = 0; i < n; i++)
-        inputs[i] = va_arg(ap, VipsImage *);
-    va_end(ap);
-
-    result = vips_image_pipeline_array(image, hint, inputs);
-    g_free(inputs);
-
-    return result;
-}
-
-VIPS_PUBLIC int
-vips_call(const char *operation_name, ...)
-{
-    (void) operation_name;
-    safe_vips_error_append_internal("vips_call", "not implemented");
-    return -1;
-}
-
-VIPS_PUBLIC int
-vips_call_split(const char *operation_name, va_list optional, ...)
-{
-    (void) operation_name;
-    (void) optional;
-    safe_vips_error_append_internal("vips_call_split", "not implemented");
-    return -1;
-}
-
-VIPS_PUBLIC int
-vips_call_split_option_string(const char *operation_name,
-    const char *option_string, va_list optional, ...)
-{
-    (void) operation_name;
-    (void) option_string;
-    (void) optional;
-    safe_vips_error_append_internal("vips_call_split_option_string", "not implemented");
-    return -1;
-}
-"#
+    include_str!("build_support/api_shim.c")
 }

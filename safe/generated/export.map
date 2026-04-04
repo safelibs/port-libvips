@@ -242,6 +242,7 @@ VIPS_42 {
     vips_object_build;
     vips_object_class_install_argument;
     vips_object_dump;
+    vips_object_get_argument;
     vips_object_get_argument_to_string;
     vips_object_get_description;
     vips_object_get_property;
