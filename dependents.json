@@ -17,7 +17,7 @@
   "selection_notes": [
     "This file records external Ubuntu 24.04 packages with direct compile-time or runtime relationships to libvips.",
     "Binary packages built from the libvips source package itself were excluded from the dependent list and recorded separately under excluded_same_source_packages.",
-    "Only iipimage-server has an optional libvips relationship; all other listed packages below directly build against libvips and/or directly depend on libvips at runtime."
+    "Only direct Build-Depends and direct runtime Depends are counted as libvips dependencies here; Recommends and Suggests are not counted as dependencies."
   ],
   "indexes_checked": [
     "https://archive.ubuntu.com/ubuntu/dists/noble/main/source/Sources.gz",
@@ -128,31 +128,15 @@
         "https://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/Packages.gz",
         "https://archive.ubuntu.com/ubuntu/pool/universe/r/ruby-vips/ruby-vips_2.1.4.orig.tar.gz"
       ]
-    },
+    }
+  ],
+  "considered_but_excluded": [
     {
       "package": "iipimage-server",
       "source_package": "iipimage",
       "version": "1.1-3build4",
       "repository_component": "universe",
-      "confidence": "medium",
-      "dependency_relationships": {
-        "compile_time": [],
-        "runtime": [],
-        "optional_runtime": [
-          "libvips-tools"
-        ]
-      },
-      "runtime_functionality_depends_on_libvips": "Optional only. Ubuntu does not build iipimage-server against libvips, but the package recommends libvips-tools for image-preparation workflows around the server's tiled multi-resolution image format.",
-      "evidence": [
-        "Ubuntu binary metadata for iipimage-server Recommends libvips-tools.",
-        "Ubuntu source metadata for iipimage has no libvips-dev Build-Depends, so the packaged server does not directly link against libvips.",
-        "The server's documented role is serving tiled multi-resolution images, making libvips relevant as optional tooling rather than a hard runtime dependency."
-      ],
-      "sources": [
-        "https://archive.ubuntu.com/ubuntu/dists/noble/universe/source/Sources.gz",
-        "https://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/Packages.gz",
-        "https://archive.ubuntu.com/ubuntu/pool/universe/i/iipimage/iipimage_1.1.orig.tar.bz2"
-      ]
+      "reason": "Excluded because Ubuntu metadata shows no libvips Build-Depends and no runtime Depends; it only Recommends libvips-tools."
     }
   ],
   "excluded_same_source_packages": [
