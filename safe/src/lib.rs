@@ -10,10 +10,25 @@ pub use abi::object::*;
 pub use abi::operation::*;
 pub use abi::region::*;
 pub use abi::r#type::*;
+pub use runtime::buf::*;
+pub use runtime::cache::*;
+pub use runtime::connection::*;
+pub use runtime::dbuf::*;
 pub use runtime::error::*;
+pub use runtime::generate::*;
+pub use runtime::header::*;
+pub use runtime::image::*;
 pub use runtime::init::*;
+pub use runtime::memory::*;
 pub use runtime::object::*;
+pub use runtime::rect::*;
+pub use runtime::region::*;
+pub use runtime::sbuf::*;
+pub use runtime::source::*;
+pub use runtime::target::*;
+pub use runtime::threadpool::*;
 pub use runtime::r#type::*;
+pub use runtime::vips_native::*;
 
 pub const VIPS_SAFE_SCAFFOLD_VERSION: &str = env!("CARGO_PKG_VERSION");
 

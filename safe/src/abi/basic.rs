@@ -1,4 +1,4 @@
-use libc::{c_int, c_void};
+use libc::{c_char, c_int, c_void};
 
 use crate::abi::image::VipsImage;
 use crate::abi::region::VipsRegion;
@@ -28,10 +28,24 @@ pub type VipsSListFold2Fn = Option<
 
 #[repr(C)]
 pub struct VipsBuf {
-    _opaque: [u8; 0],
+    pub base: *mut c_char,
+    pub mx: c_int,
+    pub i: c_int,
+    pub full: glib_sys::gboolean,
+    pub lasti: c_int,
+    pub dynamic: glib_sys::gboolean,
 }
 
 #[repr(C)]
+pub struct VipsDbuf {
+    pub data: *mut u8,
+    pub allocated_size: usize,
+    pub data_size: usize,
+    pub write_point: usize,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct VipsRect {
     pub left: c_int,
     pub top: c_int,

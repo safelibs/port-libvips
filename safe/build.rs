@@ -7,6 +7,7 @@ const GENERATED_DIR: &str = "generated";
 const EXPORT_MAP_NAME: &str = "export.map";
 const CORE_BOOTSTRAP_PATH: &str = "reference/abi/core-bootstrap.symbols";
 const ERROR_SHIM_NAME: &str = "error_shim.c";
+const API_SHIM_NAME: &str = "api_shim.c";
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -20,7 +21,7 @@ fn main() {
     let export_map = render_export_map(&manifest_dir.join(CORE_BOOTSTRAP_PATH));
     fs::write(&export_map_path, export_map).expect("write export map");
 
-    compile_error_shim(&manifest_dir);
+    compile_c_shims(&manifest_dir);
 
     println!("cargo:rustc-cdylib-link-arg=-Wl,-soname,{SONAME}");
     println!(
@@ -65,10 +66,12 @@ fn read_symbols(path: &Path) -> Vec<String> {
         .collect()
 }
 
-fn compile_error_shim(manifest_dir: &Path) {
+fn compile_c_shims(manifest_dir: &Path) {
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR"));
-    let source_path = out_dir.join(ERROR_SHIM_NAME);
-    fs::write(&source_path, render_error_shim()).expect("write error shim");
+    let error_source_path = out_dir.join(ERROR_SHIM_NAME);
+    let api_source_path = out_dir.join(API_SHIM_NAME);
+    fs::write(&error_source_path, render_error_shim()).expect("write error shim");
+    fs::write(&api_source_path, render_api_shim()).expect("write api shim");
 
     let gio = pkg_config::Config::new()
         .cargo_metadata(false)
@@ -77,7 +80,8 @@ fn compile_error_shim(manifest_dir: &Path) {
 
     let mut build = cc::Build::new();
     build.cargo_metadata(false);
-    build.file(&source_path);
+    build.file(&error_source_path);
+    build.file(&api_source_path);
     build.flag_if_supported("-std=c99");
     build.flag_if_supported("-fvisibility=hidden");
     build.warnings(false);
@@ -323,7 +327,137 @@ vips_error_exit(const char *fmt, ...)
 
 	fprintf(stderr, "%s", vips_error_buffer());
 	vips_shutdown();
-	exit(1);
+exit(1);
+}
+"#
+}
+
+fn render_api_shim() -> &'static str {
+    r#"#include <glib.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+#include <vips/vips.h>
+
+#if defined(__GNUC__)
+#define VIPS_PUBLIC __attribute__((visibility("default")))
+#else
+#define VIPS_PUBLIC
+#endif
+
+extern VipsImage *safe_vips_image_new_from_source_internal(
+    VipsSource *source, const char *option_string, int access);
+extern int safe_vips_image_write_to_target_internal(
+    VipsImage *image, const char *suffix, VipsTarget *target);
+extern int safe_vips_crop_internal(
+    VipsImage *in, VipsImage **out, int left, int top, int width, int height);
+extern int safe_vips_avg_internal(VipsImage *image, double *out);
+
+VIPS_PUBLIC VipsImage *
+vips_image_new_from_source(VipsSource *source, const char *option_string, ...)
+{
+    va_list ap;
+    const char *name;
+    int access = VIPS_ACCESS_RANDOM;
+
+    va_start(ap, option_string);
+    while ((name = va_arg(ap, const char *))) {
+        if (strcmp(name, "access") == 0)
+            access = va_arg(ap, int);
+        else
+            (void) va_arg(ap, void *);
+    }
+    va_end(ap);
+
+    return safe_vips_image_new_from_source_internal(source, option_string, access);
+}
+
+VIPS_PUBLIC int
+vips_image_write_to_target(VipsImage *in, const char *suffix, VipsTarget *target, ...)
+{
+    return safe_vips_image_write_to_target_internal(in, suffix, target);
+}
+
+VIPS_PUBLIC int
+vips_crop(VipsImage *in, VipsImage **out, int left, int top, int width, int height, ...)
+{
+    return safe_vips_crop_internal(in, out, left, top, width, height);
+}
+
+VIPS_PUBLIC int
+vips_avg(VipsImage *in, double *out, ...)
+{
+    return safe_vips_avg_internal(in, out);
+}
+
+VIPS_PUBLIC gboolean
+vips_buf_vappendf(VipsBuf *buf, const char *fmt, va_list ap)
+{
+    char *line;
+    gboolean ok;
+
+    line = g_strdup_vprintf(fmt, ap);
+    ok = vips_buf_appends(buf, line);
+    g_free(line);
+
+    return ok;
+}
+
+VIPS_PUBLIC gboolean
+vips_buf_appendf(VipsBuf *buf, const char *fmt, ...)
+{
+    va_list ap;
+    gboolean ok;
+
+    va_start(ap, fmt);
+    ok = vips_buf_vappendf(buf, fmt, ap);
+    va_end(ap);
+
+    return ok;
+}
+
+VIPS_PUBLIC gboolean
+vips_dbuf_writef(VipsDbuf *dbuf, const char *fmt, ...)
+{
+    va_list ap;
+    char *line;
+    gboolean ok;
+
+    va_start(ap, fmt);
+    line = g_strdup_vprintf(fmt, ap);
+    va_end(ap);
+
+    ok = vips_dbuf_write(dbuf, (const unsigned char *) line, strlen(line));
+    g_free(line);
+
+    return ok;
+}
+
+VIPS_PUBLIC int
+vips_image_pipelinev(VipsImage *image, VipsDemandStyle hint, ...)
+{
+    va_list ap;
+    VipsImage *value;
+    VipsImage **inputs;
+    int n = 0;
+    int i;
+    int result;
+
+    va_start(ap, hint);
+    while ((value = va_arg(ap, VipsImage *)))
+        n += 1;
+    va_end(ap);
+
+    inputs = g_new0(VipsImage *, n + 1);
+    va_start(ap, hint);
+    for (i = 0; i < n; i++)
+        inputs[i] = va_arg(ap, VipsImage *);
+    va_end(ap);
+
+    result = vips_image_pipeline_array(image, hint, inputs);
+    g_free(inputs);
+
+    return result;
 }
 "#
 }

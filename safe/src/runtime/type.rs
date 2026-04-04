@@ -3,6 +3,8 @@ use std::ptr;
 use std::sync::OnceLock;
 
 use libc::{c_char, c_int, c_void};
+use libc::strlen;
+use gobject_sys::{G_TYPE_DOUBLE, G_TYPE_INT};
 
 use crate::abi::basic::*;
 use crate::abi::image::*;
@@ -63,7 +65,13 @@ unsafe extern "C" fn save_string_free(src: glib_sys::gpointer) {
 unsafe fn area_copy_impl(area: *mut VipsArea) -> *mut VipsArea {
     if !area.is_null() {
         unsafe {
+            if !(*area).lock.is_null() {
+                glib_sys::g_mutex_lock((*area).lock);
+            }
             (*area).count += 1;
+            if !(*area).lock.is_null() {
+                glib_sys::g_mutex_unlock((*area).lock);
+            }
         }
     }
     area
@@ -75,8 +83,14 @@ unsafe fn area_free_impl(area: *mut VipsArea) {
     }
 
     unsafe {
+        if !(*area).lock.is_null() {
+            glib_sys::g_mutex_lock((*area).lock);
+        }
         (*area).count -= 1;
         if (*area).count > 0 {
+            if !(*area).lock.is_null() {
+                glib_sys::g_mutex_unlock((*area).lock);
+            }
             return;
         }
 
@@ -87,6 +101,12 @@ unsafe fn area_free_impl(area: *mut VipsArea) {
         }
 
         (*area).data = ptr::null_mut();
+        if !(*area).lock.is_null() {
+            glib_sys::g_mutex_unlock((*area).lock);
+            glib_sys::g_mutex_clear((*area).lock);
+            glib_sys::g_free((*area).lock.cast());
+            (*area).lock = ptr::null_mut();
+        }
         glib_sys::g_free(area.cast());
     }
 }
@@ -901,4 +921,509 @@ pub(crate) fn ensure_types() {
     let _ = vips_kernel_get_type();
     let _ = vips_size_get_type();
     let _ = vips_token_get_type();
+}
+
+unsafe fn allocate_lock() -> *mut glib_sys::GMutex {
+    let lock = unsafe { glib_sys::g_malloc0(size_of::<glib_sys::GMutex>()) }.cast::<glib_sys::GMutex>();
+    if !lock.is_null() {
+        unsafe {
+            glib_sys::g_mutex_init(lock);
+        }
+    }
+    lock
+}
+
+#[no_mangle]
+pub extern "C" fn vips_thing_new(i: c_int) -> *mut VipsThing {
+    let thing = unsafe { glib_sys::g_malloc(size_of::<VipsThing>()) }.cast::<VipsThing>();
+    if let Some(thing) = unsafe { thing.as_mut() } {
+        thing.i = i;
+    }
+    thing
+}
+
+#[no_mangle]
+pub extern "C" fn vips_area_copy(area: *mut VipsArea) -> *mut VipsArea {
+    unsafe { area_copy_impl(area) }
+}
+
+#[no_mangle]
+pub extern "C" fn vips_area_free_cb(mem: *mut c_void, _area: *mut c_void) -> c_int {
+    if !mem.is_null() {
+        unsafe {
+            glib_sys::g_free(mem);
+        }
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn vips_area_unref(area: *mut VipsArea) {
+    unsafe { area_free_impl(area) };
+}
+
+#[no_mangle]
+pub extern "C" fn vips_area_new(
+    free_fn: VipsCallbackFn,
+    data: *mut c_void,
+) -> *mut VipsArea {
+    let area = unsafe { glib_sys::g_malloc0(size_of::<VipsArea>()) }.cast::<VipsArea>();
+    let Some(area_ref) = (unsafe { area.as_mut() }) else {
+        return ptr::null_mut();
+    };
+    area_ref.data = data;
+    area_ref.length = 0;
+    area_ref.n = 0;
+    area_ref.count = 1;
+    area_ref.lock = unsafe { allocate_lock() };
+    area_ref.free_fn = free_fn;
+    area_ref.client = ptr::null_mut();
+    area_ref.r#type = 0;
+    area_ref.sizeof_type = 0;
+    area
+}
+
+#[no_mangle]
+pub extern "C" fn vips_area_new_array(
+    type_: glib_sys::GType,
+    sizeof_type: usize,
+    n: c_int,
+) -> *mut VipsArea {
+    let bytes = sizeof_type.saturating_mul(n.max(0) as usize);
+    let data = unsafe { glib_sys::g_malloc0(bytes) };
+    let area = vips_area_new(Some(vips_area_free_cb), data);
+    if let Some(area) = unsafe { area.as_mut() } {
+        area.length = bytes;
+        area.n = n.max(0);
+        area.r#type = type_;
+        area.sizeof_type = sizeof_type;
+    }
+    area
+}
+
+unsafe extern "C" fn free_object_array(data: *mut c_void, area: *mut c_void) -> c_int {
+    let objects = data.cast::<*mut gobject_sys::GObject>();
+    let area = area.cast::<VipsArea>();
+    if !objects.is_null() && !area.is_null() {
+        for i in 0..unsafe { (*area).n.max(0) as isize } {
+            let item = unsafe { *objects.offset(i) };
+            if !item.is_null() {
+                unsafe {
+                    gobject_sys::g_object_unref(item.cast());
+                }
+            }
+        }
+        unsafe {
+            glib_sys::g_free(objects.cast());
+        }
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn vips_area_new_array_object(n: c_int) -> *mut VipsArea {
+    let count = n.max(0) as usize + 1;
+    let data = unsafe { glib_sys::g_malloc0(count.saturating_mul(size_of::<*mut gobject_sys::GObject>())) };
+    let area = vips_area_new(Some(free_object_array), data);
+    if let Some(area) = unsafe { area.as_mut() } {
+        area.length = count.saturating_mul(size_of::<*mut gobject_sys::GObject>());
+        area.n = n.max(0);
+        area.r#type = unsafe { gobject_sys::g_object_get_type() };
+        area.sizeof_type = size_of::<*mut gobject_sys::GObject>();
+    }
+    area
+}
+
+#[no_mangle]
+pub extern "C" fn vips_area_get_data(
+    area: *mut VipsArea,
+    length: *mut usize,
+    n: *mut c_int,
+    type_: *mut glib_sys::GType,
+    sizeof_type: *mut usize,
+) -> *mut c_void {
+    let Some(area) = (unsafe { area.as_ref() }) else {
+        return ptr::null_mut();
+    };
+    unsafe {
+        if !length.is_null() {
+            *length = area.length;
+        }
+        if !n.is_null() {
+            *n = area.n;
+        }
+        if !type_.is_null() {
+            *type_ = area.r#type;
+        }
+        if !sizeof_type.is_null() {
+            *sizeof_type = area.sizeof_type;
+        }
+    }
+    area.data
+}
+
+#[no_mangle]
+pub extern "C" fn vips_ref_string_new(str_: *const c_char) -> *mut VipsRefString {
+    let text = if str_.is_null() {
+        ptr::null_mut()
+    } else {
+        unsafe { glib_sys::g_strdup(str_) }.cast::<c_void>()
+    };
+    let area = vips_area_new(Some(vips_area_free_cb), text);
+    let Some(area_ref) = (unsafe { area.as_mut() }) else {
+        return ptr::null_mut();
+    };
+    if !text.is_null() {
+        area_ref.length = unsafe { strlen(text.cast::<c_char>()) as usize };
+    }
+    area.cast::<VipsRefString>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_ref_string_get(
+    refstr: *mut VipsRefString,
+    length: *mut usize,
+) -> *const c_char {
+    let Some(area) = (unsafe { refstr.as_ref() }) else {
+        return ptr::null();
+    };
+    unsafe {
+        if !length.is_null() {
+            *length = area.area.length;
+        }
+    }
+    area.area.data.cast::<c_char>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_blob_new(
+    free_fn: VipsCallbackFn,
+    data: *const c_void,
+    length: usize,
+) -> *mut VipsBlob {
+    let area = vips_area_new(free_fn, data.cast_mut());
+    if let Some(area) = unsafe { area.as_mut() } {
+        area.length = length;
+    }
+    area.cast::<VipsBlob>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_blob_copy(data: *const c_void, length: usize) -> *mut VipsBlob {
+    if data.is_null() && length > 0 {
+        return ptr::null_mut();
+    }
+    let copy = if length == 0 {
+        ptr::null_mut()
+    } else {
+        unsafe { glib_sys::g_malloc(length) }
+    };
+    if !copy.is_null() && !data.is_null() {
+        unsafe {
+            ptr::copy_nonoverlapping(data.cast::<u8>(), copy.cast::<u8>(), length);
+        }
+    }
+    vips_blob_new(Some(vips_area_free_cb), copy, length)
+}
+
+#[no_mangle]
+pub extern "C" fn vips_blob_get(blob: *mut VipsBlob, length: *mut usize) -> *const c_void {
+    let Some(blob) = (unsafe { blob.as_ref() }) else {
+        return ptr::null();
+    };
+    unsafe {
+        if !length.is_null() {
+            *length = blob.area.length;
+        }
+    }
+    blob.area.data.cast::<c_void>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_blob_set(
+    blob: *mut VipsBlob,
+    free_fn: VipsCallbackFn,
+    data: *const c_void,
+    length: usize,
+) {
+    let Some(blob) = (unsafe { blob.as_mut() }) else {
+        return;
+    };
+    if let Some(existing) = blob.area.free_fn {
+        if !blob.area.data.is_null() {
+            let _ = unsafe { existing(blob.area.data, blob as *mut _ as *mut c_void) };
+        }
+    }
+    blob.area.data = data.cast_mut();
+    blob.area.length = length;
+    blob.area.free_fn = free_fn;
+}
+
+#[no_mangle]
+pub extern "C" fn vips_array_double_new(array: *const f64, n: c_int) -> *mut VipsArrayDouble {
+    let area = vips_area_new_array(G_TYPE_DOUBLE, size_of::<f64>(), n);
+    if let Some(area) = unsafe { area.as_mut() } {
+        if !array.is_null() && n > 0 {
+            unsafe {
+                ptr::copy_nonoverlapping(array.cast::<u8>(), area.data.cast::<u8>(), n as usize * size_of::<f64>());
+            }
+        }
+    }
+    area.cast::<VipsArrayDouble>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_array_double_get(array: *mut VipsArrayDouble, n: *mut c_int) -> *mut f64 {
+    let Some(array) = (unsafe { array.as_ref() }) else {
+        return ptr::null_mut();
+    };
+    unsafe {
+        if !n.is_null() {
+            *n = array.area.n;
+        }
+    }
+    array.area.data.cast::<f64>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_array_int_new(array: *const c_int, n: c_int) -> *mut VipsArrayInt {
+    let area = vips_area_new_array(G_TYPE_INT, size_of::<c_int>(), n);
+    if let Some(area) = unsafe { area.as_mut() } {
+        if !array.is_null() && n > 0 {
+            unsafe {
+                ptr::copy_nonoverlapping(array.cast::<u8>(), area.data.cast::<u8>(), n as usize * size_of::<c_int>());
+            }
+        }
+    }
+    area.cast::<VipsArrayInt>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_array_int_get(array: *mut VipsArrayInt, n: *mut c_int) -> *mut c_int {
+    let Some(array) = (unsafe { array.as_ref() }) else {
+        return ptr::null_mut();
+    };
+    unsafe {
+        if !n.is_null() {
+            *n = array.area.n;
+        }
+    }
+    array.area.data.cast::<c_int>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_set_area(
+    value: *mut gobject_sys::GValue,
+    free_fn: VipsCallbackFn,
+    data: *mut c_void,
+) {
+    let area = vips_area_new(free_fn, data);
+    unsafe {
+        gobject_sys::g_value_init(value, vips_area_get_type());
+        gobject_sys::g_value_set_boxed(value, area.cast::<c_void>());
+    }
+    vips_area_unref(area);
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_get_area(
+    value: *const gobject_sys::GValue,
+    length: *mut usize,
+) -> *mut c_void {
+    let area = unsafe { gobject_sys::g_value_get_boxed(value).cast::<VipsArea>() };
+    let Some(area) = (unsafe { area.as_ref() }) else {
+        return ptr::null_mut();
+    };
+    unsafe {
+        if !length.is_null() {
+            *length = area.length;
+        }
+    }
+    area.data
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_get_save_string(
+    value: *const gobject_sys::GValue,
+) -> *const c_char {
+    let save = unsafe { gobject_sys::g_value_get_boxed(value).cast::<VipsSaveString>() };
+    unsafe { save.as_ref() }.map_or(ptr::null(), |save| save.s.cast_const())
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_set_save_string(
+    value: *mut gobject_sys::GValue,
+    str_: *const c_char,
+) {
+    unsafe {
+        gobject_sys::g_value_init(value, vips_save_string_get_type());
+        let save = glib_sys::g_malloc0(size_of::<VipsSaveString>()).cast::<VipsSaveString>();
+        if let Some(save) = save.as_mut() {
+            save.s = if str_.is_null() { ptr::null_mut() } else { glib_sys::g_strdup(str_) };
+        }
+        gobject_sys::g_value_take_boxed(value, save.cast::<c_void>());
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_get_ref_string(
+    value: *const gobject_sys::GValue,
+    length: *mut usize,
+) -> *const c_char {
+    let refstr = unsafe { gobject_sys::g_value_get_boxed(value).cast::<VipsRefString>() };
+    vips_ref_string_get(refstr, length)
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_set_ref_string(
+    value: *mut gobject_sys::GValue,
+    str_: *const c_char,
+) {
+    let refstr = vips_ref_string_new(str_);
+    unsafe {
+        gobject_sys::g_value_init(value, vips_ref_string_get_type());
+        gobject_sys::g_value_set_boxed(value, refstr.cast::<c_void>());
+    }
+    vips_area_unref(refstr.cast::<VipsArea>());
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_get_blob(
+    value: *const gobject_sys::GValue,
+    length: *mut usize,
+) -> *mut c_void {
+    vips_value_get_area(value, length)
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_set_blob(
+    value: *mut gobject_sys::GValue,
+    free_fn: VipsCallbackFn,
+    data: *const c_void,
+    length: usize,
+) {
+    let blob = vips_blob_new(free_fn, data, length);
+    unsafe {
+        gobject_sys::g_value_init(value, vips_blob_get_type());
+        gobject_sys::g_value_set_boxed(value, blob.cast::<c_void>());
+    }
+    vips_area_unref(blob.cast::<VipsArea>());
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_set_blob_free(
+    value: *mut gobject_sys::GValue,
+    data: *mut c_void,
+    length: usize,
+) {
+    vips_value_set_blob(value, Some(vips_area_free_cb), data.cast_const(), length);
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_set_array(
+    value: *mut gobject_sys::GValue,
+    n: c_int,
+    type_: glib_sys::GType,
+    sizeof_type: usize,
+) {
+    let area = if type_ == unsafe { gobject_sys::g_object_get_type() } {
+        vips_area_new_array_object(n)
+    } else {
+        vips_area_new_array(type_, sizeof_type, n)
+    };
+    unsafe {
+        gobject_sys::g_value_init(value, vips_area_get_type());
+        gobject_sys::g_value_set_boxed(value, area.cast::<c_void>());
+    }
+    vips_area_unref(area);
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_get_array(
+    value: *const gobject_sys::GValue,
+    n: *mut c_int,
+    type_: *mut glib_sys::GType,
+    sizeof_type: *mut usize,
+) -> *mut c_void {
+    let area = unsafe { gobject_sys::g_value_get_boxed(value).cast::<VipsArea>() };
+    let Some(area) = (unsafe { area.as_ref() }) else {
+        return ptr::null_mut();
+    };
+    unsafe {
+        if !n.is_null() {
+            *n = area.n;
+        }
+        if !type_.is_null() {
+            *type_ = area.r#type;
+        }
+        if !sizeof_type.is_null() {
+            *sizeof_type = area.sizeof_type;
+        }
+    }
+    area.data
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_get_array_double(
+    value: *const gobject_sys::GValue,
+    n: *mut c_int,
+) -> *mut f64 {
+    vips_value_get_array(value, n, ptr::null_mut(), ptr::null_mut()).cast::<f64>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_set_array_double(
+    value: *mut gobject_sys::GValue,
+    array: *const f64,
+    n: c_int,
+) {
+    let area = vips_array_double_new(array, n);
+    unsafe {
+        gobject_sys::g_value_init(value, vips_array_double_get_type());
+        gobject_sys::g_value_set_boxed(value, area.cast::<c_void>());
+    }
+    vips_area_unref(area.cast::<VipsArea>());
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_get_array_int(
+    value: *const gobject_sys::GValue,
+    n: *mut c_int,
+) -> *mut c_int {
+    vips_value_get_array(value, n, ptr::null_mut(), ptr::null_mut()).cast::<c_int>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_set_array_int(
+    value: *mut gobject_sys::GValue,
+    array: *const c_int,
+    n: c_int,
+) {
+    let area = vips_array_int_new(array, n);
+    unsafe {
+        gobject_sys::g_value_init(value, vips_array_int_get_type());
+        gobject_sys::g_value_set_boxed(value, area.cast::<c_void>());
+    }
+    vips_area_unref(area.cast::<VipsArea>());
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_get_array_object(
+    value: *const gobject_sys::GValue,
+    n: *mut c_int,
+) -> *mut *mut gobject_sys::GObject {
+    vips_value_get_array(value, n, ptr::null_mut(), ptr::null_mut()).cast::<*mut gobject_sys::GObject>()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_value_set_array_object(
+    value: *mut gobject_sys::GValue,
+    n: c_int,
+) {
+    vips_value_set_array(
+        value,
+        n,
+        unsafe { gobject_sys::g_object_get_type() },
+        size_of::<*mut gobject_sys::GObject>(),
+    );
 }
