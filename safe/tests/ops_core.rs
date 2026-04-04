@@ -6,12 +6,7 @@ use std::sync::{Mutex, Once, OnceLock};
 use vips::*;
 
 unsafe extern "C" {
-    fn vips_add(
-        left: *mut VipsImage,
-        right: *mut VipsImage,
-        out: *mut *mut VipsImage,
-        ...
-    ) -> i32;
+    fn vips_add(left: *mut VipsImage, right: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
     fn vips_linear(
         input: *mut VipsImage,
         out: *mut *mut VipsImage,
@@ -31,12 +26,8 @@ unsafe extern "C" {
     ) -> i32;
     fn vips_grey(out: *mut *mut VipsImage, width: i32, height: i32, ...) -> i32;
     fn vips_gaussmat(out: *mut *mut VipsImage, sigma: f64, min_ampl: f64, ...) -> i32;
-    fn vips_conv(
-        input: *mut VipsImage,
-        out: *mut *mut VipsImage,
-        mask: *mut VipsImage,
-        ...
-    ) -> i32;
+    fn vips_conv(input: *mut VipsImage, out: *mut *mut VipsImage, mask: *mut VipsImage, ...)
+        -> i32;
     fn vips_hist_equal(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
     fn vips_mask_ideal(
         out: *mut *mut VipsImage,
@@ -119,7 +110,6 @@ fn read_samples(image: *mut VipsImage) -> Vec<f64> {
     values
 }
 
-
 fn unref_image(image: *mut VipsImage) {
     unsafe {
         gobject_sys::g_object_unref(image.cast());
@@ -146,7 +136,16 @@ fn arithmetic_and_extract_area_flow() {
     let b = [1.0];
     let mut linear = ptr::null_mut();
     assert_eq!(
-        unsafe { vips_linear(left, &mut linear, a.as_ptr(), b.as_ptr(), 1, ptr::null::<c_char>()) },
+        unsafe {
+            vips_linear(
+                left,
+                &mut linear,
+                a.as_ptr(),
+                b.as_ptr(),
+                1,
+                ptr::null::<c_char>(),
+            )
+        },
         0
     );
     let linear_values = read_samples(linear);
@@ -176,27 +175,54 @@ fn create_convolution_histogram_morphology_and_freqfilt_flow() {
     init_vips();
 
     let mut grey = ptr::null_mut();
-    assert_eq!(unsafe { vips_grey(&mut grey, 4, 4, c"uchar".as_ptr(), 1i32, ptr::null::<c_char>()) }, 0);
+    assert_eq!(
+        unsafe {
+            vips_grey(
+                &mut grey,
+                4,
+                4,
+                c"uchar".as_ptr(),
+                1i32,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
     assert_eq!(unsafe { vips_image_get_format(grey) }, VIPS_FORMAT_UCHAR);
 
     let mut gauss = ptr::null_mut();
-    assert_eq!(unsafe { vips_gaussmat(&mut gauss, 1.0, 0.2, ptr::null::<c_char>()) }, 0);
+    assert_eq!(
+        unsafe { vips_gaussmat(&mut gauss, 1.0, 0.2, ptr::null::<c_char>()) },
+        0
+    );
     assert_eq!(unsafe { vips_image_get_width(gauss) }, 3);
 
     let mut blurred = ptr::null_mut();
-    assert_eq!(unsafe { vips_conv(grey, &mut blurred, gauss, ptr::null::<c_char>()) }, 0);
+    assert_eq!(
+        unsafe { vips_conv(grey, &mut blurred, gauss, ptr::null::<c_char>()) },
+        0
+    );
     assert_eq!(unsafe { vips_image_get_width(blurred) }, 4);
     assert_eq!(unsafe { vips_image_get_height(blurred) }, 4);
 
     let mut hist_equal = ptr::null_mut();
-    assert_eq!(unsafe { vips_hist_equal(grey, &mut hist_equal, ptr::null::<c_char>()) }, 0);
+    assert_eq!(
+        unsafe { vips_hist_equal(grey, &mut hist_equal, ptr::null::<c_char>()) },
+        0
+    );
     assert_eq!(unsafe { vips_image_get_width(hist_equal) }, 4);
 
     let mut mask = ptr::null_mut();
-    assert_eq!(unsafe { vips_mask_ideal(&mut mask, 4, 4, 0.5, ptr::null::<c_char>()) }, 0);
+    assert_eq!(
+        unsafe { vips_mask_ideal(&mut mask, 4, 4, 0.5, ptr::null::<c_char>()) },
+        0
+    );
 
     let mut filtered = ptr::null_mut();
-    assert_eq!(unsafe { vips_freqmult(blurred, mask, &mut filtered, ptr::null::<c_char>()) }, 0);
+    assert_eq!(
+        unsafe { vips_freqmult(blurred, mask, &mut filtered, ptr::null::<c_char>()) },
+        0
+    );
     assert_eq!(unsafe { vips_image_get_width(filtered) }, 4);
 
     let morph_mask = image_from_uchar(3, 3, 1, &[1, 1, 1, 1, 1, 1, 1, 1, 1]);

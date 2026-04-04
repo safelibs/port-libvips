@@ -30,7 +30,12 @@ unsafe extern "C" fn read_cb(
     _length: i64,
     _user_data: glib_sys::gpointer,
 ) -> i64 {
-    if let Some(state) = states().lock().expect("states").get(&(source as usize)).cloned() {
+    if let Some(state) = states()
+        .lock()
+        .expect("states")
+        .get(&(source as usize))
+        .cloned()
+    {
         state.read_calls.fetch_add(1, Ordering::SeqCst);
     }
     -1
@@ -64,7 +69,12 @@ fn failing_source() -> (*mut VipsSource, Arc<FailingSourceState>) {
             source.cast(),
             c"read".as_ptr(),
             Some(std::mem::transmute::<
-                unsafe extern "C" fn(*mut VipsSourceCustom, *mut c_void, i64, glib_sys::gpointer) -> i64,
+                unsafe extern "C" fn(
+                    *mut VipsSourceCustom,
+                    *mut c_void,
+                    i64,
+                    glib_sys::gpointer,
+                ) -> i64,
                 unsafe extern "C" fn(),
             >(read_cb)),
             ptr::null_mut(),

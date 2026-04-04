@@ -734,12 +734,7 @@ pub extern "C" fn safe_vips_crop_internal(
         input_ref.Yres,
     );
     if let Some(out_state) = unsafe { image_state(crop) } {
-        out_state.pixels = vec![
-            0;
-            width_u
-                .saturating_mul(height_u)
-                .saturating_mul(bpp)
-        ];
+        out_state.pixels = vec![0; width_u.saturating_mul(height_u).saturating_mul(bpp)];
         for y in 0..height_u {
             let src_y = top_u + y;
             let src_x = left_u;

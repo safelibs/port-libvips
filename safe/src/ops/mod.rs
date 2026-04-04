@@ -6,8 +6,8 @@ mod create;
 mod draw;
 mod freqfilt;
 mod histogram;
-mod mosaicing;
 mod morphology;
+mod mosaicing;
 mod resample;
 
 use std::ffi::{c_void, CStr, CString};
@@ -27,9 +27,9 @@ use crate::runtime::image::{
     safe_vips_image_new_from_source_internal, safe_vips_image_write_to_target_internal,
 };
 use crate::runtime::object;
+use crate::runtime::r#type::{vips_array_double_get, vips_blob_get};
 use crate::runtime::source::{vips_source_new_from_file, vips_source_new_from_memory};
 use crate::runtime::target::vips_target_new_to_file;
-use crate::runtime::r#type::{vips_array_double_get, vips_blob_get};
 
 const SUPPORTED_OPERATIONS: &[&str] = &[
     "abs",
@@ -196,7 +196,8 @@ unsafe fn argument_info(
         if class.is_null() {
             return Err(());
         }
-        let fallback = unsafe { gobject_sys::g_object_class_find_property(class.cast(), name.as_ptr()) };
+        let fallback =
+            unsafe { gobject_sys::g_object_class_find_property(class.cast(), name.as_ptr()) };
         if fallback.is_null() {
             return Err(());
         }
@@ -275,12 +276,17 @@ pub(crate) unsafe fn get_string(object: *mut VipsObject, name: &str) -> Result<O
         Ok(None)
     } else {
         Ok(Some(
-            unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned(),
+            unsafe { CStr::from_ptr(ptr) }
+                .to_string_lossy()
+                .into_owned(),
         ))
     }
 }
 
-pub(crate) unsafe fn get_image_ref(object: *mut VipsObject, name: &str) -> Result<*mut VipsImage, ()> {
+pub(crate) unsafe fn get_image_ref(
+    object: *mut VipsObject,
+    name: &str,
+) -> Result<*mut VipsImage, ()> {
     unsafe { get_object_ref(object, name) }
 }
 
@@ -294,7 +300,10 @@ pub(crate) unsafe fn get_object_ref<T>(object: *mut VipsObject, name: &str) -> R
     }
 }
 
-pub(crate) unsafe fn get_image_buffer(object: *mut VipsObject, name: &str) -> Result<ImageBuffer, ()> {
+pub(crate) unsafe fn get_image_buffer(
+    object: *mut VipsObject,
+    name: &str,
+) -> Result<ImageBuffer, ()> {
     let image = unsafe { get_image_ref(object, name)? };
     let buffer = ImageBuffer::from_image(image);
     unsafe {
@@ -323,7 +332,10 @@ pub(crate) unsafe fn get_array_double(object: *mut VipsObject, name: &str) -> Re
     Ok(unsafe { std::slice::from_raw_parts(data, n as usize) }.to_vec())
 }
 
-pub(crate) unsafe fn get_array_images(object: *mut VipsObject, name: &str) -> Result<Vec<*mut VipsImage>, ()> {
+pub(crate) unsafe fn get_array_images(
+    object: *mut VipsObject,
+    name: &str,
+) -> Result<Vec<*mut VipsImage>, ()> {
     let (gtype, boxed) = unsafe { object::dynamic_boxed_value(object, name) }.ok_or(())?;
     if gtype != crate::runtime::r#type::vips_array_image_get_type() {
         return Err(());
@@ -363,7 +375,11 @@ pub(crate) unsafe fn get_blob_bytes(object: *mut VipsObject, name: &str) -> Resu
     Ok(unsafe { std::slice::from_raw_parts(ptr.cast::<u8>(), len) }.to_vec())
 }
 
-pub(crate) unsafe fn set_output_int(object: *mut VipsObject, name: &str, value: c_int) -> Result<(), ()> {
+pub(crate) unsafe fn set_output_int(
+    object: *mut VipsObject,
+    name: &str,
+    value: c_int,
+) -> Result<(), ()> {
     unsafe {
         set_property(object, name, |gvalue| {
             gobject_sys::g_value_set_int(gvalue, value);
@@ -371,7 +387,11 @@ pub(crate) unsafe fn set_output_int(object: *mut VipsObject, name: &str, value: 
     }
 }
 
-pub(crate) unsafe fn set_output_double(object: *mut VipsObject, name: &str, value: f64) -> Result<(), ()> {
+pub(crate) unsafe fn set_output_double(
+    object: *mut VipsObject,
+    name: &str,
+    value: f64,
+) -> Result<(), ()> {
     unsafe {
         set_property(object, name, |gvalue| {
             gobject_sys::g_value_set_double(gvalue, value);
@@ -379,7 +399,11 @@ pub(crate) unsafe fn set_output_double(object: *mut VipsObject, name: &str, valu
     }
 }
 
-pub(crate) unsafe fn set_output_image(object: *mut VipsObject, name: &str, image: *mut VipsImage) -> Result<(), ()> {
+pub(crate) unsafe fn set_output_image(
+    object: *mut VipsObject,
+    name: &str,
+    image: *mut VipsImage,
+) -> Result<(), ()> {
     unsafe {
         set_property(object, name, |gvalue| {
             gobject_sys::g_value_set_object(gvalue, image.cast());
@@ -387,11 +411,12 @@ pub(crate) unsafe fn set_output_image(object: *mut VipsObject, name: &str, image
     }
 }
 
-pub(crate) unsafe fn set_output_blob(object: *mut VipsObject, name: &str, bytes: Vec<u8>) -> Result<(), ()> {
-    let blob = crate::runtime::r#type::vips_blob_copy(
-        bytes.as_ptr().cast::<c_void>(),
-        bytes.len(),
-    );
+pub(crate) unsafe fn set_output_blob(
+    object: *mut VipsObject,
+    name: &str,
+    bytes: Vec<u8>,
+) -> Result<(), ()> {
+    let blob = crate::runtime::r#type::vips_blob_copy(bytes.as_ptr().cast::<c_void>(), bytes.len());
     let result = unsafe {
         set_property(object, name, |gvalue| {
             gobject_sys::g_value_set_boxed(gvalue, blob.cast::<c_void>());
@@ -485,7 +510,9 @@ unsafe fn dispatch_png(object: *mut VipsObject, nickname: &str) -> Result<bool, 
         }
         "pngload_buffer" => {
             let bytes = unsafe { get_blob_bytes(object, "buffer")? };
-            let source = unsafe { vips_source_new_from_memory(bytes.as_ptr().cast::<c_void>(), bytes.len()) };
+            let source = unsafe {
+                vips_source_new_from_memory(bytes.as_ptr().cast::<c_void>(), bytes.len())
+            };
             if source.is_null() {
                 return Err(());
             }
@@ -522,7 +549,9 @@ unsafe fn dispatch_png(object: *mut VipsObject, nickname: &str) -> Result<bool, 
                 }
                 return Err(());
             }
-            let result = unsafe { safe_vips_image_write_to_target_internal(image, c".png".as_ptr(), target) };
+            let result = unsafe {
+                safe_vips_image_write_to_target_internal(image, c".png".as_ptr(), target)
+            };
             unsafe {
                 object::object_unref(target);
                 object::object_unref(image);
@@ -552,14 +581,17 @@ unsafe fn dispatch_png(object: *mut VipsObject, nickname: &str) -> Result<bool, 
         "pngsave_target" => {
             let image = unsafe { get_image_ref(object, "in")? };
             let value = unsafe { property_value(object, "target")? };
-            let target = unsafe { gobject_sys::g_value_dup_object(value.as_ref()) }.cast::<VipsTarget>();
+            let target =
+                unsafe { gobject_sys::g_value_dup_object(value.as_ref()) }.cast::<VipsTarget>();
             if target.is_null() {
                 unsafe {
                     object::object_unref(image);
                 }
                 return Err(());
             }
-            let result = unsafe { safe_vips_image_write_to_target_internal(image, c".png".as_ptr(), target) };
+            let result = unsafe {
+                safe_vips_image_write_to_target_internal(image, c".png".as_ptr(), target)
+            };
             unsafe {
                 object::object_unref(target);
                 object::object_unref(image);
@@ -585,14 +617,13 @@ pub(crate) unsafe extern "C" fn generated_operation_build(object: *mut VipsObjec
         append_message_str("generated_operation_build", "operation nickname missing");
         return -1;
     };
-    let result = unsafe { dispatch_operation(object, &nickname) }
-        .and_then(|handled| {
-            if handled {
-                Ok(true)
-            } else {
-                unsafe { dispatch_png(object, &nickname) }
-            }
-        });
+    let result = unsafe { dispatch_operation(object, &nickname) }.and_then(|handled| {
+        if handled {
+            Ok(true)
+        } else {
+            unsafe { dispatch_png(object, &nickname) }
+        }
+    });
     match result {
         Ok(true) => 0,
         Ok(false) => {

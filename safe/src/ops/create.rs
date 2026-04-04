@@ -1,8 +1,8 @@
 use crate::abi::basic::{VipsPrecision, VIPS_PRECISION_FLOAT, VIPS_PRECISION_INTEGER};
 use crate::abi::image::{
-    VipsInterpretation, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR,
-    VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_FOURIER,
-    VIPS_INTERPRETATION_HISTOGRAM, VIPS_INTERPRETATION_MULTIBAND, VIPS_INTERPRETATION_XYZ,
+    VipsInterpretation, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT,
+    VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_FOURIER, VIPS_INTERPRETATION_HISTOGRAM,
+    VIPS_INTERPRETATION_MULTIBAND, VIPS_INTERPRETATION_XYZ,
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::kernel::{gaussian_kernel, log_kernel};
@@ -44,12 +44,17 @@ unsafe fn op_black(object: *mut VipsObject) -> Result<(), ()> {
 unsafe fn op_grey(object: *mut VipsObject) -> Result<(), ()> {
     let width = usize::try_from(unsafe { get_int(object, "width")? }).map_err(|_| ())?;
     let height = usize::try_from(unsafe { get_int(object, "height")? }).map_err(|_| ())?;
-    let uchar = unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
+    let uchar =
+        unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
     let mut out = ImageBuffer::new(
         width,
         height,
         1,
-        if uchar { VIPS_FORMAT_UCHAR } else { VIPS_FORMAT_FLOAT },
+        if uchar {
+            VIPS_FORMAT_UCHAR
+        } else {
+            VIPS_FORMAT_FLOAT
+        },
         crate::abi::image::VIPS_CODING_NONE,
         crate::abi::image::VIPS_INTERPRETATION_B_W,
     );
@@ -128,7 +133,8 @@ unsafe fn op_identity(object: *mut VipsObject) -> Result<(), ()> {
     } else {
         1
     };
-    let ushort = unsafe { argument_assigned(object, "ushort")? } && unsafe { get_bool(object, "ushort")? };
+    let ushort =
+        unsafe { argument_assigned(object, "ushort")? } && unsafe { get_bool(object, "ushort")? };
     let size = if ushort && unsafe { argument_assigned(object, "size")? } {
         usize::try_from(unsafe { get_int(object, "size")? }).map_err(|_| ())?
     } else if ushort {
@@ -140,7 +146,11 @@ unsafe fn op_identity(object: *mut VipsObject) -> Result<(), ()> {
         size,
         1,
         bands,
-        if ushort { VIPS_FORMAT_USHORT } else { VIPS_FORMAT_UCHAR },
+        if ushort {
+            VIPS_FORMAT_USHORT
+        } else {
+            VIPS_FORMAT_UCHAR
+        },
         crate::abi::image::VIPS_CODING_NONE,
         VIPS_INTERPRETATION_HISTOGRAM,
     );
@@ -160,12 +170,17 @@ unsafe fn op_eye(object: *mut VipsObject) -> Result<(), ()> {
     } else {
         0.5
     };
-    let uchar = unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
+    let uchar =
+        unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
     let mut out = ImageBuffer::new(
         width,
         height,
         1,
-        if uchar { VIPS_FORMAT_UCHAR } else { VIPS_FORMAT_FLOAT },
+        if uchar {
+            VIPS_FORMAT_UCHAR
+        } else {
+            VIPS_FORMAT_FLOAT
+        },
         crate::abi::image::VIPS_CODING_NONE,
         crate::abi::image::VIPS_INTERPRETATION_B_W,
     );
@@ -188,10 +203,13 @@ unsafe fn op_matrix_kernel(
 ) -> Result<(), ()> {
     let sigma = unsafe { get_double(object, "sigma")? };
     let min_ampl = unsafe { get_double(object, "min_ampl")? };
-    let separable = unsafe { argument_assigned(object, "separable")? } && unsafe { get_bool(object, "separable")? };
+    let separable = unsafe { argument_assigned(object, "separable")? }
+        && unsafe { get_bool(object, "separable")? };
     let precision = if unsafe { argument_assigned(object, "precision")? } {
         unsafe { get_enum(object, "precision")? as VipsPrecision }
-    } else if unsafe { argument_assigned(object, "integer")? } && unsafe { get_bool(object, "integer")? } {
+    } else if unsafe { argument_assigned(object, "integer")? }
+        && unsafe { get_bool(object, "integer")? }
+    {
         VIPS_PRECISION_INTEGER
     } else {
         VIPS_PRECISION_FLOAT
@@ -223,15 +241,23 @@ unsafe fn op_mask_ideal(object: *mut VipsObject) -> Result<(), ()> {
     let width = usize::try_from(unsafe { get_int(object, "width")? }).map_err(|_| ())?;
     let height = usize::try_from(unsafe { get_int(object, "height")? }).map_err(|_| ())?;
     let fc = unsafe { get_double(object, "frequency_cutoff")? };
-    let optical = unsafe { argument_assigned(object, "optical")? } && unsafe { get_bool(object, "optical")? };
-    let reject = unsafe { argument_assigned(object, "reject")? } && unsafe { get_bool(object, "reject")? };
-    let nodc = unsafe { argument_assigned(object, "nodc")? } && unsafe { get_bool(object, "nodc")? };
-    let uchar = unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
+    let optical =
+        unsafe { argument_assigned(object, "optical")? } && unsafe { get_bool(object, "optical")? };
+    let reject =
+        unsafe { argument_assigned(object, "reject")? } && unsafe { get_bool(object, "reject")? };
+    let nodc =
+        unsafe { argument_assigned(object, "nodc")? } && unsafe { get_bool(object, "nodc")? };
+    let uchar =
+        unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
     let mut out = ImageBuffer::new(
         width,
         height,
         1,
-        if uchar { VIPS_FORMAT_UCHAR } else { VIPS_FORMAT_FLOAT },
+        if uchar {
+            VIPS_FORMAT_UCHAR
+        } else {
+            VIPS_FORMAT_FLOAT
+        },
         crate::abi::image::VIPS_CODING_NONE,
         VIPS_INTERPRETATION_FOURIER,
     );
@@ -260,15 +286,23 @@ unsafe fn op_mask_gaussian(object: *mut VipsObject) -> Result<(), ()> {
     let height = usize::try_from(unsafe { get_int(object, "height")? }).map_err(|_| ())?;
     let fc = unsafe { get_double(object, "frequency_cutoff")? };
     let ac = unsafe { get_double(object, "amplitude_cutoff")? };
-    let optical = unsafe { argument_assigned(object, "optical")? } && unsafe { get_bool(object, "optical")? };
-    let reject = unsafe { argument_assigned(object, "reject")? } && unsafe { get_bool(object, "reject")? };
-    let nodc = unsafe { argument_assigned(object, "nodc")? } && unsafe { get_bool(object, "nodc")? };
-    let uchar = unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
+    let optical =
+        unsafe { argument_assigned(object, "optical")? } && unsafe { get_bool(object, "optical")? };
+    let reject =
+        unsafe { argument_assigned(object, "reject")? } && unsafe { get_bool(object, "reject")? };
+    let nodc =
+        unsafe { argument_assigned(object, "nodc")? } && unsafe { get_bool(object, "nodc")? };
+    let uchar =
+        unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
     let mut out = ImageBuffer::new(
         width,
         height,
         1,
-        if uchar { VIPS_FORMAT_UCHAR } else { VIPS_FORMAT_FLOAT },
+        if uchar {
+            VIPS_FORMAT_UCHAR
+        } else {
+            VIPS_FORMAT_FLOAT
+        },
         crate::abi::image::VIPS_CODING_NONE,
         VIPS_INTERPRETATION_FOURIER,
     );

@@ -1,10 +1,10 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod abi;
+pub(crate) mod ops;
 pub mod pixels;
 pub mod runtime;
 pub mod simd;
-pub(crate) mod ops;
 
 pub use abi::basic::*;
 pub use abi::connection::*;

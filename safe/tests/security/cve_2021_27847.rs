@@ -25,8 +25,7 @@ fn cve_2021_27847_mask_handles_degenerate_dimensions() {
     init_vips();
 
     let mut mask = ptr::null_mut();
-    let result =
-        unsafe { vips_mask_ideal(&mut mask, 0, 0, 0.5, ptr::null::<std::ffi::c_char>()) };
+    let result = unsafe { vips_mask_ideal(&mut mask, 0, 0, 0.5, ptr::null::<std::ffi::c_char>()) };
     assert!(result == 0 || result == -1);
     if result == 0 {
         let values = read_samples(mask);

@@ -13,7 +13,13 @@ pub(crate) struct Kernel {
 }
 
 impl Kernel {
-    pub(crate) fn new(width: usize, height: usize, data: Vec<f64>, scale: f64, offset: f64) -> Self {
+    pub(crate) fn new(
+        width: usize,
+        height: usize,
+        data: Vec<f64>,
+        scale: f64,
+        offset: f64,
+    ) -> Self {
         Self {
             width,
             height,
@@ -28,7 +34,11 @@ impl Kernel {
     }
 
     pub(crate) fn scale_or_one(&self) -> f64 {
-        if self.scale == 0.0 { 1.0 } else { self.scale }
+        if self.scale == 0.0 {
+            1.0
+        } else {
+            self.scale
+        }
     }
 
     pub(crate) fn from_image(image: *mut crate::abi::image::VipsImage) -> Result<Self, ()> {

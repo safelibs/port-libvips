@@ -29,7 +29,10 @@ impl Iterator for PixelIter {
     type Item = PixelCoord;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let total = self.width.saturating_mul(self.height).saturating_mul(self.bands);
+        let total = self
+            .width
+            .saturating_mul(self.height)
+            .saturating_mul(self.bands);
         if self.next >= total {
             return None;
         }

@@ -8,8 +8,7 @@ use libc::{c_int, c_void};
 
 use crate::abi::basic::VipsBuf;
 use crate::abi::connection::{
-    VipsConnection, VipsConnectionClass, VipsSource, VipsSourceClass, VipsTarget,
-    VipsTargetClass,
+    VipsConnection, VipsConnectionClass, VipsSource, VipsSourceClass, VipsTarget, VipsTargetClass,
 };
 use crate::abi::image::VipsImage;
 use crate::abi::object::{
@@ -18,8 +17,8 @@ use crate::abi::object::{
 };
 use crate::abi::operation::{
     VipsForeign, VipsForeignClass, VipsForeignLoad, VipsForeignLoadClass, VipsForeignSave,
-    VipsForeignSaveClass, VipsInterpolate, VipsInterpolateClass, VipsOperation,
-    VipsOperationClass, VipsOperationFlags, VipsThreadState, VIPS_OPERATION_BLOCKED,
+    VipsForeignSaveClass, VipsInterpolate, VipsInterpolateClass, VipsOperation, VipsOperationClass,
+    VipsOperationFlags, VipsThreadState, VIPS_OPERATION_BLOCKED,
 };
 use crate::abi::region::VipsRegion;
 use crate::runtime::error::append_message_str;
@@ -176,13 +175,16 @@ fn normalize_vips_type_name(name: &str) -> Option<String> {
 }
 
 fn resolve_named_type(name: &str) -> glib_sys::GType {
-    let direct = with_cstring(name, |name| unsafe { gobject_sys::g_type_from_name(name.as_ptr()) });
+    let direct = with_cstring(name, |name| unsafe {
+        gobject_sys::g_type_from_name(name.as_ptr())
+    });
     if direct != 0 {
         return direct;
     }
     if let Some(normalized) = normalize_vips_type_name(name) {
-        let normalized_type =
-            with_cstring(&normalized, |name| unsafe { gobject_sys::g_type_from_name(name.as_ptr()) });
+        let normalized_type = with_cstring(&normalized, |name| unsafe {
+            gobject_sys::g_type_from_name(name.as_ptr())
+        });
         if normalized_type != 0 {
             return normalized_type;
         }
@@ -213,11 +215,13 @@ fn is_blocked(meta: &GeneratedTypeMetadata) -> bool {
 
 fn instance_size_for(parent: glib_sys::GType, type_name: &str) -> usize {
     if type_name == "VipsImage"
-        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_image_get_type()) } != glib_sys::GFALSE
+        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_image_get_type()) }
+            != glib_sys::GFALSE
     {
         size_of::<VipsImage>()
     } else if type_name == "VipsRegion"
-        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_region_get_type()) } != glib_sys::GFALSE
+        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_region_get_type()) }
+            != glib_sys::GFALSE
     {
         size_of::<VipsRegion>()
     } else if type_name == "VipsForeignLoad"
@@ -241,11 +245,13 @@ fn instance_size_for(parent: glib_sys::GType, type_name: &str) -> usize {
     {
         size_of::<VipsInterpolate>()
     } else if type_name == "VipsSource"
-        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_source_get_type()) } != glib_sys::GFALSE
+        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_source_get_type()) }
+            != glib_sys::GFALSE
     {
         size_of::<VipsSource>()
     } else if type_name == "VipsTarget"
-        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_target_get_type()) } != glib_sys::GFALSE
+        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_target_get_type()) }
+            != glib_sys::GFALSE
     {
         size_of::<VipsTarget>()
     } else if type_name == "VipsConnection"
@@ -294,11 +300,13 @@ fn class_size_for(parent: glib_sys::GType, type_name: &str, is_operation: bool) 
     {
         size_of::<VipsInterpolateClass>()
     } else if type_name == "VipsSource"
-        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_source_get_type()) } != glib_sys::GFALSE
+        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_source_get_type()) }
+            != glib_sys::GFALSE
     {
         size_of::<VipsSourceClass>()
     } else if type_name == "VipsTarget"
-        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_target_get_type()) } != glib_sys::GFALSE
+        || unsafe { gobject_sys::g_type_is_a(parent, object::vips_target_get_type()) }
+            != glib_sys::GFALSE
     {
         size_of::<VipsTargetClass>()
     } else if type_name == "VipsConnection"
@@ -342,14 +350,13 @@ fn parse_i64_symbolic(text: &str) -> Option<i64> {
 }
 
 fn parse_i32(text: Option<&str>) -> c_int {
-    let value = text
-        .and_then(parse_i64_symbolic)
-        .unwrap_or_default();
+    let value = text.and_then(parse_i64_symbolic).unwrap_or_default();
     value.clamp(c_int::MIN as i64, c_int::MAX as i64) as c_int
 }
 
 fn parse_u64(text: Option<&str>) -> u64 {
-    text.and_then(|value| value.parse::<u64>().ok()).unwrap_or_default()
+    text.and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or_default()
 }
 
 fn parse_f64(text: Option<&str>) -> f64 {
@@ -364,7 +371,11 @@ fn parse_f64(text: Option<&str>) -> f64 {
     .unwrap_or_default()
 }
 
-unsafe fn parse_enum_default(type_: glib_sys::GType, default_value: Option<&str>, flags: bool) -> c_int {
+unsafe fn parse_enum_default(
+    type_: glib_sys::GType,
+    default_value: Option<&str>,
+    flags: bool,
+) -> c_int {
     let Some(default_value) = default_value else {
         return 0;
     };
@@ -555,7 +566,8 @@ unsafe fn configure_registered_type(type_: glib_sys::GType, meta: &'static Gener
                 && gobject_sys::g_type_is_a(parent_type, object::vips_operation_get_type())
                     != glib_sys::GFALSE
             {
-                let parent_class = object::object_class_for_type(parent_type).cast::<VipsOperationClass>();
+                let parent_class =
+                    object::object_class_for_type(parent_type).cast::<VipsOperationClass>();
                 if parent_class.is_null() {
                     0
                 } else {
@@ -588,8 +600,9 @@ unsafe fn register_generated_type(meta: &'static GeneratedTypeMetadata) -> Optio
     unsafe {
         gobject_sys::g_type_class_ref(parent);
     }
-    let is_operation = unsafe { gobject_sys::g_type_is_a(parent, object::vips_operation_get_type()) }
-        != glib_sys::GFALSE;
+    let is_operation =
+        unsafe { gobject_sys::g_type_is_a(parent, object::vips_operation_get_type()) }
+            != glib_sys::GFALSE;
     let type_name = object::leak_cstring(meta.type_name);
     let type_ = object::register_type(
         parent,
@@ -653,10 +666,7 @@ pub(crate) fn ensure_generated_types() -> bool {
     }
 }
 
-unsafe extern "C" fn vips_operation_usage(
-    class: *mut VipsOperationClass,
-    buf: *mut VipsBuf,
-) {
+unsafe extern "C" fn vips_operation_usage(class: *mut VipsOperationClass, buf: *mut VipsBuf) {
     if class.is_null() || buf.is_null() {
         return;
     }
@@ -686,7 +696,9 @@ unsafe extern "C" fn vips_operation_usage(
     }
 }
 
-unsafe extern "C" fn vips_operation_class_flags(operation: *mut VipsOperation) -> VipsOperationFlags {
+unsafe extern "C" fn vips_operation_class_flags(
+    operation: *mut VipsOperation,
+) -> VipsOperationFlags {
     if operation.is_null() {
         return 0;
     }
@@ -918,22 +930,22 @@ unsafe extern "C" fn call_argv_output(
         && flags & VIPS_ARGUMENT_OUTPUT != 0
     {
         let output_name = unsafe { gobject_sys::g_param_spec_get_name(pspec) };
-        let arg = if object::vips_object_argument_needsstring(object, output_name) != glib_sys::GFALSE
-        {
-            let Some(arg) = (unsafe { call_get_arg(call, call.index) }) else {
-                append_message_str(
-                    unsafe { CStr::from_ptr((*object::object_class(object)).nickname) }
-                        .to_str()
-                        .unwrap_or("VipsOperation"),
-                    "too few arguments",
-                );
-                return pspec.cast();
+        let arg =
+            if object::vips_object_argument_needsstring(object, output_name) != glib_sys::GFALSE {
+                let Some(arg) = (unsafe { call_get_arg(call, call.index) }) else {
+                    append_message_str(
+                        unsafe { CStr::from_ptr((*object::object_class(object)).nickname) }
+                            .to_str()
+                            .unwrap_or("VipsOperation"),
+                        "too few arguments",
+                    );
+                    return pspec.cast();
+                };
+                call.index += 1;
+                arg.as_ptr()
+            } else {
+                ptr::null()
             };
-            call.index += 1;
-            arg.as_ptr()
-        } else {
-            ptr::null()
-        };
         if object::vips_object_get_argument_to_string(object, output_name, arg) != 0 {
             return pspec.cast();
         }
@@ -1022,7 +1034,9 @@ pub extern "C" fn vips_operation_block_set(name: *const c_char, state: glib_sys:
     if !ensure_generated_types() {
         return;
     }
-    let name = unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned();
+    let name = unsafe { CStr::from_ptr(name) }
+        .to_string_lossy()
+        .into_owned();
     {
         let mut blocked = blocked_names().lock().expect("blocked names");
         if state == glib_sys::GFALSE {
@@ -1034,6 +1048,10 @@ pub extern "C" fn vips_operation_block_set(name: *const c_char, state: glib_sys:
 
     let type_ = object::vips_type_find(c"VipsOperation".as_ptr(), object::leak_cstring(&name));
     if type_ != 0 {
-        object::vips_class_map_all(type_, Some(block_operation_class), &state as *const _ as *mut c_void);
+        object::vips_class_map_all(
+            type_,
+            Some(block_operation_class),
+            &state as *const _ as *mut c_void,
+        );
     }
 }

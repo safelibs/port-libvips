@@ -17,7 +17,9 @@ fn histogram_bins(format: VipsBandFormat) -> usize {
 
 fn hist_for_band(input: &ImageBuffer, band: usize) -> Vec<f64> {
     let bins = histogram_bins(input.spec.format);
-    let max = format_max(input.spec.format).unwrap_or((bins - 1) as f64).max(1.0);
+    let max = format_max(input.spec.format)
+        .unwrap_or((bins - 1) as f64)
+        .max(1.0);
     let mut hist = vec![0.0; bins];
     for y in 0..input.spec.height {
         for x in 0..input.spec.width {
@@ -109,7 +111,11 @@ unsafe fn op_hist_cum(object: *mut VipsObject) -> Result<(), ()> {
 unsafe fn op_hist_norm(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
     let sum = input.data.iter().sum::<f64>().max(1.0);
-    let values = input.data.iter().map(|value| value / sum).collect::<Vec<_>>();
+    let values = input
+        .data
+        .iter()
+        .map(|value| value / sum)
+        .collect::<Vec<_>>();
     let out = hist_image(&values, VIPS_FORMAT_FLOAT).to_image();
     unsafe { set_output_image(object, "out", out) }
 }
@@ -219,7 +225,8 @@ unsafe fn op_hist_equal(object: *mut VipsObject) -> Result<(), ()> {
                     let index = input
                         .get(x, y, selected)
                         .round()
-                        .clamp(0.0, (cdf.len() - 1) as f64) as usize;
+                        .clamp(0.0, (cdf.len() - 1) as f64)
+                        as usize;
                     out.set(x, y, selected, cdf[index] * max);
                 }
             }

@@ -3,8 +3,8 @@ pub(crate) mod iter;
 pub(crate) mod kernel;
 
 use crate::abi::image::{
-    VipsBandFormat, VipsCoding, VipsDemandStyle, VipsImage, VipsInterpretation,
-    VIPS_CODING_NONE, VIPS_DEMAND_STYLE_ANY,
+    VipsBandFormat, VipsCoding, VipsDemandStyle, VipsImage, VipsInterpretation, VIPS_CODING_NONE,
+    VIPS_DEMAND_STYLE_ANY,
 };
 use crate::pixels::format::{format_bytes, format_components, read_sample, write_sample};
 use crate::pixels::iter::{clamped_sample, expanded_sample, pixel_index, PixelIter};
@@ -149,7 +149,8 @@ impl ImageBuffer {
         out.spec.width = width;
         out.spec.height = height;
         out.spec.bands = bands;
-        out.data.resize(width.saturating_mul(height).saturating_mul(bands), 0.0);
+        out.data
+            .resize(width.saturating_mul(height).saturating_mul(bands), 0.0);
         out
     }
 

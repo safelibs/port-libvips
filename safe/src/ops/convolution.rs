@@ -1,15 +1,16 @@
 use crate::abi::basic::{
-    VipsAngle45, VipsCombine, VipsPrecision, VIPS_ANGLE45_D0, VIPS_ANGLE45_D135,
-    VIPS_ANGLE45_D180, VIPS_ANGLE45_D225, VIPS_ANGLE45_D270, VIPS_ANGLE45_D315,
-    VIPS_ANGLE45_D45, VIPS_ANGLE45_D90, VIPS_COMBINE_MAX, VIPS_COMBINE_MIN,
-    VIPS_COMBINE_SUM, VIPS_PRECISION_INTEGER,
+    VipsAngle45, VipsCombine, VipsPrecision, VIPS_ANGLE45_D0, VIPS_ANGLE45_D135, VIPS_ANGLE45_D180,
+    VIPS_ANGLE45_D225, VIPS_ANGLE45_D270, VIPS_ANGLE45_D315, VIPS_ANGLE45_D45, VIPS_ANGLE45_D90,
+    VIPS_COMBINE_MAX, VIPS_COMBINE_MIN, VIPS_COMBINE_SUM, VIPS_PRECISION_INTEGER,
 };
 use crate::abi::image::{VipsBandFormat, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT};
 use crate::abi::object::VipsObject;
 use crate::pixels::kernel::{gaussian_kernel, Kernel};
 use crate::pixels::ImageBuffer;
 
-use super::{argument_assigned, get_double, get_enum, get_image_buffer, get_image_ref, set_output_image_like};
+use super::{
+    argument_assigned, get_double, get_enum, get_image_buffer, get_image_ref, set_output_image_like,
+};
 
 fn conv_output_format(format: VipsBandFormat, precision: VipsPrecision) -> VipsBandFormat {
     if precision == VIPS_PRECISION_INTEGER && matches!(format, VIPS_FORMAT_DOUBLE) {
@@ -46,7 +47,11 @@ fn apply_kernel(input: &ImageBuffer, kernel: &Kernel, precision: VipsPrecision) 
     out
 }
 
-fn apply_separable(input: &ImageBuffer, kernel: &Kernel, precision: VipsPrecision) -> Result<ImageBuffer, ()> {
+fn apply_separable(
+    input: &ImageBuffer,
+    kernel: &Kernel,
+    precision: VipsPrecision,
+) -> Result<ImageBuffer, ()> {
     let vector = if kernel.height == 1 {
         kernel.data.clone()
     } else if kernel.width == 1 {

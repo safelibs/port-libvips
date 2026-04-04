@@ -156,22 +156,24 @@ pub(crate) fn read_sample(bytes: &[u8], format: VipsBandFormat) -> Option<f64> {
 
 pub(crate) fn write_sample(bytes: &mut [u8], format: VipsBandFormat, value: f64) -> bool {
     match format {
-        VIPS_FORMAT_UCHAR => bytes.get_mut(0).map(|slot| *slot = clamp_for_format(value, format) as u8),
+        VIPS_FORMAT_UCHAR => bytes
+            .get_mut(0)
+            .map(|slot| *slot = clamp_for_format(value, format) as u8),
         VIPS_FORMAT_CHAR => bytes
             .get_mut(0)
             .map(|slot| *slot = clamp_for_format(value, format) as i8 as u8),
-        VIPS_FORMAT_USHORT => bytes
-            .get_mut(..2)
-            .map(|slot| slot.copy_from_slice(&(clamp_for_format(value, format) as u16).to_ne_bytes())),
-        VIPS_FORMAT_SHORT => bytes
-            .get_mut(..2)
-            .map(|slot| slot.copy_from_slice(&(clamp_for_format(value, format) as i16).to_ne_bytes())),
-        VIPS_FORMAT_UINT => bytes
-            .get_mut(..4)
-            .map(|slot| slot.copy_from_slice(&(clamp_for_format(value, format) as u32).to_ne_bytes())),
-        VIPS_FORMAT_INT => bytes
-            .get_mut(..4)
-            .map(|slot| slot.copy_from_slice(&(clamp_for_format(value, format) as i32).to_ne_bytes())),
+        VIPS_FORMAT_USHORT => bytes.get_mut(..2).map(|slot| {
+            slot.copy_from_slice(&(clamp_for_format(value, format) as u16).to_ne_bytes())
+        }),
+        VIPS_FORMAT_SHORT => bytes.get_mut(..2).map(|slot| {
+            slot.copy_from_slice(&(clamp_for_format(value, format) as i16).to_ne_bytes())
+        }),
+        VIPS_FORMAT_UINT => bytes.get_mut(..4).map(|slot| {
+            slot.copy_from_slice(&(clamp_for_format(value, format) as u32).to_ne_bytes())
+        }),
+        VIPS_FORMAT_INT => bytes.get_mut(..4).map(|slot| {
+            slot.copy_from_slice(&(clamp_for_format(value, format) as i32).to_ne_bytes())
+        }),
         VIPS_FORMAT_FLOAT => bytes
             .get_mut(..4)
             .map(|slot| slot.copy_from_slice(&(value as f32).to_ne_bytes())),

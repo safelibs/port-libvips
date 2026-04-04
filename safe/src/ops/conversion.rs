@@ -1,6 +1,6 @@
 use crate::abi::basic::{
-    VipsExtend, VipsOperationBoolean, VIPS_EXTEND_BACKGROUND, VIPS_EXTEND_BLACK,
-    VIPS_EXTEND_COPY, VIPS_EXTEND_MIRROR, VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE,
+    VipsExtend, VipsOperationBoolean, VIPS_EXTEND_BACKGROUND, VIPS_EXTEND_BLACK, VIPS_EXTEND_COPY,
+    VIPS_EXTEND_MIRROR, VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE,
 };
 use crate::abi::image::{VipsBandFormat, VipsImage};
 use crate::abi::object::VipsObject;
@@ -69,8 +69,10 @@ fn apply_embed_background(
                         VIPS_EXTEND_WHITE => white,
                         VIPS_EXTEND_BACKGROUND => bg[band],
                         VIPS_EXTEND_COPY => {
-                            let sx = sx.clamp(0, input.spec.width.saturating_sub(1) as isize) as usize;
-                            let sy = sy.clamp(0, input.spec.height.saturating_sub(1) as isize) as usize;
+                            let sx =
+                                sx.clamp(0, input.spec.width.saturating_sub(1) as isize) as usize;
+                            let sy =
+                                sy.clamp(0, input.spec.height.saturating_sub(1) as isize) as usize;
                             input.get(sx, sy, band)
                         }
                         VIPS_EXTEND_REPEAT => {
@@ -90,7 +92,11 @@ fn apply_embed_background(
                                 }
                                 value as usize
                             };
-                            input.get(mirror(sx, input.spec.width), mirror(sy, input.spec.height), band)
+                            input.get(
+                                mirror(sx, input.spec.width),
+                                mirror(sy, input.spec.height),
+                                band,
+                            )
                         }
                         _ => 0.0,
                     }
@@ -103,7 +109,11 @@ fn apply_embed_background(
     out
 }
 
-unsafe fn op_extract_area(object: *mut VipsObject, input_name: &str, output_name: &str) -> Result<(), ()> {
+unsafe fn op_extract_area(
+    object: *mut VipsObject,
+    input_name: &str,
+    output_name: &str,
+) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, input_name)? };
     let left = unsafe { get_int(object, "left")? };
     let top = unsafe { get_int(object, "top")? };
@@ -185,7 +195,9 @@ unsafe fn op_bandjoin(object: *mut VipsObject) -> Result<(), ()> {
         .iter()
         .map(|image| ImageBuffer::from_image(*image).map(|buffer| buffer.spec.bands))
         .try_fold(0usize, |acc, item| item.map(|bands| acc + bands))?;
-    let mut out = first_buffer.with_shape(width, height, total_bands).with_format(format);
+    let mut out = first_buffer
+        .with_shape(width, height, total_bands)
+        .with_format(format);
 
     let mut band_offset = 0;
     for image in &images {
@@ -241,7 +253,9 @@ unsafe fn op_bandmean(object: *mut VipsObject) -> Result<(), ()> {
     let mut out = input.with_shape(input.spec.width, input.spec.height, 1);
     for y in 0..input.spec.height {
         for x in 0..input.spec.width {
-            let sum = (0..input.spec.bands).map(|band| input.get(x, y, band)).sum::<f64>();
+            let sum = (0..input.spec.bands)
+                .map(|band| input.get(x, y, band))
+                .sum::<f64>();
             out.set(x, y, 0, sum / input.spec.bands.max(1) as f64);
         }
     }
@@ -253,7 +267,11 @@ unsafe fn op_bandmean(object: *mut VipsObject) -> Result<(), ()> {
     result
 }
 
-fn bandbool_reduce(values: impl Iterator<Item = f64>, format: VipsBandFormat, op: VipsOperationBoolean) -> f64 {
+fn bandbool_reduce(
+    values: impl Iterator<Item = f64>,
+    format: VipsBandFormat,
+    op: VipsOperationBoolean,
+) -> f64 {
     let mut iter = values.peekable();
     let Some(mut acc) = iter.next() else {
         return 0.0;
@@ -271,7 +289,11 @@ unsafe fn op_bandbool(object: *mut VipsObject) -> Result<(), ()> {
     out.spec.format = super::arithmetic::binary_output_format("boolean", input.spec.format)?;
     for y in 0..input.spec.height {
         for x in 0..input.spec.width {
-            let value = bandbool_reduce((0..input.spec.bands).map(|band| input.get(x, y, band)), input.spec.format, op);
+            let value = bandbool_reduce(
+                (0..input.spec.bands).map(|band| input.get(x, y, band)),
+                input.spec.format,
+                op,
+            );
             out.set(x, y, 0, value);
         }
     }
@@ -290,7 +312,11 @@ unsafe fn op_bandfold(object: *mut VipsObject) -> Result<(), ()> {
     } else {
         0
     };
-    let factor = if factor == 0 { input.spec.width } else { factor };
+    let factor = if factor == 0 {
+        input.spec.width
+    } else {
+        factor
+    };
     if factor == 0 || input.spec.width % factor != 0 {
         return Err(());
     }
@@ -323,7 +349,11 @@ unsafe fn op_bandunfold(object: *mut VipsObject) -> Result<(), ()> {
     } else {
         0
     };
-    let factor = if factor == 0 { input.spec.bands } else { factor };
+    let factor = if factor == 0 {
+        input.spec.bands
+    } else {
+        factor
+    };
     if factor == 0 || input.spec.bands % factor != 0 {
         return Err(());
     }
@@ -424,7 +454,11 @@ unsafe fn op_copy(object: *mut VipsObject) -> Result<(), ()> {
     if unsafe { argument_assigned(object, "yoffset")? } {
         out.spec.yoffset = unsafe { get_int(object, "yoffset")? };
     }
-    let expected = out.spec.width.saturating_mul(out.spec.height).saturating_mul(out.spec.bands);
+    let expected = out
+        .spec
+        .width
+        .saturating_mul(out.spec.height)
+        .saturating_mul(out.spec.bands);
     out.data.resize(expected, 0.0);
     let image = unsafe { get_image_ref(object, "in")? };
     let mut out_image = out.into_image_like(image);
@@ -478,7 +512,13 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
             Ok(true)
         }
         "crop" | "extract_area" => {
-            unsafe { op_extract_area(object, if nickname == "crop" { "in" } else { "input" }, "out")? };
+            unsafe {
+                op_extract_area(
+                    object,
+                    if nickname == "crop" { "in" } else { "input" },
+                    "out",
+                )?
+            };
             Ok(true)
         }
         "extract_band" => {

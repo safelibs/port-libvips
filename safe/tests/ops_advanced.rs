@@ -8,30 +8,13 @@ use vips::*;
 
 unsafe extern "C" {
     fn vips_HSV2sRGB(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
-    fn vips_avg(input: *mut VipsImage, out: *mut f64, ...) -> i32;
     fn vips_colourspace(
         input: *mut VipsImage,
         out: *mut *mut VipsImage,
         space: VipsInterpretation,
         ...
     ) -> i32;
-    fn vips_draw_rect(
-        image: *mut VipsImage,
-        ink: *const f64,
-        n: i32,
-        left: i32,
-        top: i32,
-        width: i32,
-        height: i32,
-        ...
-    ) -> i32;
-    fn vips_draw_image(
-        image: *mut VipsImage,
-        sub: *mut VipsImage,
-        x: i32,
-        y: i32,
-        ...
-    ) -> i32;
+    fn vips_draw_image(image: *mut VipsImage, sub: *mut VipsImage, x: i32, y: i32, ...) -> i32;
     fn vips_match(
         reference: *mut VipsImage,
         secondary: *mut VipsImage,
@@ -71,17 +54,8 @@ unsafe extern "C" {
         vshrink: f64,
         ...
     ) -> i32;
-    fn vips_reduceh(input: *mut VipsImage, out: *mut *mut VipsImage, hshrink: f64, ...) -> i32;
-    fn vips_reducev(input: *mut VipsImage, out: *mut *mut VipsImage, vshrink: f64, ...) -> i32;
     fn vips_resize(input: *mut VipsImage, out: *mut *mut VipsImage, scale: f64, ...) -> i32;
     fn vips_sRGB2HSV(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
-    fn vips_thumbnail_buffer(
-        buf: *mut std::ffi::c_void,
-        len: usize,
-        out: *mut *mut VipsImage,
-        width: i32,
-        ...
-    ) -> i32;
     fn vips_thumbnail_image(
         input: *mut VipsImage,
         out: *mut *mut VipsImage,
@@ -145,11 +119,17 @@ fn colour_and_profile_flow() {
 
     let input = image_from_uchar(2, 1, 3, &[255, 0, 0, 0, 255, 0]);
     let mut hsv = ptr::null_mut();
-    assert_eq!(unsafe { vips_sRGB2HSV(input, &mut hsv, ptr::null::<c_char>()) }, 0);
+    assert_eq!(
+        unsafe { vips_sRGB2HSV(input, &mut hsv, ptr::null::<c_char>()) },
+        0
+    );
     assert_eq!(vips_image_get_format(hsv), VIPS_FORMAT_UCHAR);
 
     let mut srgb = ptr::null_mut();
-    assert_eq!(unsafe { vips_HSV2sRGB(hsv, &mut srgb, ptr::null::<c_char>()) }, 0);
+    assert_eq!(
+        unsafe { vips_HSV2sRGB(hsv, &mut srgb, ptr::null::<c_char>()) },
+        0
+    );
     let roundtrip = read_u8(srgb);
     assert!((roundtrip[0] as i32 - 255).abs() <= 2);
     assert!(roundtrip[1] <= 2);
@@ -172,7 +152,10 @@ fn colour_and_profile_flow() {
 
     let mut columns = ptr::null_mut();
     let mut rows = ptr::null_mut();
-    assert_eq!(unsafe { vips_profile(input, &mut columns, &mut rows, ptr::null::<c_char>()) }, 0);
+    assert_eq!(
+        unsafe { vips_profile(input, &mut columns, &mut rows, ptr::null::<c_char>()) },
+        0
+    );
     assert_eq!(vips_image_get_width(columns), 2);
     assert_eq!(vips_image_get_height(columns), 1);
     assert_eq!(vips_image_get_width(rows), 1);
@@ -201,7 +184,12 @@ fn resample_and_thumbnail_flow() {
     let _guard = guard();
     init_vips();
 
-    let input = image_from_uchar(4, 4, 1, &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+    let input = image_from_uchar(
+        4,
+        4,
+        1,
+        &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+    );
 
     let mut resized = ptr::null_mut();
     let resized_result = unsafe { vips_resize(input, &mut resized, 0.5, ptr::null::<c_char>()) };
@@ -216,12 +204,52 @@ fn resample_and_thumbnail_flow() {
     assert_eq!(vips_image_get_width(reduced), 2);
     assert_eq!(vips_image_get_height(reduced), 2);
 
+    let line = image_from_uchar(6, 1, 1, &[0, 20, 80, 140, 200, 255]);
+    let mut centred = ptr::null_mut();
+    let centred_result = unsafe {
+        vips_reduce(
+            line,
+            &mut centred,
+            3.0,
+            1.0,
+            c"kernel".as_ptr(),
+            VIPS_KERNEL_LINEAR,
+            c"centre".as_ptr(),
+            1i32,
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_eq!(centred_result, 0, "{}", error_text());
+    let mut corner = ptr::null_mut();
+    let corner_result = unsafe {
+        vips_reduce(
+            line,
+            &mut corner,
+            3.0,
+            1.0,
+            c"kernel".as_ptr(),
+            VIPS_KERNEL_LINEAR,
+            c"centre".as_ptr(),
+            0i32,
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_eq!(corner_result, 0, "{}", error_text());
+    let centred_values = read_u8(centred);
+    let corner_values = read_u8(corner);
+    assert_ne!(centred_values, corner_values);
+    assert!(centred_values[0] > corner_values[0]);
+    assert!(centred_values[1] > corner_values[1]);
+
     let mut thumb = ptr::null_mut();
     let thumb_result = unsafe { vips_thumbnail_image(input, &mut thumb, 2, ptr::null::<c_char>()) };
     assert_eq!(thumb_result, 0, "{}", error_text());
     assert_eq!(vips_image_get_width(thumb), 2);
     assert!(vips_image_get_height(thumb) >= 1);
 
+    unref_image(corner);
+    unref_image(centred);
+    unref_image(line);
     unref_image(thumb);
     unref_image(reduced);
     unref_image(resized);
@@ -242,30 +270,55 @@ fn draw_invalidation_and_mosaic_flow() {
     let drawn = read_u8(image);
     assert_eq!(drawn[0], 100);
 
-    let reference = image_from_uchar(3, 1, 1, &[10, 20, 30]);
-    let secondary = image_from_uchar(3, 1, 1, &[100, 110, 120]);
+    let reference = image_from_uchar(8, 1, 1, &[10; 8]);
+    let secondary = image_from_uchar(8, 1, 1, &[200; 8]);
 
-    let mut mosaic = ptr::null_mut();
+    let mut wide_blend = ptr::null_mut();
     assert_eq!(
         unsafe {
             vips_mosaic(
                 reference,
                 secondary,
-                &mut mosaic,
+                &mut wide_blend,
                 VIPS_DIRECTION_HORIZONTAL,
                 2,
                 0,
                 0,
                 0,
+                c"mblend".as_ptr(),
+                20i32,
                 ptr::null::<c_char>(),
             )
         },
         0
     );
-    assert_eq!(vips_image_get_width(mosaic), 5);
-    let mosaic_values = read_u8(mosaic);
-    assert_eq!(mosaic_values.first().copied(), Some(10));
-    assert_eq!(mosaic_values.last().copied(), Some(120));
+    let mut narrow_blend = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_mosaic(
+                reference,
+                secondary,
+                &mut narrow_blend,
+                VIPS_DIRECTION_HORIZONTAL,
+                2,
+                0,
+                0,
+                0,
+                c"mblend".as_ptr(),
+                2i32,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(vips_image_get_width(wide_blend), 10);
+    assert_eq!(vips_image_get_width(narrow_blend), 10);
+    let wide_values = read_u8(wide_blend);
+    let narrow_values = read_u8(narrow_blend);
+    assert!(wide_values[3] > 10 && wide_values[3] < 200);
+    assert_eq!(narrow_values[3], 10);
+    assert!(wide_values[6] > 10 && wide_values[6] < 200);
+    assert_eq!(narrow_values[6], 200);
 
     let mut matched = ptr::null_mut();
     assert_eq!(
@@ -287,10 +340,11 @@ fn draw_invalidation_and_mosaic_flow() {
         },
         0
     );
-    assert_eq!(vips_image_get_width(matched), 5);
+    assert_eq!(vips_image_get_width(matched), 10);
 
     unref_image(matched);
-    unref_image(mosaic);
+    unref_image(narrow_blend);
+    unref_image(wide_blend);
     unref_image(stamp);
     unref_image(secondary);
     unref_image(reference);

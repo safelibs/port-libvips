@@ -2,12 +2,12 @@ use std::ffi::CStr;
 use std::path::{Path, PathBuf};
 
 use crate::abi::image::{
-    VipsBandFormat, VipsImage, VipsInterpretation, VIPS_FORMAT_FLOAT, VIPS_FORMAT_INT,
-    VIPS_FORMAT_UCHAR, VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_B_W, VIPS_INTERPRETATION_CMYK,
-    VIPS_INTERPRETATION_GREY16, VIPS_INTERPRETATION_HISTOGRAM, VIPS_INTERPRETATION_HSV,
-    VIPS_INTERPRETATION_LAB, VIPS_INTERPRETATION_LCH, VIPS_INTERPRETATION_MULTIBAND,
-    VIPS_INTERPRETATION_RGB16, VIPS_INTERPRETATION_XYZ, VIPS_INTERPRETATION_YXY,
-    VIPS_INTERPRETATION_sRGB, VIPS_INTERPRETATION_scRGB,
+    VIPS_INTERPRETATION_sRGB, VIPS_INTERPRETATION_scRGB, VipsBandFormat, VipsImage,
+    VipsInterpretation, VIPS_FORMAT_FLOAT, VIPS_FORMAT_INT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_USHORT,
+    VIPS_INTERPRETATION_B_W, VIPS_INTERPRETATION_CMYK, VIPS_INTERPRETATION_GREY16,
+    VIPS_INTERPRETATION_HISTOGRAM, VIPS_INTERPRETATION_HSV, VIPS_INTERPRETATION_LAB,
+    VIPS_INTERPRETATION_LCH, VIPS_INTERPRETATION_MULTIBAND, VIPS_INTERPRETATION_RGB16,
+    VIPS_INTERPRETATION_XYZ, VIPS_INTERPRETATION_YXY,
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::ImageBuffer;
@@ -221,7 +221,8 @@ fn rgb8_to_hsv(rgb: [f64; 3]) -> [f64; 3] {
 fn to_linear_rgb(space: VipsInterpretation, values: &[f64]) -> [f64; 3] {
     match space {
         VIPS_INTERPRETATION_B_W => {
-            let grey = srgb_to_linear((values.first().copied().unwrap_or(0.0) / 255.0).clamp(0.0, 1.0));
+            let grey =
+                srgb_to_linear((values.first().copied().unwrap_or(0.0) / 255.0).clamp(0.0, 1.0));
             [grey, grey, grey]
         }
         VIPS_INTERPRETATION_GREY16 => {
@@ -280,9 +281,11 @@ fn to_linear_rgb(space: VipsInterpretation, values: &[f64]) -> [f64; 3] {
         ]),
         _ => {
             let get = |index| {
-                let value =
-                    values.get(index).copied().unwrap_or(values.first().copied().unwrap_or(0.0_f64))
-                        / 255.0_f64;
+                let value = values
+                    .get(index)
+                    .copied()
+                    .unwrap_or(values.first().copied().unwrap_or(0.0_f64))
+                    / 255.0_f64;
                 srgb_to_linear(value.clamp(0.0_f64, 1.0_f64))
             };
             [get(0), get(1), get(2)]
@@ -521,55 +524,81 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
             Ok(true)
         }
         "sRGB2HSV" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_sRGB, VIPS_INTERPRETATION_HSV)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_sRGB, VIPS_INTERPRETATION_HSV)?
+            };
             Ok(true)
         }
         "HSV2sRGB" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_HSV, VIPS_INTERPRETATION_sRGB)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_HSV, VIPS_INTERPRETATION_sRGB)?
+            };
             Ok(true)
         }
         "sRGB2scRGB" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_sRGB, VIPS_INTERPRETATION_scRGB)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_sRGB, VIPS_INTERPRETATION_scRGB)?
+            };
             Ok(true)
         }
         "scRGB2sRGB" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_scRGB, VIPS_INTERPRETATION_sRGB)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_scRGB, VIPS_INTERPRETATION_sRGB)?
+            };
             Ok(true)
         }
         "scRGB2BW" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_scRGB, VIPS_INTERPRETATION_B_W)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_scRGB, VIPS_INTERPRETATION_B_W)?
+            };
             Ok(true)
         }
         "XYZ2Lab" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_XYZ, VIPS_INTERPRETATION_LAB)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_XYZ, VIPS_INTERPRETATION_LAB)?
+            };
             Ok(true)
         }
         "Lab2XYZ" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_LAB, VIPS_INTERPRETATION_XYZ)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_LAB, VIPS_INTERPRETATION_XYZ)?
+            };
             Ok(true)
         }
         "Lab2LCh" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_LAB, VIPS_INTERPRETATION_LCH)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_LAB, VIPS_INTERPRETATION_LCH)?
+            };
             Ok(true)
         }
         "LCh2Lab" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_LCH, VIPS_INTERPRETATION_LAB)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_LCH, VIPS_INTERPRETATION_LAB)?
+            };
             Ok(true)
         }
         "XYZ2Yxy" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_XYZ, VIPS_INTERPRETATION_YXY)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_XYZ, VIPS_INTERPRETATION_YXY)?
+            };
             Ok(true)
         }
         "Yxy2XYZ" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_YXY, VIPS_INTERPRETATION_XYZ)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_YXY, VIPS_INTERPRETATION_XYZ)?
+            };
             Ok(true)
         }
         "XYZ2scRGB" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_XYZ, VIPS_INTERPRETATION_scRGB)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_XYZ, VIPS_INTERPRETATION_scRGB)?
+            };
             Ok(true)
         }
         "scRGB2XYZ" => {
-            unsafe { op_named_transform(object, VIPS_INTERPRETATION_scRGB, VIPS_INTERPRETATION_XYZ)? };
+            unsafe {
+                op_named_transform(object, VIPS_INTERPRETATION_scRGB, VIPS_INTERPRETATION_XYZ)?
+            };
             Ok(true)
         }
         _ => Ok(false),

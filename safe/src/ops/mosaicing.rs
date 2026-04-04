@@ -1,6 +1,4 @@
-use crate::abi::basic::{
-    VipsDirection, VIPS_DIRECTION_HORIZONTAL, VIPS_DIRECTION_VERTICAL,
-};
+use crate::abi::basic::{VipsDirection, VIPS_DIRECTION_HORIZONTAL, VIPS_DIRECTION_VERTICAL};
 use crate::abi::object::VipsObject;
 use crate::pixels::format::common_format;
 use crate::pixels::ImageBuffer;
@@ -16,7 +14,10 @@ fn replicate_if_needed(buffer: &ImageBuffer, bands: usize) -> Result<ImageBuffer
     }
 }
 
-fn align_for_mosaic(reference: &ImageBuffer, secondary: &ImageBuffer) -> Result<(ImageBuffer, ImageBuffer), ()> {
+fn align_for_mosaic(
+    reference: &ImageBuffer,
+    secondary: &ImageBuffer,
+) -> Result<(ImageBuffer, ImageBuffer), ()> {
     let format = common_format(reference.spec.format, secondary.spec.format).ok_or(())?;
     let bands = match (reference.spec.bands, secondary.spec.bands) {
         (a, b) if a == b => a,
@@ -30,29 +31,41 @@ fn align_for_mosaic(reference: &ImageBuffer, secondary: &ImageBuffer) -> Result<
     ))
 }
 
-fn overlap_weight(
-    direction: VipsDirection,
-    x: usize,
-    y: usize,
-    overlap_left: usize,
-    overlap_top: usize,
-    overlap_width: usize,
-    overlap_height: usize,
-) -> f64 {
-    match direction {
-        VIPS_DIRECTION_VERTICAL => {
-            if overlap_height <= 1 {
-                0.5
-            } else {
-                (y.saturating_sub(overlap_top) as f64 / (overlap_height - 1) as f64).clamp(0.0, 1.0)
-            }
-        }
-        _ => {
-            if overlap_width <= 1 {
-                0.5
-            } else {
-                (x.saturating_sub(overlap_left) as f64 / (overlap_width - 1) as f64).clamp(0.0, 1.0)
-            }
+fn pixel_is_zero(buffer: &ImageBuffer, x: usize, y: usize) -> bool {
+    (0..buffer.spec.bands).all(|band| buffer.get(x, y, band).abs() <= f64::EPSILON)
+}
+
+fn raised_cosine(progress: f64) -> f64 {
+    let progress = progress.clamp(0.0, 1.0);
+    (1.0 - (std::f64::consts::PI * progress).cos()) / 2.0
+}
+
+fn capped_blend_bounds(start: usize, end: usize, blend: i32) -> (usize, usize) {
+    if blend < 0 {
+        return (start, end);
+    }
+
+    let width = end.saturating_sub(start);
+    let limit = blend.max(0) as usize;
+    if width <= limit {
+        (start, end)
+    } else {
+        let shrink_by = width - limit;
+        (start + shrink_by / 2, end.saturating_sub(shrink_by / 2))
+    }
+}
+
+fn blend_weight(position: usize, start: usize, end: usize) -> f64 {
+    if position < start {
+        0.0
+    } else if position >= end {
+        1.0
+    } else {
+        let width = end.saturating_sub(start);
+        if width == 0 {
+            1.0
+        } else {
+            raised_cosine(position.saturating_sub(start) as f64 / width as f64)
         }
     }
 }
@@ -63,7 +76,7 @@ fn compose(
     dx: i32,
     dy: i32,
     direction: VipsDirection,
-    _blend: i32,
+    blend: i32,
 ) -> ImageBuffer {
     let min_x = 0.min(dx);
     let min_y = 0.min(dy);
@@ -95,8 +108,8 @@ fn compose(
     let overlap_top = ref_top.max(sec_top);
     let overlap_right = (ref_left + reference.spec.width).min(sec_left + secondary.spec.width);
     let overlap_bottom = (ref_top + reference.spec.height).min(sec_top + secondary.spec.height);
-    let overlap_width = overlap_right.saturating_sub(overlap_left);
-    let overlap_height = overlap_bottom.saturating_sub(overlap_top);
+    let (blend_left, blend_right) = capped_blend_bounds(overlap_left, overlap_right, blend);
+    let (blend_top, blend_bottom) = capped_blend_bounds(overlap_top, overlap_bottom, blend);
 
     for y in 0..out_height {
         for x in 0..out_width {
@@ -109,21 +122,34 @@ fn compose(
                 && x < sec_left + secondary.spec.width
                 && y < sec_top + secondary.spec.height;
 
+            let ref_zero = if ref_inside {
+                pixel_is_zero(reference, x - ref_left, y - ref_top)
+            } else {
+                true
+            };
+            let sec_zero = if sec_inside {
+                pixel_is_zero(secondary, x - sec_left, y - sec_top)
+            } else {
+                true
+            };
+            let sec_weight = match direction {
+                VIPS_DIRECTION_VERTICAL => blend_weight(y, blend_top, blend_bottom),
+                _ => blend_weight(x, blend_left, blend_right),
+            };
+
             for band in 0..reference.spec.bands {
                 let value = match (ref_inside, sec_inside) {
                     (true, true) => {
                         let ref_value = reference.get(x - ref_left, y - ref_top, band);
                         let sec_value = secondary.get(x - sec_left, y - sec_top, band);
-                        let weight = overlap_weight(
-                            direction,
-                            x,
-                            y,
-                            overlap_left,
-                            overlap_top,
-                            overlap_width,
-                            overlap_height,
-                        );
-                        ref_value * (1.0 - weight) + sec_value * weight
+                        match (ref_zero, sec_zero) {
+                            (true, true) => 0.0,
+                            (false, true) => ref_value,
+                            (true, false) => sec_value,
+                            (false, false) => {
+                                ref_value * (1.0 - sec_weight) + sec_value * sec_weight
+                            }
+                        }
                     }
                     (true, false) => reference.get(x - ref_left, y - ref_top, band),
                     (false, true) => secondary.get(x - sec_left, y - sec_top, band),
@@ -143,12 +169,14 @@ unsafe fn op_mosaic(object: *mut VipsObject) -> Result<(), ()> {
     let like = unsafe { get_image_ref(object, "ref")? };
     let (reference, secondary) = align_for_mosaic(&reference, &secondary)?;
     let direction = unsafe { get_enum(object, "direction")? as VipsDirection };
-    let dx = unsafe { get_int(object, "xref")? }.saturating_sub(unsafe { get_int(object, "xsec")? });
-    let dy = unsafe { get_int(object, "yref")? }.saturating_sub(unsafe { get_int(object, "ysec")? });
+    let dx =
+        unsafe { get_int(object, "xref")? }.saturating_sub(unsafe { get_int(object, "xsec")? });
+    let dy =
+        unsafe { get_int(object, "yref")? }.saturating_sub(unsafe { get_int(object, "ysec")? });
     let blend = if unsafe { super::argument_assigned(object, "mblend")? } {
         unsafe { get_int(object, "mblend")? }
     } else {
-        0
+        10
     };
     let out = compose(&reference, &secondary, dx, dy, direction, blend);
     let result = unsafe { set_output_image_like(object, "out", out, like) };
@@ -193,7 +221,7 @@ unsafe fn op_mosaic1(object: *mut VipsObject) -> Result<(), ()> {
     let blend = if unsafe { super::argument_assigned(object, "mblend")? } {
         unsafe { get_int(object, "mblend")? }
     } else {
-        0
+        10
     };
     let out = compose(&reference, &secondary, dx, dy, direction, blend);
     let result = unsafe { set_output_image_like(object, "out", out, like) };

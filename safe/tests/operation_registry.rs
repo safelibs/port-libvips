@@ -110,7 +110,10 @@ struct TypeCollector {
     entries: Vec<ManifestEntry>,
 }
 
-unsafe extern "C" fn collect_types_cb(type_: glib_sys::GType, data: *mut libc::c_void) -> *mut libc::c_void {
+unsafe extern "C" fn collect_types_cb(
+    type_: glib_sys::GType,
+    data: *mut libc::c_void,
+) -> *mut libc::c_void {
     let collector = unsafe { &mut *data.cast::<TypeCollector>() };
     let class = unsafe { gobject_sys::g_type_class_ref(type_) }.cast::<VipsObjectClass>();
     let parent = unsafe { gobject_sys::g_type_parent(type_) };
@@ -324,34 +327,47 @@ fn pspec_default(pspec: *mut gobject_sys::GParamSpec) -> Option<String> {
     let value_type = unsafe { (*pspec).value_type };
     if value_type == gobject_sys::G_TYPE_BOOLEAN {
         let value = unsafe { (*(pspec.cast::<gobject_sys::GParamSpecBoolean>())).default_value };
-        Some(if value == glib_sys::GFALSE { "FALSE" } else { "TRUE" }.to_owned())
+        Some(
+            if value == glib_sys::GFALSE {
+                "FALSE"
+            } else {
+                "TRUE"
+            }
+            .to_owned(),
+        )
     } else if value_type == gobject_sys::G_TYPE_INT {
         Some(unsafe { (*(pspec.cast::<gobject_sys::GParamSpecInt>())).default_value }.to_string())
     } else if value_type == gobject_sys::G_TYPE_UINT64 {
-        Some(unsafe { (*(pspec.cast::<gobject_sys::GParamSpecUInt64>())).default_value }.to_string())
+        Some(
+            unsafe { (*(pspec.cast::<gobject_sys::GParamSpecUInt64>())).default_value }.to_string(),
+        )
     } else if value_type == gobject_sys::G_TYPE_DOUBLE {
-        Some(unsafe { (*(pspec.cast::<gobject_sys::GParamSpecDouble>())).default_value }.to_string())
+        Some(
+            unsafe { (*(pspec.cast::<gobject_sys::GParamSpecDouble>())).default_value }.to_string(),
+        )
     } else if value_type == gobject_sys::G_TYPE_STRING {
         let value = unsafe { (*(pspec.cast::<gobject_sys::GParamSpecString>())).default_value };
         if value.is_null() {
             None
         } else {
-            Some(unsafe { CStr::from_ptr(value) }.to_string_lossy().into_owned())
+            Some(
+                unsafe { CStr::from_ptr(value) }
+                    .to_string_lossy()
+                    .into_owned(),
+            )
         }
     } else if unsafe { gobject_sys::g_type_is_a(value_type, gobject_sys::G_TYPE_ENUM) }
         != glib_sys::GFALSE
     {
-        enum_value_name(
-            value_type,
-            unsafe { (*(pspec.cast::<gobject_sys::GParamSpecEnum>())).default_value },
-        )
+        enum_value_name(value_type, unsafe {
+            (*(pspec.cast::<gobject_sys::GParamSpecEnum>())).default_value
+        })
     } else if unsafe { gobject_sys::g_type_is_a(value_type, gobject_sys::G_TYPE_FLAGS) }
         != glib_sys::GFALSE
     {
-        flags_value_name(
-            value_type,
-            unsafe { (*(pspec.cast::<gobject_sys::GParamSpecFlags>())).default_value },
-        )
+        flags_value_name(value_type, unsafe {
+            (*(pspec.cast::<gobject_sys::GParamSpecFlags>())).default_value
+        })
     } else {
         None
     }
@@ -482,22 +498,23 @@ fn expected_live_args(manifest: &GeneratedManifest, type_name: &str) -> Vec<Live
                 _ => argument.kind,
             };
             LiveArgManifest {
-            construct: argument.construct,
-            default: normalize_default(&kind, argument.default),
-            description: argument.description,
-            direction: argument.direction,
-            flags: {
-                let mut flags = argument.flags;
-                flags.sort();
-                flags
-            },
-            kind,
-            long_name: argument.long_name,
-            name: argument.name.replace('_', "-"),
-            priority: argument.priority,
-            required: argument.required,
-            value_type: argument.type_info.value_type,
-        }})
+                construct: argument.construct,
+                default: normalize_default(&kind, argument.default),
+                description: argument.description,
+                direction: argument.direction,
+                flags: {
+                    let mut flags = argument.flags;
+                    flags.sort();
+                    flags
+                },
+                kind,
+                long_name: argument.long_name,
+                name: argument.name.replace('_', "-"),
+                priority: argument.priority,
+                required: argument.required,
+                value_type: argument.type_info.value_type,
+            }
+        })
         .collect::<Vec<_>>();
     args.sort();
     args
@@ -524,7 +541,8 @@ fn live_registry_matches_reference_manifests() {
     expected_types.sort();
 
     let live_types = collect_live_entries(unsafe { vips_object_get_type() });
-    let live_operations = project_operations(collect_live_entries(unsafe { vips_operation_get_type() }));
+    let live_operations =
+        project_operations(collect_live_entries(unsafe { vips_operation_get_type() }));
     let expected_operations = project_operations(expected_operations);
 
     assert_eq!(live_types, expected_types, "live type tree mismatch");

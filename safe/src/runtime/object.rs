@@ -17,9 +17,9 @@ use crate::abi::image::{VipsImage, VipsImageClass};
 use crate::abi::object::{
     VipsArgument, VipsArgumentClass, VipsArgumentClassMapFn, VipsArgumentFlags,
     VipsArgumentInstance, VipsArgumentMapFn, VipsArgumentTable, VipsClassMapFn, VipsObject,
-    VipsObjectClass, VipsObjectSetArguments, VipsTypeMap2Fn, VipsTypeMapFn, VIPS_ARGUMENT_CONSTRUCT,
-    VIPS_ARGUMENT_DEPRECATED, VIPS_ARGUMENT_INPUT, VIPS_ARGUMENT_OUTPUT, VIPS_ARGUMENT_REQUIRED,
-    VIPS_ARGUMENT_SET_ALWAYS, VIPS_ARGUMENT_SET_ONCE,
+    VipsObjectClass, VipsObjectSetArguments, VipsTypeMap2Fn, VipsTypeMapFn,
+    VIPS_ARGUMENT_CONSTRUCT, VIPS_ARGUMENT_DEPRECATED, VIPS_ARGUMENT_INPUT, VIPS_ARGUMENT_OUTPUT,
+    VIPS_ARGUMENT_REQUIRED, VIPS_ARGUMENT_SET_ALWAYS, VIPS_ARGUMENT_SET_ONCE,
 };
 use crate::abi::operation::{
     VipsForeign, VipsForeignClass, VipsForeignLoad, VipsForeignLoadClass, VipsForeignSave,
@@ -49,9 +49,7 @@ fn leaked_cstrings() -> &'static Mutex<Vec<usize>> {
 }
 
 pub(crate) fn leak_cstring(text: &str) -> *const c_char {
-    let raw = CString::new(text)
-        .expect("cstring")
-        .into_raw();
+    let raw = CString::new(text).expect("cstring").into_raw();
     leaked_cstrings()
         .lock()
         .expect("leaked cstrings")
@@ -329,12 +327,7 @@ pub(crate) unsafe fn set_qdata_box<T>(
 ) {
     let boxed = Box::into_raw(Box::new(value));
     unsafe {
-        gobject_sys::g_object_set_qdata_full(
-            object,
-            quark,
-            boxed.cast(),
-            Some(destroy_box::<T>),
-        );
+        gobject_sys::g_object_set_qdata_full(object, quark, boxed.cast(), Some(destroy_box::<T>));
     }
 }
 
@@ -427,8 +420,8 @@ unsafe fn object_state(object: *mut VipsObject) -> Option<&'static mut ObjectSta
 }
 
 fn vips_object_parent_class() -> *mut gobject_sys::GObjectClass {
-    let object_class =
-        unsafe { gobject_sys::g_type_class_peek(vips_object_get_type()) }.cast::<gobject_sys::GTypeClass>();
+    let object_class = unsafe { gobject_sys::g_type_class_peek(vips_object_get_type()) }
+        .cast::<gobject_sys::GTypeClass>();
     if object_class.is_null() {
         ptr::null_mut()
     } else {
@@ -552,10 +545,8 @@ pub(crate) unsafe fn init_subclass_class(class: *mut VipsObjectClass) {
     if unsafe { (*class).argument_table_traverse_gtype } == current_type {
         return;
     }
-    let parent = unsafe {
-        gobject_sys::g_type_class_peek_parent(class.cast())
-    }
-    .cast::<VipsObjectClass>();
+    let parent =
+        unsafe { gobject_sys::g_type_class_peek_parent(class.cast()) }.cast::<VipsObjectClass>();
     unsafe {
         (*class).argument_table = argument_table_new(true);
         (*class).argument_table_traverse = if parent.is_null() {
@@ -593,7 +584,8 @@ unsafe fn find_argument_class(
     if class.is_null() || pspec.is_null() {
         return ptr::null_mut();
     }
-    let local = unsafe { hash_table_lookup::<VipsArgumentClass>((*class).argument_table, pspec.cast()) };
+    let local =
+        unsafe { hash_table_lookup::<VipsArgumentClass>((*class).argument_table, pspec.cast()) };
     if !local.is_null() {
         return local;
     }
@@ -786,29 +778,47 @@ unsafe fn dynamic_from_gvalue(
     }
 
     if value_type == gobject_sys::G_TYPE_STRING {
-        Some(DynamicValue::String(unsafe { gobject_sys::g_value_dup_string(value) }))
+        Some(DynamicValue::String(unsafe {
+            gobject_sys::g_value_dup_string(value)
+        }))
     } else if value_type == gobject_sys::G_TYPE_BOOLEAN {
-        Some(DynamicValue::Bool(unsafe { gobject_sys::g_value_get_boolean(value) }))
+        Some(DynamicValue::Bool(unsafe {
+            gobject_sys::g_value_get_boolean(value)
+        }))
     } else if value_type == gobject_sys::G_TYPE_INT {
-        Some(DynamicValue::Int(unsafe { gobject_sys::g_value_get_int(value) }))
+        Some(DynamicValue::Int(unsafe {
+            gobject_sys::g_value_get_int(value)
+        }))
     } else if value_type == gobject_sys::G_TYPE_UINT64 {
-        Some(DynamicValue::UInt64(unsafe { gobject_sys::g_value_get_uint64(value) }))
+        Some(DynamicValue::UInt64(unsafe {
+            gobject_sys::g_value_get_uint64(value)
+        }))
     } else if value_type == gobject_sys::G_TYPE_DOUBLE {
-        Some(DynamicValue::Double(unsafe { gobject_sys::g_value_get_double(value) }))
+        Some(DynamicValue::Double(unsafe {
+            gobject_sys::g_value_get_double(value)
+        }))
     } else if value_type == gobject_sys::G_TYPE_POINTER {
-        Some(DynamicValue::Pointer(unsafe { gobject_sys::g_value_get_pointer(value) }))
+        Some(DynamicValue::Pointer(unsafe {
+            gobject_sys::g_value_get_pointer(value)
+        }))
     } else if unsafe { gobject_sys::g_type_is_a(value_type, gobject_sys::G_TYPE_OBJECT) }
         != glib_sys::GFALSE
     {
-        Some(DynamicValue::Object(unsafe { gobject_sys::g_value_dup_object(value) }))
+        Some(DynamicValue::Object(unsafe {
+            gobject_sys::g_value_dup_object(value)
+        }))
     } else if unsafe { gobject_sys::g_type_is_a(value_type, gobject_sys::G_TYPE_ENUM) }
         != glib_sys::GFALSE
     {
-        Some(DynamicValue::Enum(unsafe { gobject_sys::g_value_get_enum(value) }))
+        Some(DynamicValue::Enum(unsafe {
+            gobject_sys::g_value_get_enum(value)
+        }))
     } else if unsafe { gobject_sys::g_type_is_a(value_type, gobject_sys::G_TYPE_FLAGS) }
         != glib_sys::GFALSE
     {
-        Some(DynamicValue::Flags(unsafe { gobject_sys::g_value_get_flags(value) }))
+        Some(DynamicValue::Flags(unsafe {
+            gobject_sys::g_value_get_flags(value)
+        }))
     } else if unsafe { gobject_sys::g_type_is_a(value_type, gobject_sys::G_TYPE_BOXED) }
         != glib_sys::GFALSE
     {
@@ -876,11 +886,13 @@ unsafe fn check_required_inputs(object: *mut VipsObject) -> bool {
             let required = unsafe { (*argument).flags & VIPS_ARGUMENT_REQUIRED != 0 };
             let input = unsafe { (*argument).flags & VIPS_ARGUMENT_INPUT != 0 };
             let deprecated = unsafe { (*argument).flags & VIPS_ARGUMENT_DEPRECATED != 0 };
-            let assigned = !instance.is_null() && unsafe { (*instance).assigned != glib_sys::GFALSE };
+            let assigned =
+                !instance.is_null() && unsafe { (*instance).assigned != glib_sys::GFALSE };
             if required && input && !deprecated && !assigned {
                 ok = false;
-                let name =
-                    unsafe { CStr::from_ptr(gobject_sys::g_param_spec_get_name((*argument).parent.pspec)) };
+                let name = unsafe {
+                    CStr::from_ptr(gobject_sys::g_param_spec_get_name((*argument).parent.pspec))
+                };
                 let domain = unsafe {
                     if (*class).nickname.is_null() {
                         "VipsObject".to_owned()
@@ -890,7 +902,10 @@ unsafe fn check_required_inputs(object: *mut VipsObject) -> bool {
                             .into_owned()
                     }
                 };
-                append_message_str(&domain, &format!("parameter {} not set", name.to_string_lossy()));
+                append_message_str(
+                    &domain,
+                    &format!("parameter {} not set", name.to_string_lossy()),
+                );
             }
         }
         node = unsafe { (*node).next };
@@ -957,7 +972,10 @@ unsafe extern "C" fn vips_object_real_postbuild(
     0
 }
 
-unsafe extern "C" fn vips_object_real_summary_class(class: *mut VipsObjectClass, buf: *mut VipsBuf) {
+unsafe extern "C" fn vips_object_real_summary_class(
+    class: *mut VipsObjectClass,
+    buf: *mut VipsBuf,
+) {
     if class.is_null() || buf.is_null() {
         return;
     }
@@ -968,9 +986,16 @@ unsafe extern "C" fn vips_object_real_summary_class(class: *mut VipsObjectClass,
         .to_string_lossy()
         .into_owned()
     };
-    let nickname = unsafe { CStr::from_ptr((*class).nickname).to_string_lossy().into_owned() };
-    let description =
-        unsafe { CStr::from_ptr((*class).description).to_string_lossy().into_owned() };
+    let nickname = unsafe {
+        CStr::from_ptr((*class).nickname)
+            .to_string_lossy()
+            .into_owned()
+    };
+    let description = unsafe {
+        CStr::from_ptr((*class).description)
+            .to_string_lossy()
+            .into_owned()
+    };
     unsafe { append_text(buf, format!("{type_name} ({nickname}), {description}")) };
 }
 
@@ -1459,7 +1484,8 @@ pub extern "C" fn vips_object_class_install_argument(
     }
     unsafe {
         init_subclass_class(class);
-        let argument = glib_sys::g_malloc0(size_of::<VipsArgumentClass>()).cast::<VipsArgumentClass>();
+        let argument =
+            glib_sys::g_malloc0(size_of::<VipsArgumentClass>()).cast::<VipsArgumentClass>();
         ptr::write(
             argument,
             VipsArgumentClass {
@@ -1471,12 +1497,11 @@ pub extern "C" fn vips_object_class_install_argument(
             },
         );
         hash_table_replace((*class).argument_table, pspec.cast(), argument.cast());
-        (*class).argument_table_traverse =
-            glib_sys::g_slist_insert_sorted(
-                (*class).argument_table_traverse,
-                argument.cast(),
-                Some(argument_priority_compare),
-            );
+        (*class).argument_table_traverse = glib_sys::g_slist_insert_sorted(
+            (*class).argument_table_traverse,
+            argument.cast(),
+            Some(argument_priority_compare),
+        );
     }
 }
 
@@ -1564,9 +1589,7 @@ pub extern "C" fn vips_object_set_argument_from_string(
     if class.is_null() {
         return -1;
     }
-    let pspec = unsafe {
-        gobject_sys::g_object_class_find_property(class.cast(), name)
-    };
+    let pspec = unsafe { gobject_sys::g_object_class_find_property(class.cast(), name) };
     if pspec.is_null() {
         append_message_str(
             "vips_object_set_argument_from_string",
@@ -1594,11 +1617,7 @@ pub extern "C" fn vips_object_set_argument_from_string(
     }
     unsafe {
         gobject_sys::g_object_set_property(object.cast(), name, &gvalue);
-        let _ = mark_argument_assigned(
-            object,
-            &CStr::from_ptr(name).to_string_lossy(),
-            true,
-        );
+        let _ = mark_argument_assigned(object, &CStr::from_ptr(name).to_string_lossy(), true);
         gobject_sys::g_value_unset(&mut gvalue);
     }
     0
@@ -1626,8 +1645,7 @@ pub extern "C" fn vips_object_argument_needsstring(
     }
     let value_type = unsafe { (*pspec).value_type };
     let needs = unsafe { (*argument).flags & VIPS_ARGUMENT_OUTPUT != 0 }
-        && (value_type == gobject_sys::G_TYPE_STRING
-            || value_type == gobject_sys::G_TYPE_POINTER);
+        && (value_type == gobject_sys::G_TYPE_STRING || value_type == gobject_sys::G_TYPE_POINTER);
     bool_to_gboolean(needs)
 }
 
@@ -1640,7 +1658,9 @@ pub extern "C" fn vips_object_get_argument_to_string(
     if object.is_null() || name.is_null() {
         return -1;
     }
-    let name = unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned();
+    let name = unsafe { CStr::from_ptr(name) }
+        .to_string_lossy()
+        .into_owned();
     if let Some(value) = unsafe { dynamic_value(object, &name) } {
         match value {
             DynamicValue::String(text) => unsafe {
@@ -1655,7 +1675,14 @@ pub extern "C" fn vips_object_get_argument_to_string(
                 libc::printf(c"%llu\n".as_ptr(), *number);
             },
             DynamicValue::Bool(flag) => unsafe {
-                libc::printf(c"%s\n".as_ptr(), if *flag == glib_sys::GFALSE { c"false".as_ptr() } else { c"true".as_ptr() });
+                libc::printf(
+                    c"%s\n".as_ptr(),
+                    if *flag == glib_sys::GFALSE {
+                        c"false".as_ptr()
+                    } else {
+                        c"true".as_ptr()
+                    },
+                );
             },
             DynamicValue::Enum(number) => unsafe {
                 libc::printf(c"%d\n".as_ptr(), *number);
@@ -1730,8 +1757,7 @@ pub extern "C" fn vips_object_get_argument(
         return -1;
     }
 
-    let pspec =
-        unsafe { gobject_sys::g_object_class_find_property(class.cast(), name) };
+    let pspec = unsafe { gobject_sys::g_object_class_find_property(class.cast(), name) };
     if pspec.is_null() {
         append_message_str(
             "vips_object_get_argument",
@@ -1889,7 +1915,14 @@ pub extern "C" fn vips_type_map_all(
     if !result.is_null() {
         return result;
     }
-    unsafe { vips_type_map(base, Some(vips_type_map_all_cb), std::mem::transmute(fn_), a) }
+    unsafe {
+        vips_type_map(
+            base,
+            Some(vips_type_map_all_cb),
+            std::mem::transmute(fn_),
+            a,
+        )
+    }
 }
 
 #[no_mangle]
@@ -1952,7 +1985,9 @@ unsafe extern "C" fn test_name_cb(class: *mut VipsObjectClass, name: *mut c_void
         if (*class).nickname.is_null() {
             String::new()
         } else {
-            CStr::from_ptr((*class).nickname).to_string_lossy().into_owned()
+            CStr::from_ptr((*class).nickname)
+                .to_string_lossy()
+                .into_owned()
         }
     };
     let type_name = unsafe {
@@ -1980,7 +2015,9 @@ pub extern "C" fn vips_class_find(
     let classname = if basename.is_null() {
         "VipsObject"
     } else {
-        unsafe { CStr::from_ptr(basename) }.to_str().unwrap_or("VipsObject")
+        unsafe { CStr::from_ptr(basename) }
+            .to_str()
+            .unwrap_or("VipsObject")
     };
     let Ok(classname) = CString::new(classname) else {
         return ptr::null();
@@ -2039,7 +2076,10 @@ pub extern "C" fn vips_object_local_cb(
 }
 
 #[no_mangle]
-pub extern "C" fn vips_object_set_static(object: *mut VipsObject, static_object: glib_sys::gboolean) {
+pub extern "C" fn vips_object_set_static(
+    object: *mut VipsObject,
+    static_object: glib_sys::gboolean,
+) {
     if let Some(object) = unsafe { object.as_mut() } {
         object.static_object = static_object;
     }

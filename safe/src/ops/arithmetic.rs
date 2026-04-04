@@ -8,16 +8,14 @@ use crate::abi::basic::{
     VIPS_OPERATION_MATH_COS, VIPS_OPERATION_MATH_COSH, VIPS_OPERATION_MATH_EXP,
     VIPS_OPERATION_MATH_EXP10, VIPS_OPERATION_MATH_LOG, VIPS_OPERATION_MATH_LOG10,
     VIPS_OPERATION_MATH_SIN, VIPS_OPERATION_MATH_SINH, VIPS_OPERATION_MATH_TAN,
-    VIPS_OPERATION_MATH_TANH, VIPS_OPERATION_RELATIONAL_EQUAL,
-    VIPS_OPERATION_RELATIONAL_LESS, VIPS_OPERATION_RELATIONAL_LESSEQ,
-    VIPS_OPERATION_RELATIONAL_MORE, VIPS_OPERATION_RELATIONAL_MOREEQ,
-    VIPS_OPERATION_RELATIONAL_NOTEQ, VIPS_OPERATION_ROUND_CEIL, VIPS_OPERATION_ROUND_FLOOR,
-    VIPS_OPERATION_ROUND_RINT,
+    VIPS_OPERATION_MATH_TANH, VIPS_OPERATION_RELATIONAL_EQUAL, VIPS_OPERATION_RELATIONAL_LESS,
+    VIPS_OPERATION_RELATIONAL_LESSEQ, VIPS_OPERATION_RELATIONAL_MORE,
+    VIPS_OPERATION_RELATIONAL_MOREEQ, VIPS_OPERATION_RELATIONAL_NOTEQ, VIPS_OPERATION_ROUND_CEIL,
+    VIPS_OPERATION_ROUND_FLOOR, VIPS_OPERATION_ROUND_RINT,
 };
 use crate::abi::image::{
     VipsBandFormat, VipsImage, VIPS_FORMAT_CHAR, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT,
-    VIPS_FORMAT_INT, VIPS_FORMAT_SHORT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT,
-    VIPS_FORMAT_USHORT,
+    VIPS_FORMAT_INT, VIPS_FORMAT_SHORT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT,
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::format::{common_format, format_kind, NumericKind};
@@ -172,7 +170,10 @@ fn replicate_if_needed(buffer: &ImageBuffer, bands: usize) -> Result<ImageBuffer
     }
 }
 
-fn align_pair(left: &ImageBuffer, right: &ImageBuffer) -> Result<(ImageBuffer, ImageBuffer, VipsBandFormat), ()> {
+fn align_pair(
+    left: &ImageBuffer,
+    right: &ImageBuffer,
+) -> Result<(ImageBuffer, ImageBuffer, VipsBandFormat), ()> {
     let format = common_format(left.spec.format, right.spec.format).ok_or(())?;
     let width = left.spec.width.max(right.spec.width);
     let height = left.spec.height.max(right.spec.height);
@@ -183,8 +184,12 @@ fn align_pair(left: &ImageBuffer, right: &ImageBuffer) -> Result<(ImageBuffer, I
         _ => return Err(()),
     };
 
-    let left = replicate_if_needed(left, bands)?.with_format(format).zero_extend(width, height);
-    let right = replicate_if_needed(right, bands)?.with_format(format).zero_extend(width, height);
+    let left = replicate_if_needed(left, bands)?
+        .with_format(format)
+        .zero_extend(width, height);
+    let right = replicate_if_needed(right, bands)?
+        .with_format(format)
+        .zero_extend(width, height);
     Ok((left, right, format))
 }
 
@@ -365,12 +370,48 @@ fn relation_value(left: f64, right: f64, rel: VipsOperationRelational) -> f64 {
     let yes = 255.0;
     let no = 0.0;
     match rel {
-        VIPS_OPERATION_RELATIONAL_EQUAL => if left == right { yes } else { no },
-        VIPS_OPERATION_RELATIONAL_NOTEQ => if left != right { yes } else { no },
-        VIPS_OPERATION_RELATIONAL_LESS => if left < right { yes } else { no },
-        VIPS_OPERATION_RELATIONAL_LESSEQ => if left <= right { yes } else { no },
-        VIPS_OPERATION_RELATIONAL_MORE => if left > right { yes } else { no },
-        VIPS_OPERATION_RELATIONAL_MOREEQ => if left >= right { yes } else { no },
+        VIPS_OPERATION_RELATIONAL_EQUAL => {
+            if left == right {
+                yes
+            } else {
+                no
+            }
+        }
+        VIPS_OPERATION_RELATIONAL_NOTEQ => {
+            if left != right {
+                yes
+            } else {
+                no
+            }
+        }
+        VIPS_OPERATION_RELATIONAL_LESS => {
+            if left < right {
+                yes
+            } else {
+                no
+            }
+        }
+        VIPS_OPERATION_RELATIONAL_LESSEQ => {
+            if left <= right {
+                yes
+            } else {
+                no
+            }
+        }
+        VIPS_OPERATION_RELATIONAL_MORE => {
+            if left > right {
+                yes
+            } else {
+                no
+            }
+        }
+        VIPS_OPERATION_RELATIONAL_MOREEQ => {
+            if left >= right {
+                yes
+            } else {
+                no
+            }
+        }
         _ => no,
     }
 }
@@ -384,7 +425,11 @@ fn remainder_value(format: VipsBandFormat, left: f64, right: f64) -> f64 {
         Some(NumericKind::Unsigned) | Some(NumericKind::Signed) => {
             let left = left.trunc() as i64;
             let right = right.trunc() as i64;
-            if right == 0 { 0.0 } else { (left % right) as f64 }
+            if right == 0 {
+                0.0
+            } else {
+                (left % right) as f64
+            }
         }
         _ => 0.0,
     }
@@ -409,7 +454,11 @@ fn sign_value(value: f64) -> f64 {
     }
 }
 
-fn apply_unary(input: &ImageBuffer, out_format: VipsBandFormat, mut f: impl FnMut(f64) -> f64) -> ImageBuffer {
+fn apply_unary(
+    input: &ImageBuffer,
+    out_format: VipsBandFormat,
+    mut f: impl FnMut(f64) -> f64,
+) -> ImageBuffer {
     let mut out = new_output_from_spec(input.spec, out_format);
     out.data = input.data.iter().copied().map(&mut f).collect();
     out
@@ -487,7 +536,9 @@ unsafe fn op_abs(object: *mut VipsObject) -> Result<(), ()> {
 unsafe fn op_invert(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
     let format = binary_output_format("invert", input.spec.format)?;
-    let out = apply_unary(&input, format, |value| invert_value(input.spec.format, value));
+    let out = apply_unary(&input, format, |value| {
+        invert_value(input.spec.format, value)
+    });
     let image = unsafe { get_image_ref(object, "in")? };
     let result = unsafe { set_output_image_like(object, "out", out, image) };
     unsafe {
@@ -497,7 +548,14 @@ unsafe fn op_invert(object: *mut VipsObject) -> Result<(), ()> {
 }
 
 unsafe fn op_sign(object: *mut VipsObject) -> Result<(), ()> {
-    unsafe { unary_image_op(object, "sign", |format| binary_output_format("sign", format), sign_value) }
+    unsafe {
+        unary_image_op(
+            object,
+            "sign",
+            |format| binary_output_format("sign", format),
+            sign_value,
+        )
+    }
 }
 
 unsafe fn op_round(object: *mut VipsObject) -> Result<(), ()> {
@@ -527,7 +585,14 @@ unsafe fn op_round(object: *mut VipsObject) -> Result<(), ()> {
 
 unsafe fn op_math(object: *mut VipsObject) -> Result<(), ()> {
     let math = unsafe { get_enum(object, "math")? } as VipsOperationMath;
-    unsafe { unary_image_op(object, "math", |format| binary_output_format("math", format), |value| unary_math(value, math)) }
+    unsafe {
+        unary_image_op(
+            object,
+            "math",
+            |format| binary_output_format("math", format),
+            |value| unary_math(value, math),
+        )
+    }
 }
 
 unsafe fn op_linear(object: *mut VipsObject) -> Result<(), ()> {
@@ -537,7 +602,9 @@ unsafe fn op_linear(object: *mut VipsObject) -> Result<(), ()> {
     let bands = input.spec.bands.max(1);
     let mut out = new_output_from_spec(
         input.spec,
-        if unsafe { super::argument_assigned(object, "uchar")? } && unsafe { super::get_bool(object, "uchar")? } {
+        if unsafe { super::argument_assigned(object, "uchar")? }
+            && unsafe { super::get_bool(object, "uchar")? }
+        {
             VIPS_FORMAT_UCHAR
         } else {
             binary_output_format("linear", input.spec.format)?
@@ -546,8 +613,14 @@ unsafe fn op_linear(object: *mut VipsObject) -> Result<(), ()> {
     out.data = Vec::with_capacity(input.data.len());
     for (index, value) in input.data.iter().copied().enumerate() {
         let band = index % bands;
-        let aa = a.get(band).copied().unwrap_or_else(|| *a.first().unwrap_or(&1.0));
-        let bb = b.get(band).copied().unwrap_or_else(|| *b.first().unwrap_or(&0.0));
+        let aa = a
+            .get(band)
+            .copied()
+            .unwrap_or_else(|| *a.first().unwrap_or(&1.0));
+        let bb = b
+            .get(band)
+            .copied()
+            .unwrap_or_else(|| *b.first().unwrap_or(&0.0));
         out.data.push(value * aa + bb);
     }
     let image = unsafe { get_image_ref(object, "in")? };
@@ -601,17 +674,25 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
             Ok(true)
         }
         "subtract" => {
-            unsafe { binary_image_op(object, "left", "right", "out", "subtract", |l, r, _| l - r)? };
+            unsafe {
+                binary_image_op(object, "left", "right", "out", "subtract", |l, r, _| l - r)?
+            };
             Ok(true)
         }
         "multiply" => {
-            unsafe { binary_image_op(object, "left", "right", "out", "multiply", |l, r, _| l * r)? };
+            unsafe {
+                binary_image_op(object, "left", "right", "out", "multiply", |l, r, _| l * r)?
+            };
             Ok(true)
         }
         "divide" => {
             unsafe {
                 binary_image_op(object, "left", "right", "out", "divide", |l, r, _| {
-                    if r == 0.0 { 0.0 } else { l / r }
+                    if r == 0.0 {
+                        0.0
+                    } else {
+                        l / r
+                    }
                 })?
             };
             Ok(true)

@@ -1,17 +1,13 @@
 use std::collections::VecDeque;
 
-use crate::abi::basic::{
-    VipsCombineMode, VIPS_COMBINE_MODE_ADD, VIPS_COMBINE_MODE_SET,
-};
+use crate::abi::basic::{VipsCombineMode, VIPS_COMBINE_MODE_ADD, VIPS_COMBINE_MODE_SET};
 use crate::abi::object::VipsObject;
 use crate::pixels::format::{format_bytes, write_sample};
 use crate::pixels::ImageBuffer;
 use crate::runtime::image::{image_state, sync_pixels, vips_image_invalidate_all};
 use crate::runtime::object::object_unref;
 
-use super::{
-    argument_assigned, get_array_double, get_bool, get_enum, get_image_ref, get_int,
-};
+use super::{argument_assigned, get_array_double, get_bool, get_enum, get_image_ref, get_int};
 
 fn resolve_values(values: &[f64], bands: usize) -> Vec<f64> {
     if values.is_empty() {
@@ -59,7 +55,9 @@ fn write_back(image: *mut crate::abi::image::VipsImage, buffer: &ImageBuffer) ->
         return Err(());
     }
 
-    state.pixels.resize(buffer.sample_count().saturating_mul(sample_size), 0);
+    state
+        .pixels
+        .resize(buffer.sample_count().saturating_mul(sample_size), 0);
     for (index, value) in buffer.data.iter().copied().enumerate() {
         let offset = index * sample_size;
         let end = offset + sample_size;
@@ -103,8 +101,23 @@ fn put_pixel_mode(buffer: &mut ImageBuffer, x: i32, y: i32, values: &[f64], mode
     }
 }
 
-fn draw_rect(buffer: &mut ImageBuffer, ink: &[f64], left: i32, top: i32, width: i32, height: i32, fill: bool) {
-    let Some((x0, y0, x1, y1)) = clip_rect(buffer.spec.width, buffer.spec.height, left, top, width, height) else {
+fn draw_rect(
+    buffer: &mut ImageBuffer,
+    ink: &[f64],
+    left: i32,
+    top: i32,
+    width: i32,
+    height: i32,
+    fill: bool,
+) {
+    let Some((x0, y0, x1, y1)) = clip_rect(
+        buffer.spec.width,
+        buffer.spec.height,
+        left,
+        top,
+        width,
+        height,
+    ) else {
         return;
     };
     if fill {
@@ -227,7 +240,14 @@ fn draw_mask(buffer: &mut ImageBuffer, ink: &[f64], mask: &ImageBuffer, x: i32, 
 }
 
 fn draw_smudge(buffer: &mut ImageBuffer, left: i32, top: i32, width: i32, height: i32) {
-    let Some((x0, y0, x1, y1)) = clip_rect(buffer.spec.width, buffer.spec.height, left, top, width, height) else {
+    let Some((x0, y0, x1, y1)) = clip_rect(
+        buffer.spec.width,
+        buffer.spec.height,
+        left,
+        top,
+        width,
+        height,
+    ) else {
         return;
     };
     let source = buffer.clone();
@@ -299,12 +319,16 @@ fn draw_flood(
 unsafe fn op_draw_rect(object: *mut VipsObject) -> Result<(), ()> {
     let image = unsafe { get_image_ref(object, "image")? };
     let mut buffer = ImageBuffer::from_image(image)?;
-    let ink = resolve_values(&unsafe { get_array_double(object, "ink")? }, buffer.spec.bands);
+    let ink = resolve_values(
+        &unsafe { get_array_double(object, "ink")? },
+        buffer.spec.bands,
+    );
     let left = unsafe { get_int(object, "left")? };
     let top = unsafe { get_int(object, "top")? };
     let width = unsafe { get_int(object, "width")? };
     let height = unsafe { get_int(object, "height")? };
-    let fill = unsafe { argument_assigned(object, "fill")? } && unsafe { get_bool(object, "fill")? };
+    let fill =
+        unsafe { argument_assigned(object, "fill")? } && unsafe { get_bool(object, "fill")? };
     draw_rect(&mut buffer, &ink, left, top, width, height, fill);
     let result = write_back(image, &buffer);
     unsafe {
@@ -316,7 +340,10 @@ unsafe fn op_draw_rect(object: *mut VipsObject) -> Result<(), ()> {
 unsafe fn op_draw_line(object: *mut VipsObject) -> Result<(), ()> {
     let image = unsafe { get_image_ref(object, "image")? };
     let mut buffer = ImageBuffer::from_image(image)?;
-    let ink = resolve_values(&unsafe { get_array_double(object, "ink")? }, buffer.spec.bands);
+    let ink = resolve_values(
+        &unsafe { get_array_double(object, "ink")? },
+        buffer.spec.bands,
+    );
     draw_line(
         &mut buffer,
         &ink,
@@ -335,8 +362,12 @@ unsafe fn op_draw_line(object: *mut VipsObject) -> Result<(), ()> {
 unsafe fn op_draw_circle(object: *mut VipsObject) -> Result<(), ()> {
     let image = unsafe { get_image_ref(object, "image")? };
     let mut buffer = ImageBuffer::from_image(image)?;
-    let ink = resolve_values(&unsafe { get_array_double(object, "ink")? }, buffer.spec.bands);
-    let fill = unsafe { argument_assigned(object, "fill")? } && unsafe { get_bool(object, "fill")? };
+    let ink = resolve_values(
+        &unsafe { get_array_double(object, "ink")? },
+        buffer.spec.bands,
+    );
+    let fill =
+        unsafe { argument_assigned(object, "fill")? } && unsafe { get_bool(object, "fill")? };
     draw_circle(
         &mut buffer,
         &ink,
@@ -380,7 +411,10 @@ unsafe fn op_draw_image(object: *mut VipsObject) -> Result<(), ()> {
 unsafe fn op_draw_mask(object: *mut VipsObject) -> Result<(), ()> {
     let image = unsafe { get_image_ref(object, "image")? };
     let mut buffer = ImageBuffer::from_image(image)?;
-    let ink = resolve_values(&unsafe { get_array_double(object, "ink")? }, buffer.spec.bands);
+    let ink = resolve_values(
+        &unsafe { get_array_double(object, "ink")? },
+        buffer.spec.bands,
+    );
     let mask = unsafe { get_image_ref(object, "mask")? };
     let mask_buffer = ImageBuffer::from_image(mask)?;
     draw_mask(
@@ -418,11 +452,17 @@ unsafe fn op_draw_smudge(object: *mut VipsObject) -> Result<(), ()> {
 unsafe fn op_draw_flood(object: *mut VipsObject) -> Result<(), ()> {
     let image = unsafe { get_image_ref(object, "image")? };
     let mut buffer = ImageBuffer::from_image(image)?;
-    let ink = resolve_values(&unsafe { get_array_double(object, "ink")? }, buffer.spec.bands);
+    let ink = resolve_values(
+        &unsafe { get_array_double(object, "ink")? },
+        buffer.spec.bands,
+    );
     let x = unsafe { get_int(object, "x")? };
     let y = unsafe { get_int(object, "y")? };
     let test = if unsafe { argument_assigned(object, "test")? } {
-        resolve_values(&unsafe { get_array_double(object, "test")? }, buffer.spec.bands)
+        resolve_values(
+            &unsafe { get_array_double(object, "test")? },
+            buffer.spec.bands,
+        )
     } else if x >= 0
         && y >= 0
         && (x as usize) < buffer.spec.width
@@ -454,7 +494,14 @@ unsafe fn op_draw_flood(object: *mut VipsObject) -> Result<(), ()> {
     } else {
         buffer.spec.height as i32
     };
-    if let Some(bounds) = clip_rect(buffer.spec.width, buffer.spec.height, left, top, width, height) {
+    if let Some(bounds) = clip_rect(
+        buffer.spec.width,
+        buffer.spec.height,
+        left,
+        top,
+        width,
+        height,
+    ) {
         draw_flood(&mut buffer, &ink, x, y, &test, bounds);
     }
     let result = write_back(image, &buffer);

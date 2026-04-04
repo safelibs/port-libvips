@@ -1,9 +1,14 @@
-use crate::abi::basic::{VipsDirection, VipsOperationMorphology, VIPS_DIRECTION_HORIZONTAL, VIPS_DIRECTION_VERTICAL, VIPS_OPERATION_MORPHOLOGY_DILATE, VIPS_OPERATION_MORPHOLOGY_ERODE};
+use crate::abi::basic::{
+    VipsDirection, VipsOperationMorphology, VIPS_DIRECTION_HORIZONTAL, VIPS_DIRECTION_VERTICAL,
+    VIPS_OPERATION_MORPHOLOGY_DILATE, VIPS_OPERATION_MORPHOLOGY_ERODE,
+};
 use crate::abi::object::VipsObject;
 use crate::pixels::kernel::Kernel;
 use crate::pixels::ImageBuffer;
 
-use super::{get_enum, get_image_buffer, get_image_ref, get_int, set_output_double, set_output_image_like};
+use super::{
+    get_enum, get_image_buffer, get_image_ref, get_int, set_output_double, set_output_image_like,
+};
 
 unsafe fn op_morph(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };

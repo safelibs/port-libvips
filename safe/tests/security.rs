@@ -78,9 +78,9 @@ pub(crate) fn unref_image(image: *mut VipsImage) {
     }
 }
 
-#[path = "security/cve_2021_27847.rs"]
-mod cve_2021_27847;
 #[path = "security/cve_2018_7998.rs"]
 mod cve_2018_7998;
+#[path = "security/cve_2021_27847.rs"]
+mod cve_2021_27847;
 #[path = "security/cve_2026_3284.rs"]
 mod cve_2026_3284;

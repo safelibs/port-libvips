@@ -19,7 +19,10 @@ pub(crate) fn builtin_targets() -> i64 {
     let mut targets = TARGET_SCALAR;
 
     #[cfg(any(
-        all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse2"),
+        all(
+            any(target_arch = "x86", target_arch = "x86_64"),
+            target_feature = "sse2"
+        ),
         target_arch = "aarch64",
         target_arch = "wasm32"
     ))]
@@ -27,7 +30,10 @@ pub(crate) fn builtin_targets() -> i64 {
         targets |= TARGET_SIMD128;
     }
 
-    #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "avx2"))]
+    #[cfg(all(
+        any(target_arch = "x86", target_arch = "x86_64"),
+        target_feature = "avx2"
+    ))]
     {
         targets |= TARGET_SIMD256;
     }

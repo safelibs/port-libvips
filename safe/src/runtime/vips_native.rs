@@ -1,6 +1,6 @@
+use libc::{c_char, c_int, c_void};
 use std::ffi::CStr;
 use std::ptr;
-use libc::{c_char, c_int, c_void};
 
 use crate::runtime::error::append_message_str;
 

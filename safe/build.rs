@@ -251,7 +251,11 @@ fn render_wrapper_call(
     fixed_argument_names: &[&str],
     split: bool,
 ) -> String {
-    let target = if split { "vips_call_split" } else { "vips_call" };
+    let target = if split {
+        "vips_call_split"
+    } else {
+        "vips_call"
+    };
     let operation_name = format!("\"{}\"", wrapper.nickname);
 
     if split {

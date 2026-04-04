@@ -250,8 +250,7 @@ pub(crate) fn read_all_bytes(source: *mut VipsSource) -> Result<Vec<u8>, ()> {
                 };
             }
 
-            if source_ref.read_position != 0
-                && unsafe { emit_seek(source, 0, libc::SEEK_SET) } < 0
+            if source_ref.read_position != 0 && unsafe { emit_seek(source, 0, libc::SEEK_SET) } < 0
             {
                 inner.custom_cache = Some(Err(()));
                 return Err(());
@@ -261,7 +260,9 @@ pub(crate) fn read_all_bytes(source: *mut VipsSource) -> Result<Vec<u8>, ()> {
             let mut bytes = Vec::new();
             let mut buffer = [0u8; 8192];
             loop {
-                let read = unsafe { emit_read(source, buffer.as_mut_ptr().cast::<c_void>(), buffer.len()) };
+                let read = unsafe {
+                    emit_read(source, buffer.as_mut_ptr().cast::<c_void>(), buffer.len())
+                };
                 if read < 0 {
                     inner.custom_cache = Some(Err(()));
                     return Err(());

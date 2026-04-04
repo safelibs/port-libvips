@@ -3,8 +3,8 @@ use std::ptr;
 
 use crate::abi::basic::{
     VipsKernel, VipsSize, VIPS_KERNEL_CUBIC, VIPS_KERNEL_LANCZOS2, VIPS_KERNEL_LANCZOS3,
-    VIPS_KERNEL_LINEAR, VIPS_KERNEL_MITCHELL, VIPS_KERNEL_NEAREST, VIPS_SIZE_BOTH,
-    VIPS_SIZE_DOWN, VIPS_SIZE_FORCE, VIPS_SIZE_UP,
+    VIPS_KERNEL_LINEAR, VIPS_KERNEL_MITCHELL, VIPS_KERNEL_NEAREST, VIPS_SIZE_BOTH, VIPS_SIZE_DOWN,
+    VIPS_SIZE_FORCE, VIPS_SIZE_UP,
 };
 use crate::abi::connection::VipsSource;
 use crate::abi::image::VipsImage;
@@ -117,7 +117,7 @@ fn build_axis_weights(
     input_len: usize,
     output_len: usize,
     kernel: VipsKernel,
-    _centre: bool,
+    centre: bool,
 ) -> Vec<AxisWeights> {
     let input_len = input_len.max(1);
     let output_len = output_len.max(1);
@@ -125,7 +125,21 @@ fn build_axis_weights(
     let mut out = Vec::with_capacity(output_len);
 
     for out_index in 0..output_len {
-        let center = ((out_index as f64 + 0.5) / scale) - 0.5;
+        let center = if centre {
+            ((out_index as f64 + 0.5) / scale) - 0.5
+        } else {
+            out_index as f64 / scale
+        };
+
+        if kernel == VIPS_KERNEL_NEAREST {
+            let source = center.round().clamp(0.0, (input_len - 1) as f64) as usize;
+            out.push(AxisWeights {
+                start: source,
+                weights: vec![1.0],
+            });
+            continue;
+        }
+
         let scale_weight = scale.min(1.0);
         let radius = support(kernel) / scale_weight.max(f64::EPSILON);
         let start = (center - radius).floor() as isize;
@@ -149,7 +163,8 @@ fn build_axis_weights(
             weights.push(weight);
         }
 
-        let start = actual_start.unwrap_or_else(|| center.round().clamp(0.0, (input_len - 1) as f64) as usize);
+        let start = actual_start
+            .unwrap_or_else(|| center.round().clamp(0.0, (input_len - 1) as f64) as usize);
         if weights.is_empty() {
             weights.push(1.0);
         }
@@ -160,7 +175,12 @@ fn build_axis_weights(
     out
 }
 
-fn resample_horizontal(input: &ImageBuffer, output_width: usize, kernel: VipsKernel, centre: bool) -> ImageBuffer {
+fn resample_horizontal(
+    input: &ImageBuffer,
+    output_width: usize,
+    kernel: VipsKernel,
+    centre: bool,
+) -> ImageBuffer {
     let weights = build_axis_weights(input.spec.width, output_width, kernel, centre);
     let mut out = input.with_shape(output_width, input.spec.height, input.spec.bands);
     for y in 0..input.spec.height {
@@ -176,7 +196,12 @@ fn resample_horizontal(input: &ImageBuffer, output_width: usize, kernel: VipsKer
     out
 }
 
-fn resample_vertical(input: &ImageBuffer, output_height: usize, kernel: VipsKernel, centre: bool) -> ImageBuffer {
+fn resample_vertical(
+    input: &ImageBuffer,
+    output_height: usize,
+    kernel: VipsKernel,
+    centre: bool,
+) -> ImageBuffer {
     let weights = build_axis_weights(input.spec.height, output_height, kernel, centre);
     let mut out = input.with_shape(input.spec.width, output_height, input.spec.bands);
     for x in 0..input.spec.width {
@@ -206,7 +231,11 @@ fn resample_to(
 fn shrink_output_len(input_len: usize, shrink: f64, ceil_mode: bool) -> usize {
     let shrink = shrink.max(1.0);
     let value = input_len as f64 / shrink;
-    let out = if ceil_mode { value.ceil() } else { value.floor().max(1.0) };
+    let out = if ceil_mode {
+        value.ceil()
+    } else {
+        value.floor().max(1.0)
+    };
     out.max(1.0) as usize
 }
 
@@ -305,18 +334,25 @@ fn thumbnail_plan(
     crop: bool,
 ) -> (usize, usize, Option<(usize, usize)>) {
     let sx = width.max(1) as f64 / input_width.max(1) as f64;
-    let sy = height.unwrap_or_else(|| ((input_height as f64 * sx).round().max(1.0)) as usize) as f64
+    let sy = height.unwrap_or_else(|| ((input_height as f64 * sx).round().max(1.0)) as usize)
+        as f64
         / input_height.max(1) as f64;
 
     if size == VIPS_SIZE_FORCE {
         return (
             width.max(1),
-            height.unwrap_or_else(|| ((input_height as f64 * sx).round().max(1.0)) as usize).max(1),
+            height
+                .unwrap_or_else(|| ((input_height as f64 * sx).round().max(1.0)) as usize)
+                .max(1),
             None,
         );
     }
 
-    let mut scale = if crop && height.is_some() { sx.max(sy) } else { sx.min(sy) };
+    let mut scale = if crop && height.is_some() {
+        sx.max(sy)
+    } else {
+        sx.min(sy)
+    };
     scale = apply_size_constraint(scale, size);
     let output_width = ((input_width as f64 * scale).round().max(1.0)) as usize;
     let output_height = ((input_height as f64 * scale).round().max(1.0)) as usize;
@@ -352,7 +388,11 @@ fn get_int_with_fallback(
     unsafe { get_int(object, primary) }.or_else(|_| unsafe { get_int(object, fallback) })
 }
 
-unsafe fn set_out_image(object: *mut VipsObject, buffer: ImageBuffer, like: *mut VipsImage) -> Result<(), ()> {
+unsafe fn set_out_image(
+    object: *mut VipsObject,
+    buffer: ImageBuffer,
+    like: *mut VipsImage,
+) -> Result<(), ()> {
     unsafe { set_output_image_like(object, "out", buffer, like) }
 }
 
@@ -365,7 +405,7 @@ unsafe fn op_reduce(object: *mut VipsObject) -> Result<(), ()> {
     let centre = if unsafe { argument_assigned(object, "centre")? } {
         unsafe { get_bool(object, "centre")? }
     } else {
-        false
+        true
     };
     let out_width = ((input.spec.width as f64 / hshrink).round().max(1.0)) as usize;
     let out_height = ((input.spec.height as f64 / vshrink).round().max(1.0)) as usize;
@@ -385,7 +425,7 @@ unsafe fn op_reduceh(object: *mut VipsObject) -> Result<(), ()> {
     let centre = if unsafe { argument_assigned(object, "centre")? } {
         unsafe { get_bool(object, "centre")? }
     } else {
-        false
+        true
     };
     let out_width = ((input.spec.width as f64 / hshrink).round().max(1.0)) as usize;
     let out = resample_to(&input, out_width, input.spec.height, kernel, centre);
@@ -404,7 +444,7 @@ unsafe fn op_reducev(object: *mut VipsObject) -> Result<(), ()> {
     let centre = if unsafe { argument_assigned(object, "centre")? } {
         unsafe { get_bool(object, "centre")? }
     } else {
-        false
+        true
     };
     let out_height = ((input.spec.height as f64 / vshrink).round().max(1.0)) as usize;
     let out = resample_to(&input, input.spec.width, out_height, kernel, centre);
@@ -428,7 +468,7 @@ unsafe fn op_resize(object: *mut VipsObject) -> Result<(), ()> {
     let centre = if unsafe { argument_assigned(object, "centre")? } {
         unsafe { get_bool(object, "centre")? }
     } else {
-        false
+        true
     };
     let out_width = ((input.spec.width as f64 * scale).round().max(1.0)) as usize;
     let out_height = ((input.spec.height as f64 * vscale).round().max(1.0)) as usize;
@@ -509,8 +549,11 @@ unsafe fn apply_thumbnail(
     } else {
         VIPS_SIZE_BOTH
     };
-    let crop = unsafe { argument_assigned(object, "crop")? } && unsafe { get_enum(object, "crop")? } != 0;
-    let kernel = if unsafe { argument_assigned(object, "linear")? } && unsafe { get_bool(object, "linear")? } {
+    let crop =
+        unsafe { argument_assigned(object, "crop")? } && unsafe { get_enum(object, "crop")? } != 0;
+    let kernel = if unsafe { argument_assigned(object, "linear")? }
+        && unsafe { get_bool(object, "linear")? }
+    {
         VIPS_KERNEL_LINEAR
     } else {
         VIPS_KERNEL_LANCZOS3
@@ -524,7 +567,7 @@ unsafe fn apply_thumbnail(
         size,
         crop,
     );
-    let mut out = resample_to(input, out_width, out_height, kernel, false);
+    let mut out = resample_to(input, out_width, out_height, kernel, true);
     if let Some((crop_width, crop_height)) = crop_to {
         out = centre_crop(&out, crop_width, crop_height);
     }
@@ -533,7 +576,9 @@ unsafe fn apply_thumbnail(
 
 unsafe fn op_thumbnail(object: *mut VipsObject) -> Result<(), ()> {
     let filename = unsafe { get_string(object, "filename")? }.ok_or(())?;
-    let source = unsafe { vips_source_new_from_file(std::ffi::CString::new(filename).map_err(|_| ())?.as_ptr()) };
+    let source = unsafe {
+        vips_source_new_from_file(std::ffi::CString::new(filename).map_err(|_| ())?.as_ptr())
+    };
     if source.is_null() {
         return Err(());
     }
@@ -554,7 +599,8 @@ unsafe fn op_thumbnail(object: *mut VipsObject) -> Result<(), ()> {
 
 unsafe fn op_thumbnail_buffer(object: *mut VipsObject) -> Result<(), ()> {
     let bytes = unsafe { get_blob_bytes(object, "buffer")? };
-    let source = unsafe { vips_source_new_from_memory(bytes.as_ptr().cast::<c_void>(), bytes.len()) };
+    let source =
+        unsafe { vips_source_new_from_memory(bytes.as_ptr().cast::<c_void>(), bytes.len()) };
     if source.is_null() {
         return Err(());
     }
