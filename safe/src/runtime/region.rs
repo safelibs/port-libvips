@@ -1,12 +1,17 @@
-use std::ffi::{CStr, c_void};
+use std::ffi::{c_void, CStr};
 use std::ptr;
 
 use crate::abi::basic::{VipsPel, VipsRect};
 use crate::abi::image::{VipsImage, VIPS_IMAGE_OPENOUT, VIPS_IMAGE_PARTIAL};
-use crate::abi::region::{RegionType, VipsRegion, VipsRegionShrink, VIPS_REGION_BUFFER, VIPS_REGION_NONE, VIPS_REGION_OTHER_IMAGE, VIPS_REGION_OTHER_REGION, VIPS_REGION_SHRINK_NEAREST};
+use crate::abi::region::{
+    RegionType, VipsRegion, VipsRegionShrink, VIPS_REGION_BUFFER, VIPS_REGION_NONE,
+    VIPS_REGION_OTHER_IMAGE, VIPS_REGION_OTHER_REGION, VIPS_REGION_SHRINK_NEAREST,
+};
 use crate::runtime::error::append_message_str;
 use crate::runtime::image::{bytes_per_pixel, image_size, image_state, line_size};
-use crate::runtime::object::{get_qdata_ptr, object_new, object_ref, object_unref, qdata_quark, set_qdata_box};
+use crate::runtime::object::{
+    get_qdata_ptr, object_new, object_ref, object_unref, qdata_quark, set_qdata_box,
+};
 
 static REGION_STATE_QUARK: &CStr = c"safe-vips-region-state";
 
@@ -114,11 +119,7 @@ fn copy_rows(
 ) {
     for row in 0..rows {
         unsafe {
-            ptr::copy_nonoverlapping(
-                src.add(row * src_bpl),
-                dst.add(row * dst_bpl),
-                row_size,
-            );
+            ptr::copy_nonoverlapping(src.add(row * src_bpl), dst.add(row * dst_bpl), row_size);
         }
     }
 }
@@ -180,7 +181,8 @@ pub(crate) fn materialize_generated_image(image: *mut VipsImage) -> Result<(), (
         }
         if let Some(region_ref) = unsafe { region.as_ref() } {
             let bpl = line_size(image_ref);
-            let row_size = (region_ref.valid.width.max(0) as usize).saturating_mul(bytes_per_pixel(image_ref));
+            let row_size =
+                (region_ref.valid.width.max(0) as usize).saturating_mul(bytes_per_pixel(image_ref));
             copy_rows(
                 region_ref.data.cast::<u8>(),
                 region_ref.bpl.max(0) as usize,
@@ -204,7 +206,8 @@ pub extern "C" fn vips_region_new(image: *mut VipsImage) -> *mut VipsRegion {
     if image.is_null() {
         return ptr::null_mut();
     }
-    let region = unsafe { object_new::<VipsRegion>(crate::runtime::object::vips_region_get_type()) };
+    let region =
+        unsafe { object_new::<VipsRegion>(crate::runtime::object::vips_region_get_type()) };
     let Some(region_ref) = (unsafe { region.as_mut() }) else {
         return ptr::null_mut();
     };
@@ -234,7 +237,10 @@ pub extern "C" fn vips_region_new(image: *mut VipsImage) -> *mut VipsRegion {
 }
 
 #[no_mangle]
-pub extern "C" fn vips_region_buffer(region: *mut VipsRegion, rect: *const VipsRect) -> libc::c_int {
+pub extern "C" fn vips_region_buffer(
+    region: *mut VipsRegion,
+    rect: *const VipsRect,
+) -> libc::c_int {
     if rect.is_null() || unsafe { assert_region_thread(region) }.is_err() {
         return -1;
     }
@@ -288,7 +294,8 @@ pub extern "C" fn vips_region_image(region: *mut VipsRegion, rect: *const VipsRe
         return 0;
     }
     let bpp = bytes_per_pixel(image);
-    let offset = clipped.top.max(0) as usize * line_size(image) + clipped.left.max(0) as usize * bpp;
+    let offset =
+        clipped.top.max(0) as usize * line_size(image) + clipped.left.max(0) as usize * bpp;
     region_ref.data = unsafe { image.data.add(offset) };
     region_ref.bpl = line_size(image) as libc::c_int;
     region_ref.invalid = glib_sys::GFALSE;
@@ -342,13 +349,17 @@ pub extern "C" fn vips_region_region(
 }
 
 #[no_mangle]
-pub extern "C" fn vips_region_equalsregion(reg1: *mut VipsRegion, reg2: *mut VipsRegion) -> libc::c_int {
+pub extern "C" fn vips_region_equalsregion(
+    reg1: *mut VipsRegion,
+    reg2: *mut VipsRegion,
+) -> libc::c_int {
     match (unsafe { reg1.as_ref() }, unsafe { reg2.as_ref() }) {
         (Some(left), Some(right))
             if left.im == right.im
                 && left.data == right.data
                 && left.bpl == right.bpl
-                && crate::runtime::rect::vips_rect_equalsrect(&left.valid, &right.valid) != glib_sys::GFALSE =>
+                && crate::runtime::rect::vips_rect_equalsrect(&left.valid, &right.valid)
+                    != glib_sys::GFALSE =>
         {
             1
         }
@@ -357,7 +368,11 @@ pub extern "C" fn vips_region_equalsregion(reg1: *mut VipsRegion, reg2: *mut Vip
 }
 
 #[no_mangle]
-pub extern "C" fn vips_region_position(region: *mut VipsRegion, x: libc::c_int, y: libc::c_int) -> libc::c_int {
+pub extern "C" fn vips_region_position(
+    region: *mut VipsRegion,
+    x: libc::c_int,
+    y: libc::c_int,
+) -> libc::c_int {
     let Some(region_ref) = (unsafe { region.as_ref() }) else {
         return -1;
     };
@@ -369,7 +384,11 @@ pub extern "C" fn vips_region_position(region: *mut VipsRegion, x: libc::c_int, 
 }
 
 #[no_mangle]
-pub extern "C" fn vips_region_paint(region: *mut VipsRegion, rect: *const VipsRect, value: libc::c_int) {
+pub extern "C" fn vips_region_paint(
+    region: *mut VipsRegion,
+    rect: *const VipsRect,
+    value: libc::c_int,
+) {
     let Some(region_ref) = (unsafe { region.as_ref() }) else {
         return;
     };
@@ -400,7 +419,11 @@ pub extern "C" fn vips_region_paint(region: *mut VipsRegion, rect: *const VipsRe
 }
 
 #[no_mangle]
-pub extern "C" fn vips_region_paint_pel(region: *mut VipsRegion, rect: *const VipsRect, ink: *const VipsPel) {
+pub extern "C" fn vips_region_paint_pel(
+    region: *mut VipsRegion,
+    rect: *const VipsRect,
+    ink: *const VipsPel,
+) {
     let Some(region_ref) = (unsafe { region.as_ref() }) else {
         return;
     };
@@ -539,7 +562,10 @@ pub extern "C" fn vips_region_shrink(
 }
 
 #[no_mangle]
-pub extern "C" fn vips_region_prepare(region: *mut VipsRegion, rect: *const VipsRect) -> libc::c_int {
+pub extern "C" fn vips_region_prepare(
+    region: *mut VipsRegion,
+    rect: *const VipsRect,
+) -> libc::c_int {
     if rect.is_null() || unsafe { assert_region_thread(region) }.is_err() {
         return -1;
     }
@@ -553,8 +579,9 @@ pub extern "C" fn vips_region_prepare(region: *mut VipsRegion, rect: *const Vips
         return -1;
     }
     let request = unsafe { *rect };
-    let is_generated =
-        image.generate_fn.is_some() || image.dtype == VIPS_IMAGE_PARTIAL || image.dtype == VIPS_IMAGE_OPENOUT;
+    let is_generated = image.generate_fn.is_some()
+        || image.dtype == VIPS_IMAGE_PARTIAL
+        || image.dtype == VIPS_IMAGE_OPENOUT;
     if is_generated {
         if unsafe { prepare_generate(region, &request) }.is_err() {
             return -1;
@@ -587,7 +614,10 @@ pub extern "C" fn vips_region_prepare_to(
     let Some(dest_image) = (unsafe { dest_ref.im.as_ref() }) else {
         return -1;
     };
-    if dest_ref.data.is_null() || image.Bands != dest_image.Bands || image.BandFmt != dest_image.BandFmt {
+    if dest_ref.data.is_null()
+        || image.Bands != dest_image.Bands
+        || image.BandFmt != dest_image.BandFmt
+    {
         append_message_str("vips_region_prepare_to", "inappropriate region type");
         return -1;
     }
@@ -619,7 +649,10 @@ pub extern "C" fn vips_region_prepare_to(
 }
 
 #[no_mangle]
-pub extern "C" fn vips_region_prepare_many(regions: *mut *mut VipsRegion, rect: *const VipsRect) -> libc::c_int {
+pub extern "C" fn vips_region_prepare_many(
+    regions: *mut *mut VipsRegion,
+    rect: *const VipsRect,
+) -> libc::c_int {
     if regions.is_null() || rect.is_null() {
         return -1;
     }

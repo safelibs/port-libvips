@@ -77,7 +77,11 @@ unsafe fn append_bytes(buf: *mut VipsBuf, bytes: &[u8]) -> bool {
     if to_copy < bytes.len() || buf_ref.i >= buf_ref.mx - 4 {
         buf_ref.full = glib_sys::GTRUE;
         unsafe {
-            ptr::copy_nonoverlapping(b"...\0".as_ptr(), buf_ref.base.add((buf_ref.mx - 4) as usize).cast::<u8>(), 4);
+            ptr::copy_nonoverlapping(
+                b"...\0".as_ptr(),
+                buf_ref.base.add((buf_ref.mx - 4) as usize).cast::<u8>(),
+                4,
+            );
         }
         buf_ref.i = buf_ref.mx - 1;
         return false;
@@ -157,7 +161,11 @@ pub extern "C" fn vips_buf_set_dynamic(buf: *mut VipsBuf, mx: libc::c_int) {
 }
 
 #[no_mangle]
-pub extern "C" fn vips_buf_init_static(buf: *mut VipsBuf, base: *mut libc::c_char, mx: libc::c_int) {
+pub extern "C" fn vips_buf_init_static(
+    buf: *mut VipsBuf,
+    base: *mut libc::c_char,
+    mx: libc::c_int,
+) {
     vips_buf_init(buf);
     vips_buf_set_static(buf, base, mx);
 }
@@ -178,12 +186,19 @@ pub extern "C" fn vips_buf_appendns(
         return glib_sys::GTRUE;
     }
     let bytes = unsafe { CStr::from_ptr(str_) }.to_bytes();
-    let len = if sz >= 0 { bytes.len().min(sz as usize) } else { bytes.len() };
+    let len = if sz >= 0 {
+        bytes.len().min(sz as usize)
+    } else {
+        bytes.len()
+    };
     bool_to_gboolean(unsafe { append_bytes(buf, &bytes[..len]) })
 }
 
 #[no_mangle]
-pub extern "C" fn vips_buf_appends(buf: *mut VipsBuf, str_: *const libc::c_char) -> glib_sys::gboolean {
+pub extern "C" fn vips_buf_appends(
+    buf: *mut VipsBuf,
+    str_: *const libc::c_char,
+) -> glib_sys::gboolean {
     vips_buf_appendns(buf, str_, -1)
 }
 
@@ -272,14 +287,17 @@ pub extern "C" fn vips_buf_change(
     let Some(buf_ref) = (unsafe { buf.as_mut() }) else {
         return glib_sys::GFALSE;
     };
-    if buf_ref.full != glib_sys::GFALSE || buf_ref.base.is_null() || old.is_null() || new.is_null() {
+    if buf_ref.full != glib_sys::GFALSE || buf_ref.base.is_null() || old.is_null() || new.is_null()
+    {
         return glib_sys::GFALSE;
     }
     let current = vips_buf_all(buf);
     if current.is_null() {
         return glib_sys::GFALSE;
     }
-    let current = unsafe { CStr::from_ptr(current) }.to_string_lossy().into_owned();
+    let current = unsafe { CStr::from_ptr(current) }
+        .to_string_lossy()
+        .into_owned();
     let old = unsafe { CStr::from_ptr(old) }.to_string_lossy();
     let new = unsafe { CStr::from_ptr(new) }.to_string_lossy();
     if let Some(index) = current.rfind(old.as_ref()) {

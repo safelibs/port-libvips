@@ -6,17 +6,14 @@ use crate::abi::connection::VipsConnection;
 static PIPE_READ_LIMIT: AtomicI64 = AtomicI64::new(1024 * 1024 * 1024);
 
 #[no_mangle]
-pub extern "C" fn vips_connection_filename(
-    connection: *mut VipsConnection,
-) -> *const libc::c_char {
-    unsafe { connection.as_ref() }
-        .map_or(std::ptr::null(), |connection| connection.filename.cast_const())
+pub extern "C" fn vips_connection_filename(connection: *mut VipsConnection) -> *const libc::c_char {
+    unsafe { connection.as_ref() }.map_or(std::ptr::null(), |connection| {
+        connection.filename.cast_const()
+    })
 }
 
 #[no_mangle]
-pub extern "C" fn vips_connection_nick(
-    connection: *mut VipsConnection,
-) -> *const libc::c_char {
+pub extern "C" fn vips_connection_nick(connection: *mut VipsConnection) -> *const libc::c_char {
     let Some(connection) = (unsafe { connection.as_ref() }) else {
         return std::ptr::null();
     };

@@ -1,8 +1,12 @@
+use std::cell::Cell;
 use std::ffi::CStr;
 use std::ptr;
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 
-use crate::abi::image::{VipsDemandStyle, VipsImage, VIPS_DEMAND_STYLE_FATSTRIP, VIPS_DEMAND_STYLE_SMALLTILE, VIPS_DEMAND_STYLE_THINSTRIP};
+use crate::abi::image::{
+    VipsDemandStyle, VipsImage, VIPS_DEMAND_STYLE_FATSTRIP, VIPS_DEMAND_STYLE_SMALLTILE,
+    VIPS_DEMAND_STYLE_THINSTRIP,
+};
 use crate::abi::object::VipsObject;
 use crate::abi::operation::{
     VipsThreadStartFn, VipsThreadState, VipsThreadpoolAllocateFn, VipsThreadpoolProgressFn,
@@ -11,7 +15,12 @@ use crate::abi::operation::{
 use crate::runtime::object::{object_new, object_ref, object_unref, qdata_quark, set_qdata_box};
 
 static CONCURRENCY: AtomicI32 = AtomicI32::new(0);
+static THREADPOOL_EPOCH: AtomicU64 = AtomicU64::new(1);
 static THREAD_STATE_QUARK: &CStr = c"safe-vips-thread-state";
+
+thread_local! {
+    static THREAD_EPOCH: Cell<u64> = const { Cell::new(0) };
+}
 
 struct ThreadStateHold {
     image: *mut VipsImage,
@@ -50,6 +59,25 @@ fn thread_state_quark() -> glib_sys::GQuark {
     qdata_quark(THREAD_STATE_QUARK)
 }
 
+fn attach_thread_state() {
+    let epoch = THREADPOOL_EPOCH.load(Ordering::Acquire);
+    THREAD_EPOCH.with(|state| {
+        if state.get() != epoch {
+            state.set(epoch);
+        }
+    });
+}
+
+pub(crate) fn thread_shutdown() {
+    THREAD_EPOCH.with(|state| state.set(0));
+}
+
+pub(crate) fn shutdown_runtime_state() {
+    CONCURRENCY.store(0, Ordering::Relaxed);
+    THREADPOOL_EPOCH.fetch_add(1, Ordering::AcqRel);
+    thread_shutdown();
+}
+
 #[no_mangle]
 pub extern "C" fn vips_concurrency_set(concurrency: libc::c_int) {
     let value = if concurrency < 1 {
@@ -85,11 +113,17 @@ pub extern "C" fn vips_thread_state_set(
 }
 
 #[no_mangle]
-pub extern "C" fn vips_thread_state_new(im: *mut VipsImage, a: *mut libc::c_void) -> *mut VipsThreadState {
+pub extern "C" fn vips_thread_state_new(
+    im: *mut VipsImage,
+    a: *mut libc::c_void,
+) -> *mut VipsThreadState {
     if im.is_null() {
         return ptr::null_mut();
     }
-    let state = unsafe { object_new::<VipsThreadState>(crate::runtime::object::vips_thread_state_get_type()) };
+    attach_thread_state();
+    let state = unsafe {
+        object_new::<VipsThreadState>(crate::runtime::object::vips_thread_state_get_type())
+    };
     let Some(state_ref) = (unsafe { state.as_mut() }) else {
         return ptr::null_mut();
     };
@@ -130,6 +164,7 @@ pub extern "C" fn vips_threadpool_run(
     if im.is_null() {
         return -1;
     }
+    attach_thread_state();
     let start_fn = start.unwrap_or(vips_thread_state_new);
     let state = unsafe { start_fn(im, a) };
     if state.is_null() {
@@ -160,7 +195,9 @@ pub extern "C" fn vips_threadpool_run(
                 break;
             }
         }
-        if allocate.is_none() || unsafe { state.as_ref() }.is_some_and(|state| state.stop != glib_sys::GFALSE) {
+        if allocate.is_none()
+            || unsafe { state.as_ref() }.is_some_and(|state| state.stop != glib_sys::GFALSE)
+        {
             break;
         }
     }

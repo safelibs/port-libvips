@@ -156,11 +156,30 @@ pub struct VipsImage {
 #[repr(C)]
 pub struct VipsImageClass {
     pub parent_class: VipsObjectClass,
-    pub preeval: Option<unsafe extern "C" fn(image: *mut VipsImage, progress: *mut VipsProgress, data: *mut libc::c_void)>,
-    pub eval: Option<unsafe extern "C" fn(image: *mut VipsImage, progress: *mut VipsProgress, data: *mut libc::c_void)>,
-    pub posteval:
-        Option<unsafe extern "C" fn(image: *mut VipsImage, progress: *mut VipsProgress, data: *mut libc::c_void)>,
-    pub written: Option<unsafe extern "C" fn(image: *mut VipsImage, result: *mut c_int, data: *mut libc::c_void)>,
+    pub preeval: Option<
+        unsafe extern "C" fn(
+            image: *mut VipsImage,
+            progress: *mut VipsProgress,
+            data: *mut libc::c_void,
+        ),
+    >,
+    pub eval: Option<
+        unsafe extern "C" fn(
+            image: *mut VipsImage,
+            progress: *mut VipsProgress,
+            data: *mut libc::c_void,
+        ),
+    >,
+    pub posteval: Option<
+        unsafe extern "C" fn(
+            image: *mut VipsImage,
+            progress: *mut VipsProgress,
+            data: *mut libc::c_void,
+        ),
+    >,
+    pub written: Option<
+        unsafe extern "C" fn(image: *mut VipsImage, result: *mut c_int, data: *mut libc::c_void),
+    >,
     pub invalidate: Option<unsafe extern "C" fn(image: *mut VipsImage, data: *mut libc::c_void)>,
     pub minimise: Option<unsafe extern "C" fn(image: *mut VipsImage, data: *mut libc::c_void)>,
 }

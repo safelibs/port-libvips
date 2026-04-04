@@ -1,6 +1,14 @@
+use std::ptr;
 use std::sync::{Mutex, OnceLock};
 
-use crate::abi::operation::VipsOperation;
+use crate::abi::object::{VipsObject, VipsObjectClass};
+use crate::abi::operation::{
+    VipsOperation, VipsOperationClass, VipsOperationFlags, VIPS_OPERATION_BLOCKED,
+    VIPS_OPERATION_NOCACHE, VIPS_OPERATION_REVALIDATE,
+};
+use crate::runtime::error::append_message_str;
+use crate::runtime::memory::{vips_tracked_get_files, vips_tracked_get_mem};
+use crate::runtime::object::{object_ref, object_unref};
 
 #[derive(Clone, Copy)]
 struct CacheConfig {
@@ -23,86 +31,425 @@ impl Default for CacheConfig {
     }
 }
 
-fn config() -> &'static Mutex<CacheConfig> {
-    static CONFIG: OnceLock<Mutex<CacheConfig>> = OnceLock::new();
-    CONFIG.get_or_init(|| Mutex::new(CacheConfig::default()))
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct OperationKey {
+    type_: glib_sys::GType,
+    hash: libc::c_uint,
+    found_hash: bool,
+    ptr: usize,
+}
+
+#[derive(Clone, Copy)]
+struct CacheEntry {
+    operation: *mut VipsOperation,
+    key: OperationKey,
+    time: u64,
+}
+
+unsafe impl Send for CacheEntry {}
+
+struct CacheState {
+    config: CacheConfig,
+    entries: Vec<CacheEntry>,
+    time: u64,
+}
+
+impl Default for CacheState {
+    fn default() -> Self {
+        Self {
+            config: CacheConfig::default(),
+            entries: Vec::new(),
+            time: 0,
+        }
+    }
+}
+
+fn state() -> &'static Mutex<CacheState> {
+    static STATE: OnceLock<Mutex<CacheState>> = OnceLock::new();
+    STATE.get_or_init(|| Mutex::new(CacheState::default()))
+}
+
+unsafe fn object_class(object: *mut VipsObject) -> *mut VipsObjectClass {
+    if object.is_null() {
+        return ptr::null_mut();
+    }
+
+    unsafe {
+        (*object.cast::<gobject_sys::GObject>())
+            .g_type_instance
+            .g_class
+            .cast::<VipsObjectClass>()
+    }
+}
+
+unsafe fn operation_class(operation: *mut VipsOperation) -> *mut VipsOperationClass {
+    unsafe { object_class(operation.cast::<VipsObject>()).cast::<VipsOperationClass>() }
+}
+
+unsafe fn operation_key(operation: *mut VipsOperation) -> OperationKey {
+    let type_ = unsafe {
+        (*(*operation.cast::<gobject_sys::GObject>())
+            .g_type_instance
+            .g_class)
+            .g_type
+    };
+    let found_hash = unsafe { (*operation).found_hash != glib_sys::GFALSE };
+    OperationKey {
+        type_,
+        hash: unsafe { (*operation).hash },
+        found_hash,
+        ptr: if found_hash { 0 } else { operation as usize },
+    }
+}
+
+unsafe fn operation_flags(operation: *mut VipsOperation) -> VipsOperationFlags {
+    let class = unsafe { operation_class(operation) };
+    let Some(class) = (unsafe { class.as_ref() }) else {
+        return 0;
+    };
+
+    class
+        .get_flags
+        .map(|get_flags| unsafe { get_flags(operation) })
+        .unwrap_or(class.flags)
+}
+
+unsafe fn build_operation(operation: *mut VipsOperation) -> libc::c_int {
+    let Some(object) = (unsafe { operation.cast::<VipsObject>().as_mut() }) else {
+        append_message_str("vips_cache_operation_buildp", "operation is NULL");
+        return -1;
+    };
+    if object.constructed != glib_sys::GFALSE {
+        return 0;
+    }
+
+    let Some(class) = (unsafe { object_class(object).as_ref() }) else {
+        object.constructed = glib_sys::GTRUE;
+        return 0;
+    };
+    if let Some(build) = class.build {
+        if unsafe { build(object) } != 0 {
+            return -1;
+        }
+    }
+    if let Some(postbuild) = class.postbuild {
+        if unsafe { postbuild(object, ptr::null_mut()) } != 0 {
+            return -1;
+        }
+    }
+
+    object.constructed = glib_sys::GTRUE;
+    0
+}
+
+fn next_time(state: &mut CacheState) -> u64 {
+    state.time = state.time.wrapping_add(1);
+    state.time
+}
+
+fn trace_message(config: CacheConfig, message: &str, operation: *mut VipsOperation) {
+    if config.trace {
+        eprintln!("vips cache {message}: {operation:p}");
+    }
+}
+
+fn lookup_locked(state: &mut CacheState, key: OperationKey) -> Option<*mut VipsOperation> {
+    let index = state.entries.iter().position(|entry| entry.key == key)?;
+    let time = next_time(state);
+    let entry = &mut state.entries[index];
+    entry.time = time;
+    Some(entry.operation)
+}
+
+fn insert_locked(state: &mut CacheState, operation: *mut VipsOperation, key: OperationKey) {
+    let time = next_time(state);
+    state.entries.push(CacheEntry {
+        operation: unsafe { object_ref(operation) },
+        key,
+        time,
+    });
+}
+
+fn remove_matching_locked(state: &mut CacheState, key: OperationKey) -> Vec<CacheEntry> {
+    let mut removed = Vec::new();
+    let mut kept = Vec::with_capacity(state.entries.len());
+    for entry in state.entries.drain(..) {
+        if entry.key == key {
+            removed.push(entry);
+        } else {
+            kept.push(entry);
+        }
+    }
+    state.entries = kept;
+    removed
+}
+
+fn pop_lru_locked(state: &mut CacheState) -> Option<CacheEntry> {
+    let index = state
+        .entries
+        .iter()
+        .enumerate()
+        .min_by_key(|(_, entry)| entry.time)
+        .map(|(index, _)| index)?;
+    Some(state.entries.remove(index))
+}
+
+fn trim_locked(state: &mut CacheState) -> Vec<CacheEntry> {
+    let mut removed = Vec::new();
+    while (state.entries.len() as i32) > state.config.max
+        || vips_tracked_get_files() > state.config.max_files
+        || vips_tracked_get_mem() > state.config.max_mem
+    {
+        let Some(entry) = pop_lru_locked(state) else {
+            break;
+        };
+        trace_message(state.config, "-", entry.operation);
+        removed.push(entry);
+    }
+    removed
+}
+
+fn unref_entries(entries: Vec<CacheEntry>) {
+    for entry in entries {
+        unsafe {
+            object_unref(entry.operation);
+        }
+    }
+}
+
+fn set_cache_limit(update: impl FnOnce(&mut CacheConfig)) {
+    let removed = {
+        let mut state = state().lock().expect("cache state");
+        update(&mut state.config);
+        trim_locked(&mut state)
+    };
+    unref_entries(removed);
 }
 
 #[no_mangle]
-pub extern "C" fn vips_cache_drop_all() {}
+pub extern "C" fn vips_cache_drop_all() {
+    let removed = {
+        let mut state = state().lock().expect("cache state");
+        if state.config.dump && !state.entries.is_empty() {
+            eprintln!("vips cache drop_all: {} entries", state.entries.len());
+        }
+        std::mem::take(&mut state.entries)
+    };
+    unref_entries(removed);
+}
 
 #[no_mangle]
 pub extern "C" fn vips_cache_operation_lookup(operation: *mut VipsOperation) -> *mut VipsOperation {
-    operation
-}
+    if operation.is_null() {
+        return ptr::null_mut();
+    }
 
-#[no_mangle]
-pub extern "C" fn vips_cache_operation_add(_operation: *mut VipsOperation) {}
-
-#[no_mangle]
-pub extern "C" fn vips_cache_operation_buildp(operation: *mut *mut VipsOperation) -> libc::c_int {
-    if operation.is_null() || unsafe { *operation }.is_null() {
-        -1
+    let hit = {
+        let mut state = state().lock().expect("cache state");
+        lookup_locked(&mut state, unsafe { operation_key(operation) })
+    };
+    if let Some(hit) = hit {
+        unsafe { object_ref(hit) }
     } else {
-        0
+        ptr::null_mut()
     }
 }
 
 #[no_mangle]
+pub extern "C" fn vips_cache_operation_add(operation: *mut VipsOperation) {
+    if operation.is_null() {
+        return;
+    }
+
+    let flags = unsafe { operation_flags(operation) };
+    if (flags & VIPS_OPERATION_NOCACHE) != 0 || (flags & VIPS_OPERATION_BLOCKED) != 0 {
+        return;
+    }
+
+    let removed = {
+        let mut state = state().lock().expect("cache state");
+        let key = unsafe { operation_key(operation) };
+        if lookup_locked(&mut state, key).is_none() {
+            trace_message(state.config, "+", operation);
+            insert_locked(&mut state, operation, key);
+        }
+        trim_locked(&mut state)
+    };
+    unref_entries(removed);
+}
+
+#[no_mangle]
+pub extern "C" fn vips_cache_operation_buildp(operation: *mut *mut VipsOperation) -> libc::c_int {
+    if operation.is_null() {
+        append_message_str("vips_cache_operation_buildp", "operation pointer is NULL");
+        return -1;
+    }
+
+    let mut current = unsafe { *operation };
+    if current.is_null() {
+        append_message_str("vips_cache_operation_buildp", "operation is NULL");
+        return -1;
+    }
+
+    let mut flags = unsafe { operation_flags(current) };
+    if (flags & VIPS_OPERATION_BLOCKED) != 0 {
+        append_message_str("vips_cache_operation_buildp", "operation is blocked");
+        return -1;
+    }
+
+    let mut removed = Vec::new();
+    let key = unsafe { operation_key(current) };
+    if (flags & VIPS_OPERATION_REVALIDATE) != 0 {
+        removed = {
+            let mut state = state().lock().expect("cache state");
+            remove_matching_locked(&mut state, key)
+        };
+    } else {
+        let hit = {
+            let mut state = state().lock().expect("cache state");
+            lookup_locked(&mut state, key)
+        };
+        if let Some(hit) = hit {
+            unsafe {
+                object_ref(hit);
+                object_unref(current);
+                *operation = hit;
+            }
+            return 0;
+        }
+    }
+
+    if unsafe { build_operation(current) } != 0 {
+        unref_entries(removed);
+        return -1;
+    }
+
+    flags = unsafe { operation_flags(current) };
+    if (flags & VIPS_OPERATION_BLOCKED) != 0 {
+        unref_entries(removed);
+        append_message_str("vips_cache_operation_buildp", "operation is blocked");
+        return -1;
+    }
+
+    let (hit, mut trimmed) = {
+        let mut state = state().lock().expect("cache state");
+        let key = unsafe { operation_key(current) };
+        let hit = lookup_locked(&mut state, key);
+        if hit.is_none() && (flags & VIPS_OPERATION_NOCACHE) == 0 {
+            trace_message(state.config, "+", current);
+            insert_locked(&mut state, current, key);
+        }
+        (hit, trim_locked(&mut state))
+    };
+    removed.append(&mut trimmed);
+
+    if let Some(hit) = hit {
+        unsafe {
+            object_ref(hit);
+            object_unref(current);
+            *operation = hit;
+        }
+    } else {
+        current = unsafe { *operation };
+        trace_message(
+            {
+                let state = state().lock().expect("cache state");
+                state.config
+            },
+            if (flags & VIPS_OPERATION_NOCACHE) != 0 {
+                ":"
+            } else {
+                "*"
+            },
+            current,
+        );
+    }
+
+    unref_entries(removed);
+    0
+}
+
+#[no_mangle]
 pub extern "C" fn vips_cache_operation_build(operation: *mut VipsOperation) -> *mut VipsOperation {
-    operation
+    if operation.is_null() {
+        return ptr::null_mut();
+    }
+
+    unsafe {
+        object_ref(operation);
+    }
+    let mut built = operation;
+    if vips_cache_operation_buildp(&mut built) != 0 {
+        unsafe {
+            object_unref(operation);
+        }
+        return ptr::null_mut();
+    }
+
+    built
 }
 
 #[no_mangle]
 pub extern "C" fn vips_cache_print() {
-    let config = config().lock().expect("cache config");
+    let state = state().lock().expect("cache state");
     eprintln!(
-        "vips cache: max={}, max_files={}, max_mem={}, dump={}, trace={}",
-        config.max, config.max_files, config.max_mem, config.dump, config.trace
+        "vips cache: size={}, max={}, max_files={}, max_mem={}, dump={}, trace={}",
+        state.entries.len(),
+        state.config.max,
+        state.config.max_files,
+        state.config.max_mem,
+        state.config.dump,
+        state.config.trace
     );
 }
 
 #[no_mangle]
 pub extern "C" fn vips_cache_set_max(max: libc::c_int) {
-    config().lock().expect("cache config").max = max.max(0);
+    set_cache_limit(|config| {
+        config.max = max.max(0);
+    });
 }
 
 #[no_mangle]
 pub extern "C" fn vips_cache_set_max_mem(max_mem: usize) {
-    config().lock().expect("cache config").max_mem = max_mem;
+    set_cache_limit(|config| {
+        config.max_mem = max_mem;
+    });
 }
 
 #[no_mangle]
 pub extern "C" fn vips_cache_get_max() -> libc::c_int {
-    config().lock().expect("cache config").max
+    state().lock().expect("cache state").config.max
 }
 
 #[no_mangle]
 pub extern "C" fn vips_cache_get_size() -> libc::c_int {
-    0
+    state().lock().expect("cache state").entries.len() as libc::c_int
 }
 
 #[no_mangle]
 pub extern "C" fn vips_cache_get_max_mem() -> usize {
-    config().lock().expect("cache config").max_mem
+    state().lock().expect("cache state").config.max_mem
 }
 
 #[no_mangle]
 pub extern "C" fn vips_cache_get_max_files() -> libc::c_int {
-    config().lock().expect("cache config").max_files
+    state().lock().expect("cache state").config.max_files
 }
 
 #[no_mangle]
 pub extern "C" fn vips_cache_set_max_files(max_files: libc::c_int) {
-    config().lock().expect("cache config").max_files = max_files.max(0);
+    set_cache_limit(|config| {
+        config.max_files = max_files.max(0);
+    });
 }
 
 #[no_mangle]
 pub extern "C" fn vips_cache_set_dump(dump: glib_sys::gboolean) {
-    config().lock().expect("cache config").dump = dump != glib_sys::GFALSE;
+    state().lock().expect("cache state").config.dump = dump != glib_sys::GFALSE;
 }
 
 #[no_mangle]
 pub extern "C" fn vips_cache_set_trace(trace: glib_sys::gboolean) {
-    config().lock().expect("cache config").trace = trace != glib_sys::GFALSE;
+    state().lock().expect("cache state").config.trace = trace != glib_sys::GFALSE;
 }

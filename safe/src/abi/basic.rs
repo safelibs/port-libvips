@@ -346,8 +346,9 @@ c_enum! {
     }
 }
 
-pub type VipsStartFn =
-    Option<unsafe extern "C" fn(out: *mut VipsImage, a: *mut c_void, b: *mut c_void) -> *mut c_void>;
+pub type VipsStartFn = Option<
+    unsafe extern "C" fn(out: *mut VipsImage, a: *mut c_void, b: *mut c_void) -> *mut c_void,
+>;
 pub type VipsGenerateFn = Option<
     unsafe extern "C" fn(
         out: *mut VipsRegion,

@@ -25,7 +25,10 @@ pub extern "C" fn vips_rect_includespoint(
 
     let r = unsafe { &*r };
     bool_to_gboolean(
-        x >= r.left && y >= r.top && x < r.left.saturating_add(r.width) && y < r.top.saturating_add(r.height),
+        x >= r.left
+            && y >= r.top
+            && x < r.left.saturating_add(r.width)
+            && y < r.top.saturating_add(r.height),
     )
 }
 
@@ -59,7 +62,9 @@ pub extern "C" fn vips_rect_equalsrect(
 
     let r1 = unsafe { &*r1 };
     let r2 = unsafe { &*r2 };
-    bool_to_gboolean(r1.left == r2.left && r1.top == r2.top && r1.width == r2.width && r1.height == r2.height)
+    bool_to_gboolean(
+        r1.left == r2.left && r1.top == r2.top && r1.width == r2.width && r1.height == r2.height,
+    )
 }
 
 #[no_mangle]
@@ -114,8 +119,14 @@ pub extern "C" fn vips_rect_intersectrect(
     let r2 = unsafe { &*r2 };
     let left = r1.left.max(r2.left);
     let top = r1.top.max(r2.top);
-    let right = r1.left.saturating_add(r1.width).min(r2.left.saturating_add(r2.width));
-    let bottom = r1.top.saturating_add(r1.height).min(r2.top.saturating_add(r2.height));
+    let right = r1
+        .left
+        .saturating_add(r1.width)
+        .min(r2.left.saturating_add(r2.width));
+    let bottom = r1
+        .top
+        .saturating_add(r1.height)
+        .min(r2.top.saturating_add(r2.height));
 
     *out = VipsRect {
         left,
@@ -138,8 +149,14 @@ pub extern "C" fn vips_rect_unionrect(
         (Some(r1), Some(r2)) => {
             let left = r1.left.min(r2.left);
             let top = r1.top.min(r2.top);
-            let right = r1.left.saturating_add(r1.width).max(r2.left.saturating_add(r2.width));
-            let bottom = r1.top.saturating_add(r1.height).max(r2.top.saturating_add(r2.height));
+            let right = r1
+                .left
+                .saturating_add(r1.width)
+                .max(r2.left.saturating_add(r2.width));
+            let bottom = r1
+                .top
+                .saturating_add(r1.height)
+                .max(r2.top.saturating_add(r2.height));
             *out = VipsRect {
                 left,
                 top,

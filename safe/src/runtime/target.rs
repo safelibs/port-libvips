@@ -1,4 +1,4 @@
-use std::ffi::{CStr, c_void};
+use std::ffi::{c_void, CStr};
 use std::mem::offset_of;
 use std::os::raw::c_char;
 use std::ptr;
@@ -6,7 +6,9 @@ use std::sync::OnceLock;
 
 use gobject_sys::{GTypeClass, G_TYPE_INT, G_TYPE_INT64, G_TYPE_NONE, G_TYPE_POINTER};
 
-use crate::abi::connection::{VipsTarget, VipsTargetCustom, VipsTargetCustomClass, VIPS_TARGET_BUFFER_SIZE};
+use crate::abi::connection::{
+    VipsTarget, VipsTargetCustom, VipsTargetCustomClass, VIPS_TARGET_BUFFER_SIZE,
+};
 use crate::runtime::connection::optional_cstr;
 use crate::runtime::error::append_message_str;
 use crate::runtime::memory::vips_tracked_close;
@@ -24,7 +26,9 @@ fn zero_gvalue() -> gobject_sys::GValue {
 }
 
 enum TargetKind {
-    Memory { bytes: Vec<u8> },
+    Memory {
+        bytes: Vec<u8>,
+    },
     File {
         path: std::ffi::CString,
         fd: libc::c_int,
@@ -43,7 +47,11 @@ struct TargetState {
 impl Drop for TargetState {
     fn drop(&mut self) {
         match &mut self.kind {
-            TargetKind::File { fd, .. } | TargetKind::Descriptor { fd, close_on_drop: true } if *fd >= 0 => {
+            TargetKind::File { fd, .. }
+            | TargetKind::Descriptor {
+                fd,
+                close_on_drop: true,
+            } if *fd >= 0 => {
                 vips_tracked_close(*fd);
                 *fd = -1;
             }
@@ -114,7 +122,9 @@ fn write_raw(target: *mut VipsTarget, bytes: &[u8]) -> Result<(), ()> {
                 append_message_str("vips_target_write", "write failed");
                 return Err(());
             }
-            target_ref.position = target_ref.position.saturating_add(bytes.len() as libc::off_t);
+            target_ref.position = target_ref
+                .position
+                .saturating_add(bytes.len() as libc::off_t);
             Ok(())
         }
         TargetKind::Custom => {
@@ -123,7 +133,9 @@ fn write_raw(target: *mut VipsTarget, bytes: &[u8]) -> Result<(), ()> {
                 append_message_str("vips_target_write", "custom write failed");
                 return Err(());
             }
-            target_ref.position = target_ref.position.saturating_add(bytes.len() as libc::off_t);
+            target_ref.position = target_ref
+                .position
+                .saturating_add(bytes.len() as libc::off_t);
             Ok(())
         }
     }
@@ -372,7 +384,9 @@ unsafe extern "C" fn vips_target_custom_finish_default(_target_custom: *mut Vips
 
 #[no_mangle]
 pub extern "C" fn vips_target_custom_new() -> *mut VipsTargetCustom {
-    let target = unsafe { object_new::<VipsTargetCustom>(crate::runtime::object::vips_target_custom_get_type()) };
+    let target = unsafe {
+        object_new::<VipsTargetCustom>(crate::runtime::object::vips_target_custom_get_type())
+    };
     let Some(target_ref) = (unsafe { target.as_mut() }) else {
         return ptr::null_mut();
     };
@@ -391,7 +405,8 @@ pub extern "C" fn vips_target_custom_new() -> *mut VipsTargetCustom {
 
 #[no_mangle]
 pub extern "C" fn vips_target_new_to_memory() -> *mut VipsTarget {
-    let target = unsafe { object_new::<VipsTarget>(crate::runtime::object::vips_target_get_type()) };
+    let target =
+        unsafe { object_new::<VipsTarget>(crate::runtime::object::vips_target_get_type()) };
     let Some(target_ref) = (unsafe { target.as_mut() }) else {
         return ptr::null_mut();
     };
@@ -425,7 +440,8 @@ pub extern "C" fn vips_target_new_to_file(filename: *const c_char) -> *mut VipsT
         return ptr::null_mut();
     }
 
-    let target = unsafe { object_new::<VipsTarget>(crate::runtime::object::vips_target_get_type()) };
+    let target =
+        unsafe { object_new::<VipsTarget>(crate::runtime::object::vips_target_get_type()) };
     let Some(target_ref) = (unsafe { target.as_mut() }) else {
         vips_tracked_close(fd);
         return ptr::null_mut();
@@ -460,7 +476,8 @@ pub extern "C" fn vips_target_new_to_descriptor(descriptor: libc::c_int) -> *mut
         return ptr::null_mut();
     }
     let fd = unsafe { libc::dup(descriptor) };
-    let target = unsafe { object_new::<VipsTarget>(crate::runtime::object::vips_target_get_type()) };
+    let target =
+        unsafe { object_new::<VipsTarget>(crate::runtime::object::vips_target_get_type()) };
     let Some(target_ref) = (unsafe { target.as_mut() }) else {
         return ptr::null_mut();
     };
@@ -594,7 +611,10 @@ pub extern "C" fn vips_target_end(target: *mut VipsTarget) -> libc::c_int {
     if unsafe { flush_buffer(target) }.is_err() {
         return -1;
     }
-    if matches!(unsafe { target_state(target) }.map(|state| &state.kind), Some(TargetKind::Custom)) {
+    if matches!(
+        unsafe { target_state(target) }.map(|state| &state.kind),
+        Some(TargetKind::Custom)
+    ) {
         unsafe {
             emit_finish(target);
             if emit_end(target) != 0 {
@@ -679,11 +699,18 @@ pub extern "C" fn vips_target_writes(target: *mut VipsTarget, str_: *const c_cha
     let Some(str_) = optional_cstr(str_) else {
         return -1;
     };
-    vips_target_write(target, str_.as_ptr().cast::<c_void>(), str_.to_bytes().len())
+    vips_target_write(
+        target,
+        str_.as_ptr().cast::<c_void>(),
+        str_.to_bytes().len(),
+    )
 }
 
 #[no_mangle]
-pub extern "C" fn vips_target_write_amp(target: *mut VipsTarget, str_: *const c_char) -> libc::c_int {
+pub extern "C" fn vips_target_write_amp(
+    target: *mut VipsTarget,
+    str_: *const c_char,
+) -> libc::c_int {
     let Some(str_) = optional_cstr(str_) else {
         return -1;
     };

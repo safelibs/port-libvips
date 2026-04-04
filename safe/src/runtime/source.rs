@@ -1,4 +1,4 @@
-use std::ffi::{CStr, c_void};
+use std::ffi::{c_void, CStr};
 use std::mem::offset_of;
 use std::os::raw::c_char;
 use std::ptr;
@@ -11,9 +11,7 @@ use crate::abi::r#type::{VipsArea, VipsBlob};
 use crate::runtime::connection::{optional_cstr, pipe_read_limit};
 use crate::runtime::error::append_message_str;
 use crate::runtime::memory::vips_tracked_close;
-use crate::runtime::object::{
-    get_qdata_ptr, object_new, qdata_quark, set_qdata_box,
-};
+use crate::runtime::object::{get_qdata_ptr, object_new, qdata_quark, set_qdata_box};
 use crate::runtime::vips_native::read_all_from_path;
 
 static SOURCE_STATE_QUARK: &CStr = c"safe-vips-source-state";
@@ -57,9 +55,7 @@ impl Drop for SourceState {
                 }
             }
             SourceKind::Descriptor {
-                fd,
-                close_on_drop,
-                ..
+                fd, close_on_drop, ..
             } if *close_on_drop && *fd >= 0 => {
                 vips_tracked_close(*fd);
                 *fd = -1;
@@ -128,7 +124,8 @@ unsafe fn ensure_loaded(source: *mut VipsSource) -> Result<(), ()> {
         }
         SourceKind::Blob { blob } => {
             let mut length = 0usize;
-            source_ref.data = crate::runtime::r#type::vips_blob_get(*blob, &mut length).cast::<c_void>();
+            source_ref.data =
+                crate::runtime::r#type::vips_blob_get(*blob, &mut length).cast::<c_void>();
             source_ref.length = length as i64;
             source_ref.blob = *blob;
         }
@@ -301,7 +298,9 @@ fn init_source_defaults(source: &mut VipsSource) {
 
 #[no_mangle]
 pub extern "C" fn vips_source_custom_new() -> *mut VipsSourceCustom {
-    let source = unsafe { object_new::<VipsSourceCustom>(crate::runtime::object::vips_source_custom_get_type()) };
+    let source = unsafe {
+        object_new::<VipsSourceCustom>(crate::runtime::object::vips_source_custom_get_type())
+    };
     let Some(source_ref) = (unsafe { source.as_mut() }) else {
         return ptr::null_mut();
     };
@@ -325,7 +324,8 @@ pub extern "C" fn vips_source_new_from_file(filename: *const c_char) -> *mut Vip
         return ptr::null_mut();
     };
 
-    let source = unsafe { object_new::<VipsSource>(crate::runtime::object::vips_source_get_type()) };
+    let source =
+        unsafe { object_new::<VipsSource>(crate::runtime::object::vips_source_get_type()) };
     let Some(source_ref) = (unsafe { source.as_mut() }) else {
         return ptr::null_mut();
     };
@@ -358,7 +358,8 @@ pub extern "C" fn vips_source_new_from_memory(data: *const c_void, size: usize) 
         let slice = unsafe { std::slice::from_raw_parts(data.cast::<u8>(), size) };
         slice.to_vec()
     };
-    let source = unsafe { object_new::<VipsSource>(crate::runtime::object::vips_source_get_type()) };
+    let source =
+        unsafe { object_new::<VipsSource>(crate::runtime::object::vips_source_get_type()) };
     let Some(source_ref) = (unsafe { source.as_mut() }) else {
         return ptr::null_mut();
     };
@@ -388,7 +389,8 @@ pub extern "C" fn vips_source_new_from_blob(blob: *mut VipsBlob) -> *mut VipsSou
         return ptr::null_mut();
     }
     crate::runtime::r#type::vips_area_copy(blob.cast::<VipsArea>());
-    let source = unsafe { object_new::<VipsSource>(crate::runtime::object::vips_source_get_type()) };
+    let source =
+        unsafe { object_new::<VipsSource>(crate::runtime::object::vips_source_get_type()) };
     let Some(source_ref) = (unsafe { source.as_mut() }) else {
         crate::runtime::r#type::vips_area_unref(blob.cast::<VipsArea>());
         return ptr::null_mut();
@@ -413,7 +415,8 @@ pub extern "C" fn vips_source_new_from_descriptor(descriptor: libc::c_int) -> *m
         append_message_str("vips_source_new_from_descriptor", "descriptor is invalid");
         return ptr::null_mut();
     }
-    let source = unsafe { object_new::<VipsSource>(crate::runtime::object::vips_source_get_type()) };
+    let source =
+        unsafe { object_new::<VipsSource>(crate::runtime::object::vips_source_get_type()) };
     let Some(source_ref) = (unsafe { source.as_mut() }) else {
         return ptr::null_mut();
     };
@@ -438,7 +441,9 @@ pub extern "C" fn vips_source_new_from_descriptor(descriptor: libc::c_int) -> *m
 }
 
 #[no_mangle]
-pub extern "C" fn vips_source_new_from_target(_target: *mut crate::abi::connection::VipsTarget) -> *mut VipsSource {
+pub extern "C" fn vips_source_new_from_target(
+    _target: *mut crate::abi::connection::VipsTarget,
+) -> *mut VipsSource {
     append_message_str("vips_source_new_from_target", "not implemented");
     ptr::null_mut()
 }
@@ -454,7 +459,10 @@ pub extern "C" fn vips_source_minimise(_source: *mut VipsSource) {}
 
 #[no_mangle]
 pub extern "C" fn vips_source_unminimise(source: *mut VipsSource) -> libc::c_int {
-    if matches!(unsafe { source_state(source) }.map(|state| &state.kind), Some(SourceKind::Custom)) {
+    if matches!(
+        unsafe { source_state(source) }.map(|state| &state.kind),
+        Some(SourceKind::Custom)
+    ) {
         return 0;
     }
     match unsafe { ensure_loaded(source) } {
@@ -484,7 +492,10 @@ pub extern "C" fn vips_source_read(
         return -1;
     }
 
-    if matches!(unsafe { source_state(source) }.map(|state| &state.kind), Some(SourceKind::Custom)) {
+    if matches!(
+        unsafe { source_state(source) }.map(|state| &state.kind),
+        Some(SourceKind::Custom)
+    ) {
         let bytes = unsafe { emit_read(source, data, length) };
         if bytes >= 0 {
             source_ref.read_position = source_ref.read_position.saturating_add(bytes);
@@ -497,7 +508,12 @@ pub extern "C" fn vips_source_read(
     }
 
     let start = source_ref.read_position.max(0) as usize;
-    let bytes = unsafe { std::slice::from_raw_parts(source_ref.data.cast::<u8>(), source_ref.length.max(0) as usize) };
+    let bytes = unsafe {
+        std::slice::from_raw_parts(
+            source_ref.data.cast::<u8>(),
+            source_ref.length.max(0) as usize,
+        )
+    };
     let remaining = bytes.len().saturating_sub(start);
     let to_copy = remaining.min(length);
     if to_copy > 0 {
@@ -511,7 +527,10 @@ pub extern "C" fn vips_source_read(
 
 #[no_mangle]
 pub extern "C" fn vips_source_is_mappable(source: *mut VipsSource) -> glib_sys::gboolean {
-    let custom = matches!(unsafe { source_state(source) }.map(|state| &state.kind), Some(SourceKind::Custom));
+    let custom = matches!(
+        unsafe { source_state(source) }.map(|state| &state.kind),
+        Some(SourceKind::Custom)
+    );
     if custom {
         glib_sys::GFALSE
     } else {
@@ -552,7 +571,10 @@ pub extern "C" fn vips_source_map_blob(source: *mut VipsSource) -> *mut VipsBlob
     let Some(source_ref) = (unsafe { source.as_ref() }) else {
         return ptr::null_mut();
     };
-    crate::runtime::r#type::vips_blob_copy(source_ref.data.cast::<c_void>(), source_ref.length.max(0) as usize)
+    crate::runtime::r#type::vips_blob_copy(
+        source_ref.data.cast::<c_void>(),
+        source_ref.length.max(0) as usize,
+    )
 }
 
 #[no_mangle]
@@ -565,7 +587,10 @@ pub extern "C" fn vips_source_seek(
         return -1;
     };
 
-    if matches!(unsafe { source_state(source) }.map(|state| &state.kind), Some(SourceKind::Custom)) {
+    if matches!(
+        unsafe { source_state(source) }.map(|state| &state.kind),
+        Some(SourceKind::Custom)
+    ) {
         let new_pos = unsafe { emit_seek(source, offset, whence) };
         if new_pos >= 0 {
             source_ref.read_position = new_pos;

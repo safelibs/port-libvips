@@ -39,7 +39,9 @@ pub struct VipsSource {
 #[repr(C)]
 pub struct VipsSourceClass {
     pub parent_class: VipsConnectionClass,
-    pub read: Option<unsafe extern "C" fn(source: *mut VipsSource, data: *mut c_void, length: usize) -> i64>,
+    pub read: Option<
+        unsafe extern "C" fn(source: *mut VipsSource, data: *mut c_void, length: usize) -> i64,
+    >,
     pub seek:
         Option<unsafe extern "C" fn(source: *mut VipsSource, offset: i64, whence: c_int) -> i64>,
 }
@@ -52,10 +54,12 @@ pub struct VipsSourceCustom {
 #[repr(C)]
 pub struct VipsSourceCustomClass {
     pub parent_class: VipsSourceClass,
-    pub read:
-        Option<unsafe extern "C" fn(source: *mut VipsSourceCustom, data: *mut c_void, length: i64) -> i64>,
-    pub seek:
-        Option<unsafe extern "C" fn(source: *mut VipsSourceCustom, offset: i64, whence: c_int) -> i64>,
+    pub read: Option<
+        unsafe extern "C" fn(source: *mut VipsSourceCustom, data: *mut c_void, length: i64) -> i64,
+    >,
+    pub seek: Option<
+        unsafe extern "C" fn(source: *mut VipsSourceCustom, offset: i64, whence: c_int) -> i64,
+    >,
 }
 
 #[repr(C)]
@@ -99,10 +103,16 @@ pub struct VipsTarget {
 #[repr(C)]
 pub struct VipsTargetClass {
     pub parent_class: VipsConnectionClass,
-    pub write: Option<unsafe extern "C" fn(target: *mut VipsTarget, data: *const c_void, length: usize) -> i64>,
+    pub write: Option<
+        unsafe extern "C" fn(target: *mut VipsTarget, data: *const c_void, length: usize) -> i64,
+    >,
     pub finish: Option<unsafe extern "C" fn(target: *mut VipsTarget)>,
-    pub read: Option<unsafe extern "C" fn(target: *mut VipsTarget, data: *mut c_void, length: usize) -> i64>,
-    pub seek: Option<unsafe extern "C" fn(target: *mut VipsTarget, offset: off_t, whence: c_int) -> off_t>,
+    pub read: Option<
+        unsafe extern "C" fn(target: *mut VipsTarget, data: *mut c_void, length: usize) -> i64,
+    >,
+    pub seek: Option<
+        unsafe extern "C" fn(target: *mut VipsTarget, offset: off_t, whence: c_int) -> off_t,
+    >,
     pub end: Option<unsafe extern "C" fn(target: *mut VipsTarget) -> c_int>,
 }
 
@@ -114,13 +124,20 @@ pub struct VipsTargetCustom {
 #[repr(C)]
 pub struct VipsTargetCustomClass {
     pub parent_class: VipsTargetClass,
-    pub write:
-        Option<unsafe extern "C" fn(target: *mut VipsTargetCustom, data: *const c_void, length: i64) -> i64>,
+    pub write: Option<
+        unsafe extern "C" fn(
+            target: *mut VipsTargetCustom,
+            data: *const c_void,
+            length: i64,
+        ) -> i64,
+    >,
     pub finish: Option<unsafe extern "C" fn(target: *mut VipsTargetCustom)>,
-    pub read:
-        Option<unsafe extern "C" fn(target: *mut VipsTargetCustom, data: *mut c_void, length: i64) -> i64>,
-    pub seek:
-        Option<unsafe extern "C" fn(target: *mut VipsTargetCustom, offset: i64, whence: c_int) -> i64>,
+    pub read: Option<
+        unsafe extern "C" fn(target: *mut VipsTargetCustom, data: *mut c_void, length: i64) -> i64,
+    >,
+    pub seek: Option<
+        unsafe extern "C" fn(target: *mut VipsTargetCustom, offset: i64, whence: c_int) -> i64,
+    >,
     pub end: Option<unsafe extern "C" fn(target: *mut VipsTargetCustom) -> c_int>,
 }
 

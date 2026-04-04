@@ -27,5 +27,5 @@ pub use connection::*;
 pub use image::*;
 pub use object::*;
 pub use operation::*;
-pub use region::*;
 pub use r#type::*;
+pub use region::*;

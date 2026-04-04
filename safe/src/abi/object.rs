@@ -64,10 +64,12 @@ pub type VipsArgumentClassMapFn = Option<
     ) -> *mut c_void,
 >;
 
-pub type VipsObjectSetArguments =
-    Option<unsafe extern "C" fn(object: *mut VipsObject, a: *mut c_void, b: *mut c_void) -> *mut c_void>;
+pub type VipsObjectSetArguments = Option<
+    unsafe extern "C" fn(object: *mut VipsObject, a: *mut c_void, b: *mut c_void) -> *mut c_void,
+>;
 
-pub type VipsTypeMapFn = Option<unsafe extern "C" fn(type_: glib_sys::GType, a: *mut c_void) -> *mut c_void>;
+pub type VipsTypeMapFn =
+    Option<unsafe extern "C" fn(type_: glib_sys::GType, a: *mut c_void) -> *mut c_void>;
 pub type VipsTypeMap2Fn = Option<
     unsafe extern "C" fn(type_: glib_sys::GType, a: *mut c_void, b: *mut c_void) -> *mut c_void,
 >;
@@ -92,9 +94,9 @@ pub struct VipsObject {
 pub struct VipsObjectClass {
     pub parent_class: gobject_sys::GObjectClass,
     pub build: Option<unsafe extern "C" fn(object: *mut VipsObject) -> c_int>,
-    pub postbuild: Option<unsafe extern "C" fn(object: *mut VipsObject, data: *mut c_void) -> c_int>,
-    pub summary_class:
-        Option<unsafe extern "C" fn(cls: *mut VipsObjectClass, buf: *mut VipsBuf)>,
+    pub postbuild:
+        Option<unsafe extern "C" fn(object: *mut VipsObject, data: *mut c_void) -> c_int>,
+    pub summary_class: Option<unsafe extern "C" fn(cls: *mut VipsObjectClass, buf: *mut VipsBuf)>,
     pub summary: Option<unsafe extern "C" fn(object: *mut VipsObject, buf: *mut VipsBuf)>,
     pub dump: Option<unsafe extern "C" fn(object: *mut VipsObject, buf: *mut VipsBuf)>,
     pub sanity: Option<unsafe extern "C" fn(object: *mut VipsObject, buf: *mut VipsBuf)>,

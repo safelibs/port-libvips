@@ -7,9 +7,9 @@ use std::sync::OnceLock;
 use libc::c_void;
 
 use crate::abi::connection::{
-    VipsConnection, VipsConnectionClass, VipsSbuf, VipsSbufClass, VipsSource,
-    VipsSourceClass, VipsSourceCustom, VipsSourceCustomClass, VipsTarget, VipsTargetClass,
-    VipsTargetCustom, VipsTargetCustomClass,
+    VipsConnection, VipsConnectionClass, VipsSbuf, VipsSbufClass, VipsSource, VipsSourceClass,
+    VipsSourceCustom, VipsSourceCustomClass, VipsTarget, VipsTargetClass, VipsTargetCustom,
+    VipsTargetCustomClass,
 };
 use crate::abi::image::{VipsImage, VipsImageClass};
 use crate::abi::object::{VipsObject, VipsObjectClass};

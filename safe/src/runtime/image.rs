@@ -1,6 +1,6 @@
-use std::ffi::{CStr, CString, c_void};
-use std::os::raw::c_char;
+use std::ffi::{c_void, CStr, CString};
 use std::io::Cursor;
+use std::os::raw::c_char;
 use std::ptr;
 use std::sync::Mutex;
 
@@ -134,13 +134,18 @@ fn attach_state(image: *mut VipsImage, mode: Option<&str>) -> *mut VipsImage {
         );
     }
     if let Some(state) = unsafe { image_state(image) } {
-        image_ref.mode = state.mode.as_ref().map_or(ptr::null_mut(), |mode| mode.as_ptr().cast_mut());
+        image_ref.mode = state
+            .mode
+            .as_ref()
+            .map_or(ptr::null_mut(), |mode| mode.as_ptr().cast_mut());
     }
     image
 }
 
 pub(crate) fn set_filename(image: *mut VipsImage, filename: Option<&CStr>) {
-    if let (Some(state), Some(image_ref)) = (unsafe { image_state(image) }, unsafe { image.as_mut() }) {
+    if let (Some(state), Some(image_ref)) =
+        (unsafe { image_state(image) }, unsafe { image.as_mut() })
+    {
         state.filename = filename.map(CStr::to_owned);
         image_ref.filename = state
             .filename
@@ -150,7 +155,9 @@ pub(crate) fn set_filename(image: *mut VipsImage, filename: Option<&CStr>) {
 }
 
 pub(crate) fn set_mode(image: *mut VipsImage, mode: &str) {
-    if let (Some(state), Some(image_ref)) = (unsafe { image_state(image) }, unsafe { image.as_mut() }) {
+    if let (Some(state), Some(image_ref)) =
+        (unsafe { image_state(image) }, unsafe { image.as_mut() })
+    {
         state.mode = Some(CString::new(mode).expect("mode"));
         image_ref.mode = state.mode.as_ref().unwrap().as_ptr().cast_mut();
     }
@@ -190,7 +197,8 @@ pub(crate) fn ensure_pixels(image: *mut VipsImage) -> Result<(), ()> {
         return Ok(());
     }
     if !image_ref.data.is_null() && image_ref.length > 0 {
-        let bytes = unsafe { std::slice::from_raw_parts(image_ref.data.cast::<u8>(), image_ref.length) };
+        let bytes =
+            unsafe { std::slice::from_raw_parts(image_ref.data.cast::<u8>(), image_ref.length) };
         state.pixels = bytes.to_vec();
         sync_pixels(image);
         return Ok(());
@@ -199,7 +207,9 @@ pub(crate) fn ensure_pixels(image: *mut VipsImage) -> Result<(), ()> {
     Err(())
 }
 
-fn decode_png(bytes: &[u8]) -> Result<(Vec<u8>, u32, u32, i32, VipsBandFormat, VipsInterpretation), String> {
+fn decode_png(
+    bytes: &[u8],
+) -> Result<(Vec<u8>, u32, u32, i32, VipsBandFormat, VipsInterpretation), String> {
     let decoder = png::Decoder::new(Cursor::new(bytes));
     let mut reader = decoder.read_info().map_err(|err| err.to_string())?;
     let mut out = vec![0; reader.output_buffer_size()];
@@ -223,12 +233,23 @@ fn decode_png(bytes: &[u8]) -> Result<(Vec<u8>, u32, u32, i32, VipsBandFormat, V
         _ => VIPS_FORMAT_UCHAR,
     };
     out.truncate(info.buffer_size());
-    Ok((out, info.width, info.height, bands, band_format, interpretation))
+    Ok((
+        out,
+        info.width,
+        info.height,
+        bands,
+        band_format,
+        interpretation,
+    ))
 }
 
 fn encode_png(image: &VipsImage, pixels: &[u8]) -> Result<Vec<u8>, String> {
     let mut bytes = Vec::new();
-    let mut encoder = png::Encoder::new(&mut bytes, image.Xsize.max(0) as u32, image.Ysize.max(0) as u32);
+    let mut encoder = png::Encoder::new(
+        &mut bytes,
+        image.Xsize.max(0) as u32,
+        image.Ysize.max(0) as u32,
+    );
     encoder.set_depth(match image.BandFmt {
         VIPS_FORMAT_USHORT => png::BitDepth::Sixteen,
         _ => png::BitDepth::Eight,
@@ -241,7 +262,9 @@ fn encode_png(image: &VipsImage, pixels: &[u8]) -> Result<Vec<u8>, String> {
         _ => return Err("unsupported band count for png".to_owned()),
     });
     let mut writer = encoder.write_header().map_err(|err| err.to_string())?;
-    writer.write_image_data(pixels).map_err(|err| err.to_string())?;
+    writer
+        .write_image_data(pixels)
+        .map_err(|err| err.to_string())?;
     drop(writer);
     Ok(bytes)
 }
@@ -315,7 +338,11 @@ pub extern "C" fn vips_image_new_from_memory(
         bands,
         format,
         VIPS_CODING_NONE,
-        if bands == 1 { VIPS_INTERPRETATION_B_W } else { VIPS_INTERPRETATION_sRGB },
+        if bands == 1 {
+            VIPS_INTERPRETATION_B_W
+        } else {
+            VIPS_INTERPRETATION_sRGB
+        },
         1.0,
         1.0,
     );
@@ -373,7 +400,10 @@ pub extern "C" fn safe_vips_image_new_from_source_internal(
     sync_pixels(image);
     if let Some(source_ref) = unsafe { source.as_ref() } {
         if !source_ref.parent_object.filename.is_null() {
-            set_filename(image, Some(unsafe { CStr::from_ptr(source_ref.parent_object.filename) }));
+            set_filename(
+                image,
+                Some(unsafe { CStr::from_ptr(source_ref.parent_object.filename) }),
+            );
         }
     }
     image
@@ -407,7 +437,12 @@ pub extern "C" fn safe_vips_image_write_to_target_internal(
         append_message_str("vips_image_write_to_target", "png encode failed");
         return -1;
     };
-    if crate::runtime::target::vips_target_write(target, encoded.as_ptr().cast::<c_void>(), encoded.len()) != 0 {
+    if crate::runtime::target::vips_target_write(
+        target,
+        encoded.as_ptr().cast::<c_void>(),
+        encoded.len(),
+    ) != 0
+    {
         return -1;
     }
     crate::runtime::target::vips_target_end(target)
@@ -524,7 +559,11 @@ pub extern "C" fn vips_image_copy_memory(image: *mut VipsImage) -> *mut VipsImag
 
 #[no_mangle]
 pub extern "C" fn vips_image_wio_input(image: *mut VipsImage) -> libc::c_int {
-    if ensure_pixels(image).is_ok() { 0 } else { -1 }
+    if ensure_pixels(image).is_ok() {
+        0
+    } else {
+        -1
+    }
 }
 
 #[no_mangle]
@@ -590,8 +629,13 @@ pub extern "C" fn vips_image_set_progress(_image: *mut VipsImage, _progress: gli
 
 #[no_mangle]
 pub extern "C" fn vips_image_iskilled(image: *mut VipsImage) -> glib_sys::gboolean {
-    unsafe { image.as_ref() }
-        .map_or(glib_sys::GFALSE, |image| if image.kill != 0 { glib_sys::GTRUE } else { glib_sys::GFALSE })
+    unsafe { image.as_ref() }.map_or(glib_sys::GFALSE, |image| {
+        if image.kill != 0 {
+            glib_sys::GTRUE
+        } else {
+            glib_sys::GFALSE
+        }
+    })
 }
 
 #[no_mangle]
@@ -603,7 +647,10 @@ pub extern "C" fn vips_image_set_kill(image: *mut VipsImage, kill: glib_sys::gbo
 
 #[no_mangle]
 pub extern "C" fn vips_band_format_isint(format: VipsBandFormat) -> glib_sys::gboolean {
-    if matches!(format, VIPS_FORMAT_CHAR | VIPS_FORMAT_SHORT | VIPS_FORMAT_INT) {
+    if matches!(
+        format,
+        VIPS_FORMAT_CHAR | VIPS_FORMAT_SHORT | VIPS_FORMAT_INT
+    ) {
         glib_sys::GTRUE
     } else {
         glib_sys::GFALSE
@@ -612,7 +659,10 @@ pub extern "C" fn vips_band_format_isint(format: VipsBandFormat) -> glib_sys::gb
 
 #[no_mangle]
 pub extern "C" fn vips_band_format_isuint(format: VipsBandFormat) -> glib_sys::gboolean {
-    if matches!(format, VIPS_FORMAT_UCHAR | VIPS_FORMAT_USHORT | VIPS_FORMAT_UINT) {
+    if matches!(
+        format,
+        VIPS_FORMAT_UCHAR | VIPS_FORMAT_USHORT | VIPS_FORMAT_UINT
+    ) {
         glib_sys::GTRUE
     } else {
         glib_sys::GFALSE
@@ -679,14 +729,23 @@ pub extern "C" fn safe_vips_crop_internal(
         input_ref.Yres,
     );
     if let Some(out_state) = unsafe { image_state(crop) } {
-        out_state.pixels = vec![0; (width.max(0) as usize).saturating_mul(height.max(0) as usize).saturating_mul(bpp)];
+        out_state.pixels = vec![
+            0;
+            (width.max(0) as usize)
+                .saturating_mul(height.max(0) as usize)
+                .saturating_mul(bpp)
+        ];
         for y in 0..height.max(0) as usize {
             let src_y = top.max(0) as usize + y;
             let src_x = left.max(0) as usize;
-            let src_offset = src_y.saturating_mul(line).saturating_add(src_x.saturating_mul(bpp));
+            let src_offset = src_y
+                .saturating_mul(line)
+                .saturating_add(src_x.saturating_mul(bpp));
             let dst_offset = y.saturating_mul(width.max(0) as usize).saturating_mul(bpp);
             let count = width.max(0) as usize * bpp;
-            if src_offset + count <= state.pixels.len() && dst_offset + count <= out_state.pixels.len() {
+            if src_offset + count <= state.pixels.len()
+                && dst_offset + count <= out_state.pixels.len()
+            {
                 out_state.pixels[dst_offset..dst_offset + count]
                     .copy_from_slice(&state.pixels[src_offset..src_offset + count]);
             }
@@ -701,10 +760,7 @@ pub extern "C" fn safe_vips_crop_internal(
 }
 
 #[no_mangle]
-pub extern "C" fn safe_vips_avg_internal(
-    image: *mut VipsImage,
-    out: *mut f64,
-) -> libc::c_int {
+pub extern "C" fn safe_vips_avg_internal(image: *mut VipsImage, out: *mut f64) -> libc::c_int {
     if ensure_pixels(image).is_err() || out.is_null() {
         return -1;
     }

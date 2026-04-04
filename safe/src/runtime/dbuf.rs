@@ -31,7 +31,11 @@ unsafe fn minimum_size(dbuf: *mut VipsDbuf, size: usize) -> bool {
     }
     if new_size > dbuf.allocated_size {
         unsafe {
-            ptr::write_bytes(new_data.add(dbuf.allocated_size), 0, new_size - dbuf.allocated_size);
+            ptr::write_bytes(
+                new_data.add(dbuf.allocated_size),
+                0,
+                new_size - dbuf.allocated_size,
+            );
         }
     }
     dbuf.data = new_data;
@@ -114,8 +118,8 @@ pub extern "C" fn vips_dbuf_write(
     if data.is_null() && size > 0 {
         return glib_sys::GFALSE;
     }
-    let required = unsafe { dbuf.as_ref() }
-        .map_or(size, |dbuf| dbuf.write_point.saturating_add(size));
+    let required =
+        unsafe { dbuf.as_ref() }.map_or(size, |dbuf| dbuf.write_point.saturating_add(size));
     if unsafe { minimum_size(dbuf, required) } {
         let Some(dbuf) = (unsafe { dbuf.as_mut() }) else {
             return glib_sys::GFALSE;
@@ -134,7 +138,10 @@ pub extern "C" fn vips_dbuf_write(
 }
 
 #[no_mangle]
-pub extern "C" fn vips_dbuf_write_amp(dbuf: *mut VipsDbuf, str_: *const libc::c_char) -> glib_sys::gboolean {
+pub extern "C" fn vips_dbuf_write_amp(
+    dbuf: *mut VipsDbuf,
+    str_: *const libc::c_char,
+) -> glib_sys::gboolean {
     if str_.is_null() {
         return glib_sys::GTRUE;
     }

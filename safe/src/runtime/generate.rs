@@ -9,8 +9,15 @@ use crate::abi::region::VipsRegion;
 use crate::runtime::error::append_message_str;
 use crate::runtime::object::object_unref;
 
-type VipsRegionWrite = Option<unsafe extern "C" fn(region: *mut VipsRegion, area: *mut VipsRect, a: *mut libc::c_void) -> libc::c_int>;
-type VipsSinkNotify = Option<unsafe extern "C" fn(im: *mut VipsImage, rect: *mut VipsRect, a: *mut libc::c_void)>;
+type VipsRegionWrite = Option<
+    unsafe extern "C" fn(
+        region: *mut VipsRegion,
+        area: *mut VipsRect,
+        a: *mut libc::c_void,
+    ) -> libc::c_int,
+>;
+type VipsSinkNotify =
+    Option<unsafe extern "C" fn(im: *mut VipsImage, rect: *mut VipsRect, a: *mut libc::c_void)>;
 
 fn attach_generate_callbacks(
     image: *mut VipsImage,
@@ -100,7 +107,9 @@ pub extern "C" fn vips_sink_tile(
     if region.is_null() {
         return -1;
     }
-    let seq = start_fn.map(|start_fn| unsafe { start_fn(im, a, b) }).unwrap_or(ptr::null_mut());
+    let seq = start_fn
+        .map(|start_fn| unsafe { start_fn(im, a, b) })
+        .unwrap_or(ptr::null_mut());
     let result = if let Some(image) = unsafe { im.as_ref() } {
         let request = VipsRect {
             left: 0,
@@ -202,7 +211,11 @@ pub extern "C" fn vips_start_many(
         let image = unsafe { *images.add(index) };
         let region = crate::runtime::region::vips_region_new(image);
         if region.is_null() {
-            let _ = vips_stop_many(array.cast::<libc::c_void>(), ptr::null_mut(), ptr::null_mut());
+            let _ = vips_stop_many(
+                array.cast::<libc::c_void>(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            );
             return ptr::null_mut();
         }
         unsafe {
@@ -286,7 +299,11 @@ pub extern "C" fn vips_image_pipeline_array(
     _in: *mut *mut VipsImage,
 ) -> libc::c_int {
     if let Some(image) = unsafe { image.as_mut() } {
-        image.dhint = if hint < 0 { VIPS_DEMAND_STYLE_ANY } else { hint };
+        image.dhint = if hint < 0 {
+            VIPS_DEMAND_STYLE_ANY
+        } else {
+            hint
+        };
         image.hint_set = glib_sys::GTRUE;
         0
     } else {

@@ -35,7 +35,8 @@ pub struct VipsOperation {
 pub struct VipsOperationClass {
     pub parent_class: VipsObjectClass,
     pub usage: Option<unsafe extern "C" fn(cls: *mut VipsOperationClass, buf: *mut VipsBuf)>,
-    pub get_flags: Option<unsafe extern "C" fn(operation: *mut VipsOperation) -> VipsOperationFlags>,
+    pub get_flags:
+        Option<unsafe extern "C" fn(operation: *mut VipsOperation) -> VipsOperationFlags>,
     pub flags: VipsOperationFlags,
     pub invalidate: Option<unsafe extern "C" fn(operation: *mut VipsOperation)>,
 }
@@ -306,8 +307,7 @@ pub struct VipsForeignLoadClass {
     pub is_a_source: Option<unsafe extern "C" fn(source: *mut VipsSource) -> glib_sys::gboolean>,
     pub get_flags_filename:
         Option<unsafe extern "C" fn(filename: *const c_char) -> VipsForeignFlags>,
-    pub get_flags:
-        Option<unsafe extern "C" fn(load: *mut VipsForeignLoad) -> VipsForeignFlags>,
+    pub get_flags: Option<unsafe extern "C" fn(load: *mut VipsForeignLoad) -> VipsForeignFlags>,
     pub header: Option<unsafe extern "C" fn(load: *mut VipsForeignLoad) -> c_int>,
     pub load: Option<unsafe extern "C" fn(load: *mut VipsForeignLoad) -> c_int>,
 }

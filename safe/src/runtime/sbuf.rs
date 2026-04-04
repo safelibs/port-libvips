@@ -1,9 +1,11 @@
-use std::ffi::{CStr, c_void};
+use std::ffi::{c_void, CStr};
 use std::ptr;
 
 use crate::abi::connection::{VipsSbuf, VipsSource, VIPS_SBUF_BUFFER_SIZE};
 use crate::runtime::error::append_message_str;
-use crate::runtime::object::{get_qdata_ptr, object_new, object_ref, object_unref, qdata_quark, set_qdata_box};
+use crate::runtime::object::{
+    get_qdata_ptr, object_new, object_ref, object_unref, qdata_quark, set_qdata_box,
+};
 
 static SBUF_STATE_QUARK: &CStr = c"safe-vips-sbuf-state";
 
@@ -73,7 +75,8 @@ pub extern "C" fn vips_sbuf_unbuffer(sbuf: *mut VipsSbuf) {
         return;
     };
     let rewind = sbuf_ref.read_point - sbuf_ref.chars_in_buffer;
-    let _ = crate::runtime::source::vips_source_seek(sbuf_ref.source, rewind as i64, libc::SEEK_CUR);
+    let _ =
+        crate::runtime::source::vips_source_seek(sbuf_ref.source, rewind as i64, libc::SEEK_CUR);
     sbuf_ref.read_point = 0;
     sbuf_ref.chars_in_buffer = 0;
     sbuf_ref.input_buffer[0] = 0;
@@ -117,7 +120,10 @@ pub extern "C" fn vips_sbuf_require(sbuf: *mut VipsSbuf, require: libc::c_int) -
     if unread > 0 {
         unsafe {
             ptr::copy(
-                sbuf_ref.input_buffer.as_ptr().add(sbuf_ref.read_point as usize),
+                sbuf_ref
+                    .input_buffer
+                    .as_ptr()
+                    .add(sbuf_ref.read_point as usize),
                 sbuf_ref.input_buffer.as_mut_ptr(),
                 unread,
             );
@@ -126,13 +132,15 @@ pub extern "C" fn vips_sbuf_require(sbuf: *mut VipsSbuf, require: libc::c_int) -
     sbuf_ref.chars_in_buffer = unread as i32;
     sbuf_ref.read_point = 0;
     while sbuf_ref.chars_in_buffer < require {
-        let to = unsafe { sbuf_ref.input_buffer.as_mut_ptr().add(sbuf_ref.chars_in_buffer as usize) };
+        let to = unsafe {
+            sbuf_ref
+                .input_buffer
+                .as_mut_ptr()
+                .add(sbuf_ref.chars_in_buffer as usize)
+        };
         let space = VIPS_SBUF_BUFFER_SIZE - sbuf_ref.chars_in_buffer as usize;
-        let bytes_read = crate::runtime::source::vips_source_read(
-            sbuf_ref.source,
-            to.cast::<c_void>(),
-            space,
-        );
+        let bytes_read =
+            crate::runtime::source::vips_source_read(sbuf_ref.source, to.cast::<c_void>(), space);
         if bytes_read <= 0 {
             append_message_str("vips_sbuf_require", "end of file");
             return -1;

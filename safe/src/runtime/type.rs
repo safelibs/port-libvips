@@ -2,9 +2,9 @@ use std::mem::size_of;
 use std::ptr;
 use std::sync::OnceLock;
 
-use libc::{c_char, c_int, c_void};
-use libc::strlen;
 use gobject_sys::{G_TYPE_DOUBLE, G_TYPE_INT};
+use libc::strlen;
+use libc::{c_char, c_int, c_void};
 
 use crate::abi::basic::*;
 use crate::abi::image::*;
@@ -124,7 +124,9 @@ fn register_boxed_type(
     copy_fn: gobject_sys::GBoxedCopyFunc,
     free_fn: gobject_sys::GBoxedFreeFunc,
 ) -> glib_sys::GType {
-    unsafe { gobject_sys::g_boxed_type_register_static(name.as_ptr().cast::<c_char>(), copy_fn, free_fn) }
+    unsafe {
+        gobject_sys::g_boxed_type_register_static(name.as_ptr().cast::<c_char>(), copy_fn, free_fn)
+    }
 }
 
 fn register_enum_type(
@@ -237,7 +239,12 @@ boxed_getter!(
     save_string_copy,
     save_string_free
 );
-boxed_getter!(vips_ref_string_get_type, "VipsRefString", area_copy, area_free);
+boxed_getter!(
+    vips_ref_string_get_type,
+    "VipsRefString",
+    area_copy,
+    area_free
+);
 boxed_getter!(vips_blob_get_type, "VipsBlob", area_copy, area_free);
 boxed_getter!(
     vips_array_double_get_type,
@@ -245,7 +252,12 @@ boxed_getter!(
     area_copy,
     area_free
 );
-boxed_getter!(vips_array_int_get_type, "VipsArrayInt", area_copy, area_free);
+boxed_getter!(
+    vips_array_int_get_type,
+    "VipsArrayInt",
+    area_copy,
+    area_free
+);
 boxed_getter!(
     vips_array_image_get_type,
     "VipsArrayImage",
@@ -334,12 +346,19 @@ enum_getter!(
 enum_getter!(
     vips_operation_complex2_get_type,
     "VipsOperationComplex2",
-    [VIPS_OPERATION_COMPLEX2_CROSS_PHASE, VIPS_OPERATION_COMPLEX2_LAST]
+    [
+        VIPS_OPERATION_COMPLEX2_CROSS_PHASE,
+        VIPS_OPERATION_COMPLEX2_LAST
+    ]
 );
 enum_getter!(
     vips_operation_complexget_get_type,
     "VipsOperationComplexget",
-    [VIPS_OPERATION_COMPLEXGET_REAL, VIPS_OPERATION_COMPLEXGET_IMAG, VIPS_OPERATION_COMPLEXGET_LAST]
+    [
+        VIPS_OPERATION_COMPLEXGET_REAL,
+        VIPS_OPERATION_COMPLEXGET_IMAG,
+        VIPS_OPERATION_COMPLEXGET_LAST
+    ]
 );
 enum_getter!(
     vips_precision_get_type,
@@ -362,7 +381,11 @@ enum_getter!(
         VIPS_INTENT_LAST
     ]
 );
-enum_getter!(vips_pcs_get_type, "VipsPCS", [VIPS_PCS_LAB, VIPS_PCS_XYZ, VIPS_PCS_LAST]);
+enum_getter!(
+    vips_pcs_get_type,
+    "VipsPCS",
+    [VIPS_PCS_LAB, VIPS_PCS_XYZ, VIPS_PCS_LAST]
+);
 enum_getter!(
     vips_extend_get_type,
     "VipsExtend",
@@ -395,17 +418,32 @@ enum_getter!(
 enum_getter!(
     vips_direction_get_type,
     "VipsDirection",
-    [VIPS_DIRECTION_HORIZONTAL, VIPS_DIRECTION_VERTICAL, VIPS_DIRECTION_LAST]
+    [
+        VIPS_DIRECTION_HORIZONTAL,
+        VIPS_DIRECTION_VERTICAL,
+        VIPS_DIRECTION_LAST
+    ]
 );
 enum_getter!(
     vips_align_get_type,
     "VipsAlign",
-    [VIPS_ALIGN_LOW, VIPS_ALIGN_CENTRE, VIPS_ALIGN_HIGH, VIPS_ALIGN_LAST]
+    [
+        VIPS_ALIGN_LOW,
+        VIPS_ALIGN_CENTRE,
+        VIPS_ALIGN_HIGH,
+        VIPS_ALIGN_LAST
+    ]
 );
 enum_getter!(
     vips_angle_get_type,
     "VipsAngle",
-    [VIPS_ANGLE_D0, VIPS_ANGLE_D90, VIPS_ANGLE_D180, VIPS_ANGLE_D270, VIPS_ANGLE_LAST]
+    [
+        VIPS_ANGLE_D0,
+        VIPS_ANGLE_D90,
+        VIPS_ANGLE_D180,
+        VIPS_ANGLE_D270,
+        VIPS_ANGLE_LAST
+    ]
 );
 enum_getter!(
     vips_angle45_get_type,
@@ -468,7 +506,16 @@ enum_getter!(
         VIPS_BLEND_MODE_LAST
     ]
 );
-enum_getter!(vips_combine_get_type, "VipsCombine", [VIPS_COMBINE_MAX, VIPS_COMBINE_SUM, VIPS_COMBINE_MIN, VIPS_COMBINE_LAST]);
+enum_getter!(
+    vips_combine_get_type,
+    "VipsCombine",
+    [
+        VIPS_COMBINE_MAX,
+        VIPS_COMBINE_SUM,
+        VIPS_COMBINE_MIN,
+        VIPS_COMBINE_LAST
+    ]
+);
 enum_getter!(
     vips_text_wrap_get_type,
     "VipsTextWrap",
@@ -483,7 +530,11 @@ enum_getter!(
 enum_getter!(
     vips_combine_mode_get_type,
     "VipsCombineMode",
-    [VIPS_COMBINE_MODE_SET, VIPS_COMBINE_MODE_ADD, VIPS_COMBINE_MODE_LAST]
+    [
+        VIPS_COMBINE_MODE_SET,
+        VIPS_COMBINE_MODE_ADD,
+        VIPS_COMBINE_MODE_LAST
+    ]
 );
 flags_getter!(
     vips_foreign_flags_get_type,
@@ -924,7 +975,8 @@ pub(crate) fn ensure_types() {
 }
 
 unsafe fn allocate_lock() -> *mut glib_sys::GMutex {
-    let lock = unsafe { glib_sys::g_malloc0(size_of::<glib_sys::GMutex>()) }.cast::<glib_sys::GMutex>();
+    let lock =
+        unsafe { glib_sys::g_malloc0(size_of::<glib_sys::GMutex>()) }.cast::<glib_sys::GMutex>();
     if !lock.is_null() {
         unsafe {
             glib_sys::g_mutex_init(lock);
@@ -963,10 +1015,7 @@ pub extern "C" fn vips_area_unref(area: *mut VipsArea) {
 }
 
 #[no_mangle]
-pub extern "C" fn vips_area_new(
-    free_fn: VipsCallbackFn,
-    data: *mut c_void,
-) -> *mut VipsArea {
+pub extern "C" fn vips_area_new(free_fn: VipsCallbackFn, data: *mut c_void) -> *mut VipsArea {
     let area = unsafe { glib_sys::g_malloc0(size_of::<VipsArea>()) }.cast::<VipsArea>();
     let Some(area_ref) = (unsafe { area.as_mut() }) else {
         return ptr::null_mut();
@@ -1023,7 +1072,9 @@ unsafe extern "C" fn free_object_array(data: *mut c_void, area: *mut c_void) -> 
 #[no_mangle]
 pub extern "C" fn vips_area_new_array_object(n: c_int) -> *mut VipsArea {
     let count = n.max(0) as usize + 1;
-    let data = unsafe { glib_sys::g_malloc0(count.saturating_mul(size_of::<*mut gobject_sys::GObject>())) };
+    let data = unsafe {
+        glib_sys::g_malloc0(count.saturating_mul(size_of::<*mut gobject_sys::GObject>()))
+    };
     let area = vips_area_new(Some(free_object_array), data);
     if let Some(area) = unsafe { area.as_mut() } {
         area.length = count.saturating_mul(size_of::<*mut gobject_sys::GObject>());
@@ -1165,7 +1216,11 @@ pub extern "C" fn vips_array_double_new(array: *const f64, n: c_int) -> *mut Vip
     if let Some(area) = unsafe { area.as_mut() } {
         if !array.is_null() && n > 0 {
             unsafe {
-                ptr::copy_nonoverlapping(array.cast::<u8>(), area.data.cast::<u8>(), n as usize * size_of::<f64>());
+                ptr::copy_nonoverlapping(
+                    array.cast::<u8>(),
+                    area.data.cast::<u8>(),
+                    n as usize * size_of::<f64>(),
+                );
             }
         }
     }
@@ -1191,7 +1246,11 @@ pub extern "C" fn vips_array_int_new(array: *const c_int, n: c_int) -> *mut Vips
     if let Some(area) = unsafe { area.as_mut() } {
         if !array.is_null() && n > 0 {
             unsafe {
-                ptr::copy_nonoverlapping(array.cast::<u8>(), area.data.cast::<u8>(), n as usize * size_of::<c_int>());
+                ptr::copy_nonoverlapping(
+                    array.cast::<u8>(),
+                    area.data.cast::<u8>(),
+                    n as usize * size_of::<c_int>(),
+                );
             }
         }
     }
@@ -1243,23 +1302,22 @@ pub extern "C" fn vips_value_get_area(
 }
 
 #[no_mangle]
-pub extern "C" fn vips_value_get_save_string(
-    value: *const gobject_sys::GValue,
-) -> *const c_char {
+pub extern "C" fn vips_value_get_save_string(value: *const gobject_sys::GValue) -> *const c_char {
     let save = unsafe { gobject_sys::g_value_get_boxed(value).cast::<VipsSaveString>() };
     unsafe { save.as_ref() }.map_or(ptr::null(), |save| save.s.cast_const())
 }
 
 #[no_mangle]
-pub extern "C" fn vips_value_set_save_string(
-    value: *mut gobject_sys::GValue,
-    str_: *const c_char,
-) {
+pub extern "C" fn vips_value_set_save_string(value: *mut gobject_sys::GValue, str_: *const c_char) {
     unsafe {
         gobject_sys::g_value_init(value, vips_save_string_get_type());
         let save = glib_sys::g_malloc0(size_of::<VipsSaveString>()).cast::<VipsSaveString>();
         if let Some(save) = save.as_mut() {
-            save.s = if str_.is_null() { ptr::null_mut() } else { glib_sys::g_strdup(str_) };
+            save.s = if str_.is_null() {
+                ptr::null_mut()
+            } else {
+                glib_sys::g_strdup(str_)
+            };
         }
         gobject_sys::g_value_take_boxed(value, save.cast::<c_void>());
     }
@@ -1275,10 +1333,7 @@ pub extern "C" fn vips_value_get_ref_string(
 }
 
 #[no_mangle]
-pub extern "C" fn vips_value_set_ref_string(
-    value: *mut gobject_sys::GValue,
-    str_: *const c_char,
-) {
+pub extern "C" fn vips_value_set_ref_string(value: *mut gobject_sys::GValue, str_: *const c_char) {
     let refstr = vips_ref_string_new(str_);
     unsafe {
         gobject_sys::g_value_init(value, vips_ref_string_get_type());
@@ -1412,14 +1467,12 @@ pub extern "C" fn vips_value_get_array_object(
     value: *const gobject_sys::GValue,
     n: *mut c_int,
 ) -> *mut *mut gobject_sys::GObject {
-    vips_value_get_array(value, n, ptr::null_mut(), ptr::null_mut()).cast::<*mut gobject_sys::GObject>()
+    vips_value_get_array(value, n, ptr::null_mut(), ptr::null_mut())
+        .cast::<*mut gobject_sys::GObject>()
 }
 
 #[no_mangle]
-pub extern "C" fn vips_value_set_array_object(
-    value: *mut gobject_sys::GValue,
-    n: c_int,
-) {
+pub extern "C" fn vips_value_set_array_object(value: *mut gobject_sys::GValue, n: c_int) {
     vips_value_set_array(
         value,
         n,

@@ -1,4 +1,4 @@
-use std::ffi::{CStr, c_void};
+use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::ptr;
@@ -65,8 +65,16 @@ fn buf_and_dbuf_helpers_behave() {
         dynamic: glib_sys::GFALSE,
     };
     vips_buf_init_static(&mut buf, storage.as_mut_ptr(), storage.len() as i32);
-    assert_eq!(vips_buf_appends(&mut buf, c"hello\nworld".as_ptr()), glib_sys::GTRUE);
-    assert_eq!(unsafe { CStr::from_ptr(vips_buf_firstline(&mut buf)) }.to_str().unwrap(), "hello");
+    assert_eq!(
+        vips_buf_appends(&mut buf, c"hello\nworld".as_ptr()),
+        glib_sys::GTRUE
+    );
+    assert_eq!(
+        unsafe { CStr::from_ptr(vips_buf_firstline(&mut buf)) }
+            .to_str()
+            .unwrap(),
+        "hello"
+    );
     assert_eq!(vips_buf_len(&mut buf), 11);
 
     let mut dbuf = VipsDbuf {
@@ -76,9 +84,18 @@ fn buf_and_dbuf_helpers_behave() {
         write_point: 0,
     };
     vips_dbuf_init(&mut dbuf);
-    assert_eq!(vips_dbuf_write(&mut dbuf, b"ab".as_ptr(), 2), glib_sys::GTRUE);
-    assert_eq!(vips_dbuf_seek(&mut dbuf, 4, libc::SEEK_SET), glib_sys::GTRUE);
-    assert_eq!(vips_dbuf_write(&mut dbuf, b"z".as_ptr(), 1), glib_sys::GTRUE);
+    assert_eq!(
+        vips_dbuf_write(&mut dbuf, b"ab".as_ptr(), 2),
+        glib_sys::GTRUE
+    );
+    assert_eq!(
+        vips_dbuf_seek(&mut dbuf, 4, libc::SEEK_SET),
+        glib_sys::GTRUE
+    );
+    assert_eq!(
+        vips_dbuf_write(&mut dbuf, b"z".as_ptr(), 1),
+        glib_sys::GTRUE
+    );
     let mut len = 0usize;
     let bytes = vips_dbuf_string(&mut dbuf, &mut len);
     let bytes = unsafe { slice::from_raw_parts(bytes, len) };
@@ -115,7 +132,11 @@ fn metadata_get_fields_and_zeroed_region_buffers_work() {
         if value.is_null() {
             break;
         }
-        names.push(unsafe { CStr::from_ptr(value) }.to_string_lossy().into_owned());
+        names.push(
+            unsafe { CStr::from_ptr(value) }
+                .to_string_lossy()
+                .into_owned(),
+        );
         unsafe { glib_sys::g_free(value.cast::<c_void>()) };
         index += 1;
     }
@@ -158,7 +179,11 @@ unsafe extern "C" fn source_read_cb(
     let to_copy = remaining.min(length.max(0) as usize);
     if to_copy > 0 {
         unsafe {
-            ptr::copy_nonoverlapping(state.bytes.as_ptr().add(state.pos), buffer.cast::<u8>(), to_copy);
+            ptr::copy_nonoverlapping(
+                state.bytes.as_ptr().add(state.pos),
+                buffer.cast::<u8>(),
+                to_copy,
+            );
         }
     }
     state.pos += to_copy;
@@ -222,19 +247,33 @@ fn custom_source_and_target_callbacks_round_trip_and_propagate_errors() {
             source.cast::<GObject>(),
             c"read",
             source_read_cb
-                as unsafe extern "C" fn(*mut VipsSourceCustom, *mut c_void, i64, *mut c_void) -> i64,
+                as unsafe extern "C" fn(
+                    *mut VipsSourceCustom,
+                    *mut c_void,
+                    i64,
+                    *mut c_void,
+                ) -> i64,
             (&mut *source_state as *mut SourceCustomState).cast(),
         );
         connect_signal(
             source.cast::<GObject>(),
             c"seek",
             source_seek_cb
-                as unsafe extern "C" fn(*mut VipsSourceCustom, i64, libc::c_int, *mut c_void) -> i64,
+                as unsafe extern "C" fn(
+                    *mut VipsSourceCustom,
+                    i64,
+                    libc::c_int,
+                    *mut c_void,
+                ) -> i64,
             (&mut *source_state as *mut SourceCustomState).cast(),
         );
     }
 
-    let image = safe_vips_image_new_from_source_internal(source.cast(), c"".as_ptr(), VIPS_ACCESS_SEQUENTIAL);
+    let image = safe_vips_image_new_from_source_internal(
+        source.cast(),
+        c"".as_ptr(),
+        VIPS_ACCESS_SEQUENTIAL,
+    );
     assert!(!image.is_null());
 
     let target = vips_target_custom_new();
@@ -248,7 +287,12 @@ fn custom_source_and_target_callbacks_round_trip_and_propagate_errors() {
             target.cast::<GObject>(),
             c"write",
             target_write_cb
-                as unsafe extern "C" fn(*mut VipsTargetCustom, *const c_void, i64, *mut c_void) -> i64,
+                as unsafe extern "C" fn(
+                    *mut VipsTargetCustom,
+                    *const c_void,
+                    i64,
+                    *mut c_void,
+                ) -> i64,
             (&mut *target_state as *mut TargetCustomState).cast(),
         );
         connect_signal(
@@ -277,7 +321,12 @@ fn custom_source_and_target_callbacks_round_trip_and_propagate_errors() {
             failing.cast::<GObject>(),
             c"write",
             target_write_cb
-                as unsafe extern "C" fn(*mut VipsTargetCustom, *const c_void, i64, *mut c_void) -> i64,
+                as unsafe extern "C" fn(
+                    *mut VipsTargetCustom,
+                    *const c_void,
+                    i64,
+                    *mut c_void,
+                ) -> i64,
             (&mut *failing_state as *mut TargetCustomState).cast(),
         );
     }
@@ -331,8 +380,21 @@ fn region_prepare_and_prepare_to_generate_on_demand() {
         1.0,
         1.0,
     );
-    assert_eq!(vips_image_pipeline_array(image, VIPS_DEMAND_STYLE_ANY, ptr::null_mut()), 0);
-    assert_eq!(vips_image_generate(image, None, Some(gradient_generate), None, ptr::null_mut(), ptr::null_mut()), 0);
+    assert_eq!(
+        vips_image_pipeline_array(image, VIPS_DEMAND_STYLE_ANY, ptr::null_mut()),
+        0
+    );
+    assert_eq!(
+        vips_image_generate(
+            image,
+            None,
+            Some(gradient_generate),
+            None,
+            ptr::null_mut(),
+            ptr::null_mut()
+        ),
+        0
+    );
 
     let region = vips_region_new(image);
     let request = VipsRect {
@@ -366,7 +428,10 @@ fn region_prepare_and_prepare_to_generate_on_demand() {
         height: 4,
     };
     assert_eq!(vips_region_buffer(dest_region, &dest_area), 0);
-    assert_eq!(vips_region_prepare_to(region, dest_region, &request, 0, 1), 0);
+    assert_eq!(
+        vips_region_prepare_to(region, dest_region, &request, 0, 1),
+        0
+    );
     let dest_ref = unsafe { &*dest_region };
     let dest_pixels = unsafe { slice::from_raw_parts(dest_ref.data, 16) };
     assert_eq!(&dest_pixels[4..6], &[2, 3]);
@@ -396,15 +461,27 @@ fn descriptor_reopens_do_not_leak_handles() {
 
     let mut cropped = ptr::null_mut();
     let mut average = 0.0;
-    assert_eq!(safe_vips_crop_internal(image, &mut cropped, 0, 0, unsafe { (*image).Xsize }, 10), 0);
+    assert_eq!(
+        safe_vips_crop_internal(image, &mut cropped, 0, 0, unsafe { (*image).Xsize }, 10),
+        0
+    );
     assert_eq!(safe_vips_avg_internal(cropped, &mut average), 0);
     unsafe { gobject_sys::g_object_unref(cropped.cast()) };
-    assert_eq!(std::fs::read_dir("/proc/self/fd").expect("fd dir").count(), snapshot);
+    assert_eq!(
+        std::fs::read_dir("/proc/self/fd").expect("fd dir").count(),
+        snapshot
+    );
 
-    assert_eq!(safe_vips_crop_internal(image, &mut cropped, 0, 20, unsafe { (*image).Xsize }, 10), 0);
+    assert_eq!(
+        safe_vips_crop_internal(image, &mut cropped, 0, 20, unsafe { (*image).Xsize }, 10),
+        0
+    );
     assert_eq!(safe_vips_avg_internal(cropped, &mut average), 0);
     unsafe { gobject_sys::g_object_unref(cropped.cast()) };
-    assert_eq!(std::fs::read_dir("/proc/self/fd").expect("fd dir").count(), snapshot);
+    assert_eq!(
+        std::fs::read_dir("/proc/self/fd").expect("fd dir").count(),
+        snapshot
+    );
 
     unsafe {
         gobject_sys::g_object_unref(image.cast());
@@ -492,8 +569,89 @@ fn threadpool_and_cache_controls_are_serial_and_stable() {
     assert_eq!(counters.allocations, 3);
     assert_eq!(counters.work, 2);
     assert_eq!(counters.progress, 3);
+    vips_thread_shutdown();
+
+    let mut second_pass = ThreadCounters {
+        allocations: 0,
+        work: 0,
+        progress: 0,
+    };
+    assert_eq!(
+        vips_threadpool_run(
+            image,
+            None,
+            Some(alloc_cb),
+            Some(work_cb),
+            Some(progress_cb),
+            (&mut second_pass as *mut ThreadCounters).cast(),
+        ),
+        0
+    );
+    assert_eq!(second_pass.allocations, 3);
+    assert_eq!(second_pass.work, 2);
+    assert_eq!(second_pass.progress, 3);
 
     unsafe {
         gobject_sys::g_object_unref(image.cast());
+    }
+}
+
+#[test]
+fn operation_cache_build_and_drop_all_are_stateful() {
+    let _guard = guard();
+    init_vips();
+
+    vips_cache_drop_all();
+    vips_cache_set_max(8);
+    assert_eq!(vips_cache_get_size(), 0);
+
+    let first = unsafe {
+        gobject_sys::g_object_new(vips_operation_get_type(), ptr::null::<c_char>())
+            .cast::<VipsOperation>()
+    };
+    assert!(!first.is_null());
+    unsafe {
+        (*first).hash = 0x1234;
+        (*first).found_hash = glib_sys::GTRUE;
+    }
+    let mut built_first = first;
+    assert_eq!(vips_cache_operation_buildp(&mut built_first), 0);
+    assert_eq!(built_first, first);
+    assert_eq!(vips_cache_get_size(), 1);
+
+    let second = unsafe {
+        gobject_sys::g_object_new(vips_operation_get_type(), ptr::null::<c_char>())
+            .cast::<VipsOperation>()
+    };
+    assert!(!second.is_null());
+    unsafe {
+        (*second).hash = 0x1234;
+        (*second).found_hash = glib_sys::GTRUE;
+    }
+    let mut built_second = second;
+    assert_eq!(vips_cache_operation_buildp(&mut built_second), 0);
+    assert_eq!(built_second, first);
+    assert_eq!(vips_cache_get_size(), 1);
+
+    let probe = unsafe {
+        gobject_sys::g_object_new(vips_operation_get_type(), ptr::null::<c_char>())
+            .cast::<VipsOperation>()
+    };
+    assert!(!probe.is_null());
+    unsafe {
+        (*probe).hash = 0x1234;
+        (*probe).found_hash = glib_sys::GTRUE;
+    }
+    let looked_up = vips_cache_operation_lookup(probe);
+    assert_eq!(looked_up, first);
+
+    vips_cache_drop_all();
+    assert_eq!(vips_cache_get_size(), 0);
+
+    unsafe {
+        gobject_sys::g_object_unref(looked_up.cast());
+        gobject_sys::g_object_unref(probe.cast());
+        gobject_sys::g_object_unref(built_second.cast());
+        gobject_sys::g_object_unref(first.cast());
     }
 }

@@ -1,4 +1,4 @@
-use std::ffi::{CStr, CString, c_void};
+use std::ffi::{c_void, CStr, CString};
 use std::ptr;
 
 use gobject_sys::{G_TYPE_DOUBLE, G_TYPE_INT, G_TYPE_STRING};
@@ -23,10 +23,16 @@ impl Drop for MetaValue {
     fn drop(&mut self) {
         match self {
             MetaValue::Area(area) => crate::runtime::r#type::vips_area_unref(*area),
-            MetaValue::Blob(blob) => crate::runtime::r#type::vips_area_unref((*blob).cast::<VipsArea>()),
+            MetaValue::Blob(blob) => {
+                crate::runtime::r#type::vips_area_unref((*blob).cast::<VipsArea>())
+            }
             MetaValue::Image(image) => unsafe { crate::runtime::object::object_unref(*image) },
-            MetaValue::ArrayInt(array) => crate::runtime::r#type::vips_area_unref((*array).cast::<VipsArea>()),
-            MetaValue::ArrayDouble(array) => crate::runtime::r#type::vips_area_unref((*array).cast::<VipsArea>()),
+            MetaValue::ArrayInt(array) => {
+                crate::runtime::r#type::vips_area_unref((*array).cast::<VipsArea>())
+            }
+            MetaValue::ArrayDouble(array) => {
+                crate::runtime::r#type::vips_area_unref((*array).cast::<VipsArea>())
+            }
             _ => {}
         }
     }
@@ -59,7 +65,9 @@ impl MetaValue {
                 crate::runtime::r#type::vips_area_copy((*blob).cast::<VipsArea>());
                 MetaValue::Blob(*blob)
             }
-            MetaValue::Image(image) => MetaValue::Image(unsafe { crate::runtime::object::object_ref(*image) }),
+            MetaValue::Image(image) => {
+                MetaValue::Image(unsafe { crate::runtime::object::object_ref(*image) })
+            }
             MetaValue::ArrayInt(array) => {
                 crate::runtime::r#type::vips_area_copy((*array).cast::<VipsArea>());
                 MetaValue::ArrayInt(*array)
@@ -99,11 +107,17 @@ impl MetaValue {
                     gobject_sys::g_value_set_object(out, (*image).cast());
                 }
                 MetaValue::ArrayInt(array) => {
-                    gobject_sys::g_value_init(out, crate::runtime::r#type::vips_array_int_get_type());
+                    gobject_sys::g_value_init(
+                        out,
+                        crate::runtime::r#type::vips_array_int_get_type(),
+                    );
                     gobject_sys::g_value_set_boxed(out, (*array).cast::<c_void>());
                 }
                 MetaValue::ArrayDouble(array) => {
-                    gobject_sys::g_value_init(out, crate::runtime::r#type::vips_array_double_get_type());
+                    gobject_sys::g_value_init(
+                        out,
+                        crate::runtime::r#type::vips_array_double_get_type(),
+                    );
                     gobject_sys::g_value_set_boxed(out, (*array).cast::<c_void>());
                 }
             }
@@ -261,7 +275,10 @@ unsafe fn builtin_set(image: *mut VipsImage, name: &CStr, value: *mut gobject_sy
         b"mode" => {
             let ptr = unsafe { gobject_sys::g_value_get_string(value) };
             if !ptr.is_null() {
-                crate::runtime::image::set_mode(image, unsafe { CStr::from_ptr(ptr) }.to_str().unwrap_or("p"));
+                crate::runtime::image::set_mode(
+                    image,
+                    unsafe { CStr::from_ptr(ptr) }.to_str().unwrap_or("p"),
+                );
             }
         }
         _ => return false,
@@ -272,9 +289,13 @@ unsafe fn builtin_set(image: *mut VipsImage, name: &CStr, value: *mut gobject_sy
 unsafe fn meta_from_value(value: *mut gobject_sys::GValue) -> Option<MetaValue> {
     let ty = unsafe { (*value).g_type };
     if ty == G_TYPE_INT {
-        Some(MetaValue::Int(unsafe { gobject_sys::g_value_get_int(value) }))
+        Some(MetaValue::Int(unsafe {
+            gobject_sys::g_value_get_int(value)
+        }))
     } else if ty == G_TYPE_DOUBLE {
-        Some(MetaValue::Double(unsafe { gobject_sys::g_value_get_double(value) }))
+        Some(MetaValue::Double(unsafe {
+            gobject_sys::g_value_get_double(value)
+        }))
     } else if ty == G_TYPE_STRING {
         let ptr = unsafe { gobject_sys::g_value_get_string(value) };
         Some(MetaValue::String(if ptr.is_null() {
@@ -292,7 +313,9 @@ unsafe fn meta_from_value(value: *mut gobject_sys::GValue) -> Option<MetaValue> 
         Some(MetaValue::Blob(blob))
     } else if ty == crate::runtime::object::vips_image_get_type() {
         let image = unsafe { gobject_sys::g_value_get_object(value).cast::<VipsImage>() };
-        Some(MetaValue::Image(unsafe { crate::runtime::object::object_ref(image) }))
+        Some(MetaValue::Image(unsafe {
+            crate::runtime::object::object_ref(image)
+        }))
     } else if ty == crate::runtime::r#type::vips_array_int_get_type() {
         let array = unsafe { gobject_sys::g_value_get_boxed(value).cast::<VipsArrayInt>() };
         crate::runtime::r#type::vips_area_copy(array.cast::<VipsArea>());
@@ -455,7 +478,11 @@ pub extern "C" fn vips_image_get_n_pages(image: *mut VipsImage) -> i32 {
 #[no_mangle]
 pub extern "C" fn vips_image_get_n_subifds(image: *mut VipsImage) -> i32 {
     let mut value = 0;
-    if vips_image_get_int(image, c"n-subifds".as_ptr(), &mut value) == 0 { value } else { 0 }
+    if vips_image_get_int(image, c"n-subifds".as_ptr(), &mut value) == 0 {
+        value
+    } else {
+        0
+    }
 }
 
 #[no_mangle]
@@ -479,7 +506,10 @@ pub extern "C" fn vips_image_get_orientation_swap(image: *mut VipsImage) -> glib
 }
 
 #[no_mangle]
-pub extern "C" fn vips_image_get_concurrency(_image: *mut VipsImage, default_concurrency: i32) -> i32 {
+pub extern "C" fn vips_image_get_concurrency(
+    _image: *mut VipsImage,
+    default_concurrency: i32,
+) -> i32 {
     default_concurrency
 }
 
@@ -701,7 +731,11 @@ pub extern "C" fn vips_image_set_area(
     };
     let area = crate::runtime::r#type::vips_area_new(free_fn, data);
     if let Some(state) = unsafe { image_state(image) } {
-        state.meta.lock().expect("meta").set(name, MetaValue::Area(area));
+        state
+            .meta
+            .lock()
+            .expect("meta")
+            .set(name, MetaValue::Area(area));
     }
 }
 
@@ -742,7 +776,11 @@ pub extern "C" fn vips_image_set_blob(
     };
     let blob = crate::runtime::r#type::vips_blob_new(free_fn, data, length);
     if let Some(state) = unsafe { image_state(image) } {
-        state.meta.lock().expect("meta").set(name, MetaValue::Blob(blob));
+        state
+            .meta
+            .lock()
+            .expect("meta")
+            .set(name, MetaValue::Blob(blob));
     }
 }
 
@@ -762,7 +800,11 @@ pub extern "C" fn vips_image_set_blob_copy(
         return;
     };
     if let Some(state) = unsafe { image_state(image) } {
-        state.meta.lock().expect("meta").set(name, MetaValue::Blob(blob));
+        state
+            .meta
+            .lock()
+            .expect("meta")
+            .set(name, MetaValue::Blob(blob));
     }
 }
 
@@ -846,7 +888,11 @@ pub extern "C" fn vips_image_get_double(
 }
 
 #[no_mangle]
-pub extern "C" fn vips_image_set_double(image: *mut VipsImage, name: *const libc::c_char, value: f64) {
+pub extern "C" fn vips_image_set_double(
+    image: *mut VipsImage,
+    name: *const libc::c_char,
+    value: f64,
+) {
     let mut gvalue: gobject_sys::GValue = unsafe { std::mem::zeroed() };
     unsafe {
         gobject_sys::g_value_init(&mut gvalue, G_TYPE_DOUBLE);
@@ -908,12 +954,18 @@ pub extern "C" fn vips_image_set_string(
         return;
     };
     if name.to_bytes() == b"filename" {
-        crate::runtime::image::set_filename(image, (!str_.is_null()).then(|| unsafe { CStr::from_ptr(str_) }));
+        crate::runtime::image::set_filename(
+            image,
+            (!str_.is_null()).then(|| unsafe { CStr::from_ptr(str_) }),
+        );
         return;
     }
     if name.to_bytes() == b"mode" {
         if !str_.is_null() {
-            crate::runtime::image::set_mode(image, unsafe { CStr::from_ptr(str_) }.to_str().unwrap_or("p"));
+            crate::runtime::image::set_mode(
+                image,
+                unsafe { CStr::from_ptr(str_) }.to_str().unwrap_or("p"),
+            );
         }
         return;
     }
@@ -923,7 +975,11 @@ pub extern "C" fn vips_image_set_string(
         } else {
             unsafe { CStr::from_ptr(str_) }.to_owned()
         };
-        state.meta.lock().expect("meta").set(name, MetaValue::String(text));
+        state
+            .meta
+            .lock()
+            .expect("meta")
+            .set(name, MetaValue::String(text));
     }
 }
 
@@ -972,11 +1028,10 @@ pub extern "C" fn vips_image_set_image(
         return;
     };
     if let Some(state) = unsafe { image_state(image) } {
-        state
-            .meta
-            .lock()
-            .expect("meta")
-            .set(name, MetaValue::Image(unsafe { crate::runtime::object::object_ref(value) }));
+        state.meta.lock().expect("meta").set(
+            name,
+            MetaValue::Image(unsafe { crate::runtime::object::object_ref(value) }),
+        );
     }
 }
 
@@ -992,7 +1047,11 @@ pub extern "C" fn vips_image_set_array_int(
     };
     let array = crate::runtime::r#type::vips_array_int_new(array, n);
     if let Some(state) = unsafe { image_state(image) } {
-        state.meta.lock().expect("meta").set(name, MetaValue::ArrayInt(array));
+        state
+            .meta
+            .lock()
+            .expect("meta")
+            .set(name, MetaValue::ArrayInt(array));
     }
 }
 
@@ -1064,7 +1123,11 @@ pub extern "C" fn vips_image_set_array_double(
     };
     let array = crate::runtime::r#type::vips_array_double_new(array, n);
     if let Some(state) = unsafe { image_state(image) } {
-        state.meta.lock().expect("meta").set(name, MetaValue::ArrayDouble(array));
+        state
+            .meta
+            .lock()
+            .expect("meta")
+            .set(name, MetaValue::ArrayDouble(array));
     }
 }
 

@@ -82,24 +82,42 @@ pub extern "C" fn vips_init(argv0: *const c_char) -> c_int {
 
 #[no_mangle]
 pub extern "C" fn vips_shutdown() {
-    let mut state = state().lock().expect("init state");
-    if state.init_count == 0 {
-        return;
-    }
+    let final_shutdown = {
+        let mut state = state().lock().expect("init state");
+        if state.init_count == 0 {
+            return;
+        }
 
-    state.init_count -= 1;
-    if state.init_count == 0 {
-        state.shut_down = true;
+        state.init_count -= 1;
+        if state.init_count == 0 {
+            state.shut_down = true;
+            state.argv0 = None;
+            state.prgname = None;
+            true
+        } else {
+            false
+        }
+    };
+
+    if final_shutdown {
+        runtime::cache::vips_cache_drop_all();
+        vips_thread_shutdown();
+        runtime::threadpool::shutdown_runtime_state();
     }
 }
 
 #[no_mangle]
-pub extern "C" fn vips_thread_shutdown() {}
+pub extern "C" fn vips_thread_shutdown() {
+    runtime::threadpool::thread_shutdown();
+}
 
 #[no_mangle]
 pub extern "C" fn vips_get_argv0() -> *const c_char {
     let state = state().lock().expect("init state");
-    state.argv0.as_ref().map_or(std::ptr::null(), |value| value.as_ptr())
+    state
+        .argv0
+        .as_ref()
+        .map_or(std::ptr::null(), |value| value.as_ptr())
 }
 
 #[no_mangle]
@@ -110,7 +128,10 @@ pub extern "C" fn vips_get_prgname() -> *const c_char {
     }
 
     let state = state().lock().expect("init state");
-    state.prgname.as_ref().map_or(std::ptr::null(), |value| value.as_ptr())
+    state
+        .prgname
+        .as_ref()
+        .map_or(std::ptr::null(), |value| value.as_ptr())
 }
 
 #[no_mangle]
