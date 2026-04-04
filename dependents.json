@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-04-03",
+  "ubuntu_release": "24.04",
+  "checked_architecture": "amd64",
+  "checked_pockets": [
+    "noble",
+    "noble-updates",
+    "noble-backports"
+  ],
+  "checked_components": [
+    "main",
+    "universe",
+    "restricted",
+    "multiverse"
+  ],
+  "selection_notes": [
+    "This file records external Ubuntu 24.04 packages with direct compile-time or runtime relationships to libvips.",
+    "Binary packages built from the libvips source package itself were excluded from the dependent list and recorded separately under excluded_same_source_packages.",
+    "Only iipimage-server has an optional libvips relationship; all other listed packages below directly build against libvips and/or directly depend on libvips at runtime."
+  ],
+  "indexes_checked": [
+    "https://archive.ubuntu.com/ubuntu/dists/noble/main/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble/main/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble/universe/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble/restricted/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble/restricted/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble/multiverse/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble/multiverse/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-updates/main/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-updates/main/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-updates/universe/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-updates/universe/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-updates/restricted/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-updates/restricted/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-updates/multiverse/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-updates/multiverse/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-backports/main/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-backports/main/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-backports/universe/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-backports/universe/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-backports/restricted/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-backports/restricted/binary-amd64/Packages.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-backports/multiverse/source/Sources.gz",
+    "https://archive.ubuntu.com/ubuntu/dists/noble-backports/multiverse/binary-amd64/Packages.gz"
+  ],
+  "dependents": [
+    {
+      "package": "nip2",
+      "source_package": "nip2",
+      "version": "8.9.1-1build3",
+      "repository_component": "universe",
+      "confidence": "high",
+      "dependency_relationships": {
+        "compile_time": [
+          "libvips-dev"
+        ],
+        "runtime": [
+          "libvips42t64"
+        ],
+        "optional_runtime": []
+      },
+      "runtime_functionality_depends_on_libvips": "nip2 is a spreadsheet-like graphical image manipulation tool whose core image processing and analysis functionality is implemented on top of libvips.",
+      "evidence": [
+        "Ubuntu source metadata for nip2 Build-Depends on libvips-dev.",
+        "Ubuntu binary metadata for nip2 Depends on libvips42t64.",
+        "The libvips project documents nip2 as the graphical user interface for VIPS."
+      ],
+      "sources": [
+        "https://archive.ubuntu.com/ubuntu/dists/noble/universe/source/Sources.gz",
+        "https://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/Packages.gz",
+        "https://github.com/libvips/libvips/wiki/VIPS"
+      ]
+    },
+    {
+      "package": "photoqt",
+      "source_package": "photoqt",
+      "version": "4.4+ds-1",
+      "repository_component": "universe",
+      "confidence": "high",
+      "dependency_relationships": {
+        "compile_time": [
+          "libvips-dev"
+        ],
+        "runtime": [
+          "libvips42t64"
+        ],
+        "optional_runtime": []
+      },
+      "runtime_functionality_depends_on_libvips": "Ubuntu's PhotoQt build enables the libvips backend. libvips is used for image-size probing and image loading/decoding for formats assigned to that backend.",
+      "evidence": [
+        "Ubuntu source metadata for photoqt Build-Depends on libvips-dev.",
+        "Ubuntu binary metadata for photoqt Depends on libvips42t64.",
+        "The Debian packaging used by Ubuntu passes -DLIBVIPS=ON.",
+        "The PhotoQt source tree includes a dedicated libvips image loader implementation and runtime format/backend toggles."
+      ],
+      "sources": [
+        "https://archive.ubuntu.com/ubuntu/dists/noble/universe/source/Sources.gz",
+        "https://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/Packages.gz",
+        "https://archive.ubuntu.com/ubuntu/pool/universe/p/photoqt/photoqt_4.4+ds-1.debian.tar.xz",
+        "https://archive.ubuntu.com/ubuntu/pool/universe/p/photoqt/photoqt_4.4+ds.orig.tar.xz"
+      ]
+    },
+    {
+      "package": "ruby-vips",
+      "source_package": "ruby-vips",
+      "version": "2.1.4-1",
+      "repository_component": "universe",
+      "confidence": "high",
+      "dependency_relationships": {
+        "compile_time": [
+          "libvips-dev"
+        ],
+        "runtime": [
+          "libvips-dev"
+        ],
+        "optional_runtime": []
+      },
+      "runtime_functionality_depends_on_libvips": "ruby-vips exposes libvips image processing operations to Ruby via FFI, so Ruby applications rely on libvips for image loading, transforms, thumbnails, and saving.",
+      "evidence": [
+        "Ubuntu source metadata for ruby-vips Build-Depends on libvips-dev.",
+        "Ubuntu binary metadata for ruby-vips Depends on libvips-dev.",
+        "Upstream describes ruby-vips as a Ruby binding for the libvips image processing library."
+      ],
+      "sources": [
+        "https://archive.ubuntu.com/ubuntu/dists/noble/universe/source/Sources.gz",
+        "https://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/Packages.gz",
+        "https://archive.ubuntu.com/ubuntu/pool/universe/r/ruby-vips/ruby-vips_2.1.4.orig.tar.gz"
+      ]
+    },
+    {
+      "package": "iipimage-server",
+      "source_package": "iipimage",
+      "version": "1.1-3build4",
+      "repository_component": "universe",
+      "confidence": "medium",
+      "dependency_relationships": {
+        "compile_time": [],
+        "runtime": [],
+        "optional_runtime": [
+          "libvips-tools"
+        ]
+      },
+      "runtime_functionality_depends_on_libvips": "Optional only. Ubuntu does not build iipimage-server against libvips, but the package recommends libvips-tools for image-preparation workflows around the server's tiled multi-resolution image format.",
+      "evidence": [
+        "Ubuntu binary metadata for iipimage-server Recommends libvips-tools.",
+        "Ubuntu source metadata for iipimage has no libvips-dev Build-Depends, so the packaged server does not directly link against libvips.",
+        "The server's documented role is serving tiled multi-resolution images, making libvips relevant as optional tooling rather than a hard runtime dependency."
+      ],
+      "sources": [
+        "https://archive.ubuntu.com/ubuntu/dists/noble/universe/source/Sources.gz",
+        "https://archive.ubuntu.com/ubuntu/dists/noble/universe/binary-amd64/Packages.gz",
+        "https://archive.ubuntu.com/ubuntu/pool/universe/i/iipimage/iipimage_1.1.orig.tar.bz2"
+      ]
+    }
+  ],
+  "excluded_same_source_packages": [
+    {
+      "package": "gir1.2-vips-8.0",
+      "source_package": "vips",
+      "reason": "Part of the libvips source package itself, not an external dependent."
+    },
+    {
+      "package": "libvips-dev",
+      "source_package": "vips",
+      "reason": "Development package built from the libvips source package itself."
+    },
+    {
+      "package": "libvips-tools",
+      "source_package": "vips",
+      "reason": "Command-line tools built from the libvips source package itself."
+    }
+  ]
+}
