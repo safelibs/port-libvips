@@ -40,9 +40,10 @@ fn basename(argv0: &CStr) -> CString {
     CString::new(tail).expect("program name")
 }
 
-fn ensure_bootstrap_types() {
+fn ensure_bootstrap_types() -> bool {
     runtime::object::ensure_types();
     runtime::r#type::ensure_types();
+    runtime::operation::ensure_generated_types()
 }
 
 #[no_mangle]
@@ -74,7 +75,17 @@ pub extern "C" fn vips_init(argv0: *const c_char) -> c_int {
     };
 
     if needs_bootstrap {
-        ensure_bootstrap_types();
+        if !ensure_bootstrap_types() {
+            let mut state = state().lock().expect("init state");
+            if state.init_count > 0 {
+                state.init_count -= 1;
+            }
+            if state.init_count == 0 {
+                state.argv0 = None;
+                state.prgname = None;
+            }
+            return -1;
+        }
     }
 
     0

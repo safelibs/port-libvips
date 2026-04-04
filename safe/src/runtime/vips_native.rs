@@ -1,5 +1,6 @@
 use std::ffi::CStr;
 use std::ptr;
+use std::sync::{Mutex, OnceLock};
 
 use libc::{c_char, c_int, c_void};
 
@@ -78,3 +79,59 @@ pub(crate) fn alloc_copy(bytes: &[u8]) -> *mut c_void {
     }
     copy
 }
+
+#[no_mangle]
+pub extern "C" fn vips_isprefix(a: *const c_char, b: *const c_char) -> glib_sys::gboolean {
+    if a.is_null() || b.is_null() {
+        return glib_sys::GFALSE;
+    }
+    let a = unsafe { CStr::from_ptr(a) }.to_bytes();
+    let b = unsafe { CStr::from_ptr(b) }.to_bytes();
+    if b.starts_with(a) {
+        glib_sys::GTRUE
+    } else {
+        glib_sys::GFALSE
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn vips_add_option_entries(_option_group: *mut glib_sys::GOptionGroup) {}
+
+fn vector_state() -> &'static Mutex<bool> {
+    static ENABLED: OnceLock<Mutex<bool>> = OnceLock::new();
+    ENABLED.get_or_init(|| Mutex::new(true))
+}
+
+static VECTOR_NONE: &[u8] = b"none\0";
+
+#[no_mangle]
+pub extern "C" fn vips_vector_isenabled() -> glib_sys::gboolean {
+    if *vector_state().lock().expect("vector state") {
+        glib_sys::GTRUE
+    } else {
+        glib_sys::GFALSE
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn vips_vector_set_enabled(enabled: glib_sys::gboolean) {
+    *vector_state().lock().expect("vector state") = enabled != glib_sys::GFALSE;
+}
+
+#[no_mangle]
+pub extern "C" fn vips_vector_get_builtin_targets() -> i64 {
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn vips_vector_get_supported_targets() -> i64 {
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn vips_vector_target_name(_target: i64) -> *const c_char {
+    VECTOR_NONE.as_ptr().cast()
+}
+
+#[no_mangle]
+pub extern "C" fn vips_vector_disable_targets(_disabled_targets: i64) {}

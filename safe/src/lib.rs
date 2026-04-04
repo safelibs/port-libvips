@@ -21,6 +21,7 @@ pub use runtime::image::*;
 pub use runtime::init::*;
 pub use runtime::memory::*;
 pub use runtime::object::*;
+pub use runtime::operation::*;
 pub use runtime::r#type::*;
 pub use runtime::rect::*;
 pub use runtime::region::*;
