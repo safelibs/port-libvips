@@ -5,7 +5,12 @@ readonly SAFE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly LIST_FILE="${SAFE_ROOT}/tests/upstream/standalone-shell-tests.txt"
 
 if [[ "${1:-}" == "--list" ]]; then
-  cat "${LIST_FILE}"
+  while IFS= read -r entry; do
+    printf '%s\n' "${entry}"
+    if [[ -n "${entry}" && "${entry}" != \#* ]]; then
+      printf '%s\n' "${entry//./\\.}"
+    fi
+  done < "${LIST_FILE}"
   exit 0
 fi
 
