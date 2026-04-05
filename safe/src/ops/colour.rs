@@ -13,12 +13,13 @@ use crate::abi::image::{
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::ImageBuffer;
+use crate::runtime::error::append_message_str;
 use crate::runtime::header::vips_image_remove;
 use crate::runtime::object::object_unref;
 
 use super::{
     argument_assigned, get_image_buffer, get_image_ref, get_string, set_output_blob,
-    set_output_image, set_output_image_like,
+    set_output_image,
 };
 
 const ICC_META_NAME: &CStr = c"icc-profile-data";
@@ -763,12 +764,130 @@ unsafe fn op_profile_load(object: *mut VipsObject) -> Result<(), ()> {
     unsafe { set_output_blob(object, "profile", bytes) }
 }
 
-unsafe fn op_set_coding(object: *mut VipsObject, coding: i32) -> Result<(), ()> {
+fn encode_radiance_rgb(rgb: [f64; 3]) -> [u8; 4] {
+    let max_channel = rgb[0].max(rgb[1]).max(rgb[2]);
+    if max_channel <= 1e-32 {
+        return [0, 0, 0, 0];
+    }
+
+    let exponent = max_channel.abs().log2().floor() as i32 + 1;
+    let mantissa = max_channel / 2f64.powi(exponent);
+    let scale = mantissa * 255.9999 / max_channel;
+    let pack_channel = |value: f64| -> u8 {
+        if value > 0.0 {
+            (value * scale).clamp(0.0, 255.0) as u8
+        } else {
+            0
+        }
+    };
+
+    [
+        pack_channel(rgb[0]),
+        pack_channel(rgb[1]),
+        pack_channel(rgb[2]),
+        (exponent + 128).clamp(0, u8::MAX as i32) as u8,
+    ]
+}
+
+fn decode_radiance_rgb(rgb: [u8; 4]) -> [f64; 3] {
+    if rgb[3] == 0 {
+        return [0.0, 0.0, 0.0];
+    }
+
+    let scale = 2f64.powi(rgb[3] as i32 - (128 + 8));
+    [
+        (rgb[0] as f64 + 0.5) * scale,
+        (rgb[1] as f64 + 0.5) * scale,
+        (rgb[2] as f64 + 0.5) * scale,
+    ]
+}
+
+unsafe fn op_float2rad(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
     let like = unsafe { get_image_ref(object, "in")? };
-    let mut out = input.clone();
-    out.spec.coding = coding;
-    let result = unsafe { set_output_image_like(object, "out", out, like) };
+    let prepared = prepare_colour_buffer(&input, VIPS_INTERPRETATION_scRGB)?;
+    if prepared.spec.bands < 3 {
+        append_message_str("float2rad", "image must have at least three bands");
+        unsafe {
+            object_unref(like);
+        }
+        return Err(());
+    }
+
+    let mut out = ImageBuffer::new(
+        prepared.spec.width,
+        prepared.spec.height,
+        4,
+        VIPS_FORMAT_UCHAR,
+        VIPS_CODING_RAD,
+        VIPS_INTERPRETATION_scRGB,
+    );
+    out.spec.xres = prepared.spec.xres;
+    out.spec.yres = prepared.spec.yres;
+    out.spec.xoffset = prepared.spec.xoffset;
+    out.spec.yoffset = prepared.spec.yoffset;
+    out.spec.dhint = prepared.spec.dhint;
+
+    for y in 0..prepared.spec.height {
+        for x in 0..prepared.spec.width {
+            let encoded = encode_radiance_rgb([
+                prepared.get(x, y, 0),
+                prepared.get(x, y, 1),
+                prepared.get(x, y, 2),
+            ]);
+            for (band, value) in encoded.into_iter().enumerate() {
+                out.set(x, y, band, value as f64);
+            }
+        }
+    }
+
+    let result = unsafe { set_transformed_output(object, out, like) };
+    unsafe {
+        object_unref(like);
+    }
+    result
+}
+
+unsafe fn op_rad2float(object: *mut VipsObject) -> Result<(), ()> {
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let like = unsafe { get_image_ref(object, "in")? };
+    if input.spec.coding != VIPS_CODING_RAD || input.spec.bands < 4 {
+        append_message_str("rad2float", "image must be four-band Radiance coding");
+        unsafe {
+            object_unref(like);
+        }
+        return Err(());
+    }
+
+    let mut out = ImageBuffer::new(
+        input.spec.width,
+        input.spec.height,
+        3,
+        VIPS_FORMAT_FLOAT,
+        VIPS_CODING_NONE,
+        VIPS_INTERPRETATION_scRGB,
+    );
+    out.spec.xres = input.spec.xres;
+    out.spec.yres = input.spec.yres;
+    out.spec.xoffset = input.spec.xoffset;
+    out.spec.yoffset = input.spec.yoffset;
+    out.spec.dhint = input.spec.dhint;
+
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            let decoded = decode_radiance_rgb([
+                input.get(x, y, 0).round().clamp(0.0, 255.0) as u8,
+                input.get(x, y, 1).round().clamp(0.0, 255.0) as u8,
+                input.get(x, y, 2).round().clamp(0.0, 255.0) as u8,
+                input.get(x, y, 3).round().clamp(0.0, 255.0) as u8,
+            ]);
+            for (band, value) in decoded.into_iter().enumerate() {
+                out.set(x, y, band, value);
+            }
+        }
+    }
+
+    let result = unsafe { set_transformed_output(object, out, like) };
     unsafe {
         object_unref(like);
     }
@@ -794,7 +913,7 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
             Ok(true)
         }
         "float2rad" => {
-            unsafe { op_set_coding(object, VIPS_CODING_RAD)? };
+            unsafe { op_float2rad(object)? };
             Ok(true)
         }
         "profile" => {
@@ -806,7 +925,7 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
             Ok(true)
         }
         "rad2float" => {
-            unsafe { op_set_coding(object, VIPS_CODING_NONE)? };
+            unsafe { op_rad2float(object)? };
             Ok(true)
         }
         "sRGB2HSV" => {

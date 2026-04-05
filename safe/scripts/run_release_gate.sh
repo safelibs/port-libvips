@@ -169,7 +169,7 @@ scripts/check_introspection.sh \
 tests/upstream/run-meson-suite.sh build-release
 tests/upstream/run-shell-suite.sh --list | rg 'test_thumbnail\.sh'
 tests/upstream/run-shell-suite.sh build-release
-tests/upstream/run-pytest-suite.sh
+VIPS_SAFE_BUILD_DIR="${SAFE_ROOT}/build-release" tests/upstream/run-pytest-suite.sh
 tests/upstream/run-fuzz-suite.sh build-release
 
 echo "[release-gate] link compatibility"

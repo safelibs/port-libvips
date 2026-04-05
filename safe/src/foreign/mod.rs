@@ -615,8 +615,8 @@ pub fn save_to_bytes(
         | ForeignKind::Tiff
         | ForeignKind::Webp
         | ForeignKind::Heif
-        | ForeignKind::Radiance => savers::container::write_container(image, kind, options),
-        ForeignKind::Vips => loaders::legacy_vips::save_bytes(image),
+        | ForeignKind::Radiance
+        | ForeignKind::Vips => savers::container::write_container(image, kind, options),
         _ => {
             append_message_str("foreignsave", "unsupported saver");
             Err(())
@@ -883,10 +883,6 @@ pub fn load_image_from_file(
     option_string: *const c_char,
     image: *mut VipsImage,
 ) -> *mut VipsImage {
-    if sniff::kind_from_suffix(filename.to_str().unwrap_or_default()) == ForeignKind::Vips {
-        return loaders::legacy_vips::load_file_into_image(filename, image);
-    }
-
     let Ok(bytes) = read_all_from_path(filename) else {
         return ptr::null_mut();
     };
@@ -925,26 +921,6 @@ pub fn load_image_from_buffer(
     image: *mut VipsImage,
 ) -> *mut VipsImage {
     load_image_from_bytes_with_hint(bytes, None, InputKind::Buffer, option_string, image)
-}
-
-fn load_image_from_file_with_kind(
-    filename: &CStr,
-    kind: ForeignKind,
-    options: LoadOptions,
-    image: *mut VipsImage,
-) -> *mut VipsImage {
-    if kind == ForeignKind::Vips {
-        let _ = options;
-        return loaders::legacy_vips::load_file_into_image(filename, image);
-    }
-
-    let Ok(bytes) = read_all_from_path(filename) else {
-        return ptr::null_mut();
-    };
-    match load_from_bytes_for_kind(&bytes, kind, InputKind::File, options) {
-        Ok(result) => apply_load_result(image, result, Some(filename)),
-        Err(()) => ptr::null_mut(),
-    }
 }
 
 fn load_image_from_buffer_with_kind(
@@ -1073,19 +1049,6 @@ pub fn dispatch_operation(
             let Some(kind) = file_load_kind(nickname, &filename) else {
                 return Ok(false);
             };
-            if kind == ForeignKind::Vips {
-                let cfilename = CString::new(filename).map_err(|_| ())?;
-                let image = crate::runtime::image::vips_image_new();
-                let out = loaders::legacy_vips::load_file_into_image(&cfilename, image);
-                if out.is_null() {
-                    unsafe {
-                        object::object_unref(image);
-                    }
-                    return Err(());
-                }
-                unsafe { set_output_image(object, "out", out)? };
-                return Ok(true);
-            }
             let options = load_options_from_object(object)?;
             let cache_key = file_load_cache_key(kind, &filename, &options);
             if options.revalidate {
@@ -1262,15 +1225,11 @@ pub fn dispatch_operation(
                 }
                 return Ok(false);
             };
-            if kind == ForeignKind::Vips {
-                loaders::legacy_vips::write_file(image, &filename)?;
-            } else {
-                let options = save_options_from_object(object)?;
-                let bytes = save_to_bytes(image, kind, &options)?;
-                std::fs::write(&filename, bytes).map_err(|err| {
-                    append_message_str(nickname, &err.to_string());
-                })?;
-            }
+            let options = save_options_from_object(object)?;
+            let bytes = save_to_bytes(image, kind, &options)?;
+            std::fs::write(&filename, bytes).map_err(|err| {
+                append_message_str(nickname, &err.to_string());
+            })?;
             unsafe {
                 object::object_unref(image);
             }

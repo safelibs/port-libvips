@@ -935,6 +935,8 @@ upstream_test_env.prepend('LD_LIBRARY_PATH', runtime_libdir)
 upstream_test_env.prepend('PYTHONPATH', vendor_pyvips_dir)
 upstream_test_env.set('PYTHONNOUSERSITE', '1')
 upstream_test_env.set('PIP_NO_INDEX', '1')
+upstream_test_env.set('PYTEST_DISABLE_PLUGIN_AUTOLOAD', '1')
+upstream_test_env.set('VIPS_SAFE_BUILD_DIR', meson.current_build_dir())
 upstream_test_env.set('VIPSHOME', meson.current_build_dir())
 
 standalone_engine = static_library(
@@ -1109,7 +1111,15 @@ test(
 test(
   'python-suite',
   python3,
-  args: ['-m', 'pytest', original_root / 'test' / 'test-suite'],
+  args: [
+    '-m',
+    'pytest',
+    '-c',
+    '/dev/null',
+    '--rootdir',
+    original_root,
+    original_root / 'test' / 'test-suite',
+  ],
   workdir: meson.current_build_dir(),
   env: upstream_test_env,
   depends: [libvips_stage, module_stage] + tool_targets,

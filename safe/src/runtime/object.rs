@@ -2749,35 +2749,12 @@ pub extern "C" fn vips_object_rewind(object: *mut VipsObject) {
 
 #[no_mangle]
 pub extern "C" fn vips_object_unref_outputs(object: *mut VipsObject) {
-    if object.is_null() {
-        return;
-    }
-    let class = unsafe { object_class(object) };
-    if class.is_null() {
-        return;
-    }
-    let mut node = unsafe { (*class).argument_table_traverse };
-    while !node.is_null() {
-        let argument = unsafe { (*node).data.cast::<VipsArgumentClass>() };
-        if !argument.is_null() && unsafe { (*argument).flags & VIPS_ARGUMENT_OUTPUT != 0 } {
-            let name = unsafe {
-                CStr::from_ptr(gobject_sys::g_param_spec_get_name((*argument).parent.pspec))
-                    .to_string_lossy()
-                    .into_owned()
-            };
-            if let Some(DynamicValue::Object(value)) = unsafe { dynamic_value(object, &name) } {
-                if !value.is_null() {
-                    unsafe {
-                        gobject_sys::g_object_unref((*value).cast());
-                    }
-                }
-                unsafe {
-                    remove_dynamic_value(object, &name);
-                }
-            }
-        }
-        node = unsafe { (*node).next };
-    }
+    let _ = object;
+    // The safe runtime stores output GObjects directly in the operation's
+    // dynamic property map. Clearing them here invalidates cached operation
+    // hits before callers can fetch the outputs again, which breaks vendored
+    // pyvips and repeated identical operations. Finalization still releases
+    // these references when the operation itself goes away.
 }
 
 #[no_mangle]

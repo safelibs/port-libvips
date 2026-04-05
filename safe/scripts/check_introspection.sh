@@ -69,3 +69,14 @@ fi
 LD_LIBRARY_PATH="${lib_dir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
 GI_TYPELIB_PATH="${typelib_dir}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}" \
   "${tmp_dir}/gir-smoke" "${expect_version}"
+
+inspect_output="$(
+  LD_LIBRARY_PATH="${lib_dir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
+  GI_TYPELIB_PATH="${typelib_dir}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}" \
+    g-ir-inspect --version=8.0 --print-shlibs Vips
+)"
+if ! grep -Eq '(^|[[:space:]])libvips\.so\.42$' <<<"${inspect_output}"; then
+  echo "g-ir-inspect did not resolve the safe libvips typelib payload" >&2
+  printf '%s\n' "${inspect_output}" >&2
+  exit 1
+fi

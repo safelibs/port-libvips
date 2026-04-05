@@ -13,6 +13,7 @@ struct ContainerParts<'a> {
     format_tag: i32,
     width: i32,
     height: i32,
+    coding: i32,
     interpretation: i32,
     flags: u32,
     metadata: ForeignMetadata,
@@ -82,7 +83,7 @@ fn parse_container_parts(bytes: &[u8]) -> Result<ContainerParts<'_>, ()> {
     offset += 1;
     let width = take_i32(bytes, &mut offset)?;
     let height = take_i32(bytes, &mut offset)?;
-    let _coding = take_i32(bytes, &mut offset)?;
+    let coding = take_i32(bytes, &mut offset)?;
     let interpretation = take_i32(bytes, &mut offset)?;
     let flags = take_u32(bytes, &mut offset)?;
     let blob_count = take_u32(bytes, &mut offset)? as usize;
@@ -142,6 +143,7 @@ fn parse_container_parts(bytes: &[u8]) -> Result<ContainerParts<'_>, ()> {
         format_tag,
         width,
         height,
+        coding,
         interpretation,
         flags,
         metadata,
@@ -218,7 +220,7 @@ pub fn parse_container(
         parts.payload.to_vec()
     };
 
-    Ok(build_load_result(
+    let mut result = build_load_result(
         parts.width,
         parts.height,
         parts.bands,
@@ -260,5 +262,7 @@ pub fn parse_container(
         Some(pixels),
         parts.metadata,
         None,
-    ))
+    );
+    result.coding = parts.coding;
+    Ok(result)
 }

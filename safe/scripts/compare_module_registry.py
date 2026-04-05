@@ -55,6 +55,23 @@ def infer_prefix_root(root: Path, module_dir_basename: str) -> Path:
     return root.resolve()
 
 
+def read_module_dir_basename(reference_manifest: Path) -> str:
+    module_dir_manifest = reference_manifest.with_name("module-dir.txt")
+    if not module_dir_manifest.is_file():
+        return "vips-modules-8.15"
+
+    lines = [
+        line.strip()
+        for line in module_dir_manifest.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
+    if len(lines) != 1:
+        raise SystemExit(
+            f"{module_dir_manifest} should contain exactly one module directory basename"
+        )
+    return lines[0]
+
+
 def load_manifest(path: Path) -> dict[str, dict[str, object]]:
     return json.loads(path.read_text())
 
@@ -78,11 +95,16 @@ def main() -> int:
     manifest = load_manifest(args.reference_manifest)
     candidate_root = args.candidate_root.resolve()
     vips_binary = locate_vips_binary(candidate_root)
-    module_dir_basename = "vips-modules-8.15"
+    module_dir_basename = read_module_dir_basename(args.reference_manifest.resolve())
     prefix_root = infer_prefix_root(candidate_root, module_dir_basename)
     library_path = locate_library(candidate_root)
 
     os.environ["VIPSHOME"] = str(prefix_root)
+    os.environ["LD_LIBRARY_PATH"] = (
+        f"{library_path.parent}{os.pathsep}{os.environ['LD_LIBRARY_PATH']}"
+        if os.environ.get("LD_LIBRARY_PATH")
+        else str(library_path.parent)
+    )
 
     gobject_name = ctypes.util.find_library("gobject-2.0")
     if not gobject_name:
