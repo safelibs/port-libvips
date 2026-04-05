@@ -7,7 +7,7 @@ use crate::abi::basic::{
     VIPS_EXTEND_BLACK, VIPS_EXTEND_COPY, VIPS_EXTEND_MIRROR, VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE,
     VIPS_INTERESTING_ALL, VIPS_INTERESTING_ATTENTION, VIPS_INTERESTING_CENTRE,
     VIPS_INTERESTING_HIGH, VIPS_INTERESTING_LOW, VIPS_INTERESTING_NONE, VIPS_KERNEL_LANCZOS3,
-    VIPS_PRECISION_INTEGER,
+    VIPS_PRECISION_INTEGER, VIPS_BLEND_MODE_OVER,
 };
 use crate::abi::image::{
     VipsBandFormat, VipsCoding, VipsInterpretation, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT,
@@ -19,6 +19,7 @@ use crate::pixels::format::{
 };
 use crate::pixels::kernel::{gaussian_kernel, Kernel};
 use crate::pixels::ImageBuffer;
+use crate::runtime::error::append_message_str;
 use crate::runtime::header::{copy_metadata, vips_interpretation_max_alpha};
 use crate::runtime::image::{ensure_pixels, image_size, image_state, sync_pixels};
 
@@ -1464,6 +1465,140 @@ unsafe fn op_join(object: *mut VipsObject) -> Result<(), ()> {
     result
 }
 
+unsafe fn op_composite2(object: *mut VipsObject) -> Result<(), ()> {
+    let Ok(images) = (unsafe { get_array_images(object, "in") }) else {
+        append_message_str("composite2", "reading input image array failed");
+        return Err(());
+    };
+    if images.len() != 2 {
+        append_message_str("composite2", "expected exactly two input images");
+        return Err(());
+    }
+    let like_image = images[0];
+    let Ok(base) = ImageBuffer::from_image(images[0]) else {
+        append_message_str("composite2", "decoding base image failed");
+        return Err(());
+    };
+    let Ok(overlay) = ImageBuffer::from_image(images[1]) else {
+        append_message_str("composite2", "decoding overlay image failed");
+        return Err(());
+    };
+
+    let x = if unsafe { argument_assigned(object, "x")? } {
+        unsafe { get_int(object, "x")? }
+    } else {
+        0
+    };
+    let y = if unsafe { argument_assigned(object, "y")? } {
+        unsafe { get_int(object, "y")? }
+    } else {
+        0
+    };
+
+    let Ok(out) = composite2_over_buffers(&base, &overlay, x, y) else {
+        append_message_str("composite2", "compositing failed");
+        return Err(());
+    };
+    let result = unsafe { set_output_image_like(object, "out", out, like_image) };
+    if result.is_err() {
+        append_message_str("composite2", "setting output image failed");
+    }
+    result
+}
+
+fn composite2_over_buffers(
+    base: &ImageBuffer,
+    overlay: &ImageBuffer,
+    x: i32,
+    y: i32,
+) -> Result<ImageBuffer, ()> {
+    let target_bands = base.spec.bands.max(overlay.spec.bands);
+    if !matches!(target_bands, 1 | 2 | 4) {
+        return Err(());
+    }
+    let format = common_format(base.spec.format, overlay.spec.format).ok_or(())?;
+    let base = replicate_to_bands(base, target_bands)?.with_format(format);
+    let overlay = replicate_to_bands(overlay, target_bands)?.with_format(format);
+    let mut out = base.clone();
+
+    let alpha_enabled = matches!(target_bands, 2 | 4);
+    let alpha_band = target_bands.saturating_sub(1);
+    let max_alpha = vips_interpretation_max_alpha(base.spec.interpretation).max(f64::EPSILON);
+
+    for oy in 0..overlay.spec.height {
+        let dy = oy as i32 + y;
+        if dy < 0 || dy >= out.spec.height as i32 {
+            continue;
+        }
+        for ox in 0..overlay.spec.width {
+            let dx = ox as i32 + x;
+            if dx < 0 || dx >= out.spec.width as i32 {
+                continue;
+            }
+            let dx = dx as usize;
+            let dy = dy as usize;
+            if alpha_enabled {
+                let oa = overlay.get(ox, oy, alpha_band).clamp(0.0, max_alpha) / max_alpha;
+                if oa <= 0.0 {
+                    continue;
+                }
+                let ba = base.get(dx, dy, alpha_band).clamp(0.0, max_alpha) / max_alpha;
+                let out_a = oa + ba * (1.0 - oa);
+                for band in 0..alpha_band {
+                    let ov = overlay.get(ox, oy, band);
+                    let bv = base.get(dx, dy, band);
+                    let value = if out_a <= f64::EPSILON {
+                        0.0
+                    } else {
+                        (ov * oa + bv * ba * (1.0 - oa)) / out_a
+                    };
+                    out.set(dx, dy, band, value);
+                }
+                out.set(dx, dy, alpha_band, out_a * max_alpha);
+            } else {
+                out.set(dx, dy, 0, overlay.get(ox, oy, 0));
+            }
+        }
+    }
+
+    Ok(out)
+}
+
+#[no_mangle]
+pub extern "C" fn safe_vips_composite2_internal(
+    base: *mut crate::abi::image::VipsImage,
+    overlay: *mut crate::abi::image::VipsImage,
+    out: *mut *mut crate::abi::image::VipsImage,
+    x: libc::c_int,
+    y: libc::c_int,
+) -> libc::c_int {
+    let base_image = base;
+    let Ok(base) = ImageBuffer::from_image(base) else {
+        append_message_str("composite2", "decoding base image failed");
+        return -1;
+    };
+    let Ok(overlay) = ImageBuffer::from_image(overlay) else {
+        append_message_str("composite2", "decoding overlay image failed");
+        return -1;
+    };
+    let Ok(result) = composite2_over_buffers(&base, &overlay, x, y) else {
+        append_message_str("composite2", "compositing failed");
+        return -1;
+    };
+    let image = result.into_image_like(base_image);
+    if out.is_null() {
+        unsafe {
+            crate::runtime::object::object_unref(image);
+        }
+        append_message_str("composite2", "output pointer is null");
+        return -1;
+    }
+    unsafe {
+        *out = image;
+    }
+    0
+}
+
 unsafe fn op_msb(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
     let format = input.spec.format;
@@ -2619,6 +2754,10 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
         }
         "arrayjoin" => {
             unsafe { op_arrayjoin(object)? };
+            Ok(true)
+        }
+        "composite2" => {
+            unsafe { op_composite2(object)? };
             Ok(true)
         }
         "join" => {

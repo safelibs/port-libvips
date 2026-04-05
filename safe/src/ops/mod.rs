@@ -56,6 +56,7 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "complex",
     "complexform",
     "complexget",
+    "composite2",
     "compass",
     "conv",
     "convsep",

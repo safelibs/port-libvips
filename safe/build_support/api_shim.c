@@ -27,6 +27,9 @@ extern int safe_vips_image_write_to_target_internal(
 extern int safe_vips_crop_internal(
     VipsImage *in, VipsImage **out, int left, int top, int width, int height);
 extern int safe_vips_avg_internal(VipsImage *image, double *out);
+extern int safe_vips_composite2_internal(
+    VipsImage *base, VipsImage *overlay, VipsImage **out,
+    int x, int y);
 extern int safe_vips_object_mark_argument_assigned(
     VipsObject *object, const char *name, gboolean assigned);
 
@@ -441,11 +444,63 @@ safe_vips_operation_get_valist_optional(VipsOperation *operation, va_list ap)
 }
 
 static int
+safe_vips_call_composite2(va_list required, va_list optional)
+{
+    VipsImage *base;
+    VipsImage *overlay;
+    VipsImage **out;
+    va_list required_copy;
+    va_list optional_copy;
+    char *name;
+    int mode;
+    int x;
+    int y;
+    int result;
+
+    va_copy(required_copy, required);
+    base = va_arg(required_copy, VipsImage *);
+    overlay = va_arg(required_copy, VipsImage *);
+    out = va_arg(required_copy, VipsImage **);
+    mode = va_arg(required_copy, int);
+    va_end(required_copy);
+
+    if (mode != VIPS_BLEND_MODE_OVER) {
+        vips_error("composite2",
+            "%s", "only OVER blend mode is supported");
+        return -1;
+    }
+
+    x = 0;
+    y = 0;
+    va_copy(optional_copy, optional);
+    for (name = va_arg(optional_copy, char *); name;
+        name = va_arg(optional_copy, char *)) {
+        if (strcmp(name, "x") == 0)
+            x = va_arg(optional_copy, int);
+        else if (strcmp(name, "y") == 0)
+            y = va_arg(optional_copy, int);
+        else {
+            vips_error("composite2",
+                "unknown optional argument '%s'", name);
+            va_end(optional_copy);
+            return -1;
+        }
+    }
+    va_end(optional_copy);
+
+    result = safe_vips_composite2_internal(base, overlay, out, x, y);
+    return result;
+}
+
+static int
 safe_vips_call_by_name(const char *operation_name,
     const char *option_string, va_list required, va_list optional)
 {
     VipsOperation *operation;
     int result;
+
+    if (strcmp(operation_name, "composite2") == 0)
+        return safe_vips_call_composite2(required, optional);
 
     if (!(operation = vips_operation_new(operation_name)))
         return -1;
@@ -1133,6 +1188,127 @@ vips_sum(VipsImage **in, VipsImage **out, int n, ...)
 }
 
 VIPS_PUBLIC int
+vips_arrayjoin(VipsImage **in, VipsImage **out, int n, ...)
+{
+    va_list ap;
+    VipsArrayImage *array;
+    int result;
+
+    array = vips_array_image_new(in, n);
+
+    va_start(ap, n);
+    result = vips_call_split("arrayjoin", ap, array, out);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(array));
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_bandrank(VipsImage **in, VipsImage **out, int n, ...)
+{
+    va_list ap;
+    VipsArrayImage *array;
+    int result;
+
+    array = vips_array_image_new(in, n);
+
+    va_start(ap, n);
+    result = vips_call_split("bandrank", ap, array, out);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(array));
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_case(VipsImage *index, VipsImage **cases, VipsImage **out, int n, ...)
+{
+    va_list ap;
+    VipsArrayImage *array;
+    int result;
+
+    array = vips_array_image_new(cases, n);
+
+    va_start(ap, n);
+    result = vips_call_split("case", ap, index, array, out);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(array));
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_switch(VipsImage **tests, VipsImage **out, int n, ...)
+{
+    va_list ap;
+    VipsArrayImage *tests_array;
+    int result;
+
+    tests_array = vips_array_image_new(tests, n);
+
+    va_start(ap, n);
+    result = vips_call_split("switch", ap, tests_array, out);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(tests_array));
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_affine(VipsImage *in, VipsImage **out,
+    double a, double b, double c, double d, ...)
+{
+    va_list ap;
+    VipsArea *matrix;
+    double values[4] = { a, b, c, d };
+    int result;
+
+    matrix = VIPS_AREA(vips_array_double_new(values, 4));
+
+    va_start(ap, d);
+    result = vips_call_split("affine", ap, in, out, matrix);
+    va_end(ap);
+
+    vips_area_unref(matrix);
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_getpoint(VipsImage *in, double **vector, int *n, int x, int y, ...)
+{
+    va_list ap;
+    VipsArrayDouble *out_array = NULL;
+    VipsArea *area;
+    int result;
+
+    va_start(ap, y);
+    result = vips_call_split("getpoint", ap, in, &out_array, x, y);
+    va_end(ap);
+
+    if (result)
+        return -1;
+
+    area = VIPS_AREA(out_array);
+    *vector = VIPS_ARRAY(NULL, area->n, double);
+    if (!*vector) {
+        vips_area_unref(area);
+        return -1;
+    }
+
+    memcpy(*vector, area->data, area->n * area->sizeof_type);
+    *n = area->n;
+    vips_area_unref(area);
+
+    return 0;
+}
+
+VIPS_PUBLIC int
 vips_pngload_buffer(void *buf, size_t len, VipsImage **out, ...)
 {
     va_list ap;
@@ -1299,25 +1475,154 @@ vips__file_read(FILE *fp, const char *filename, size_t *length_out)
     return buffer;
 }
 
+typedef struct _SafeFieldIO {
+    glong offset;
+    int size;
+    void (*copy)(gboolean swap, unsigned char *to, unsigned char *from);
+} SafeFieldIO;
+
+static void
+safe_vips_copy_4byte(gboolean swap, unsigned char *to, unsigned char *from)
+{
+    guint32 *in = (guint32 *) from;
+    guint32 *out = (guint32 *) to;
+
+    if (swap)
+        *out = GUINT32_SWAP_LE_BE(*in);
+    else
+        *out = *in;
+}
+
+static void
+safe_vips_copy_2byte(gboolean swap, unsigned char *to, unsigned char *from)
+{
+    guint16 *in = (guint16 *) from;
+    guint16 *out = (guint16 *) to;
+
+    if (swap)
+        *out = GUINT16_SWAP_LE_BE(*in);
+    else
+        *out = *in;
+}
+
+static SafeFieldIO safe_vips_header_fields[] = {
+    { G_STRUCT_OFFSET(VipsImage, Xsize), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, Ysize), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, Bands), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, Bbits), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, BandFmt), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, Coding), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, Type), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, Xres_float), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, Yres_float), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, Length), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, Compression), 2, safe_vips_copy_2byte },
+    { G_STRUCT_OFFSET(VipsImage, Level), 2, safe_vips_copy_2byte },
+    { G_STRUCT_OFFSET(VipsImage, Xoffset), 4, safe_vips_copy_4byte },
+    { G_STRUCT_OFFSET(VipsImage, Yoffset), 4, safe_vips_copy_4byte }
+};
+
 VIPS_PUBLIC int
 vips__read_header_bytes(VipsImage *im, unsigned char *from)
 {
-    (void) im;
-    (void) from;
-    vips_error("vipsedit",
-        "%s", "editing raw VIPS headers is not supported in the safe build");
-    return -1;
+    gboolean swap;
+    GEnumValue *value;
+    int i;
+
+    if (!im || !from)
+        return -1;
+
+    safe_vips_copy_4byte(!vips_amiMSBfirst(),
+        (unsigned char *) &im->magic, from);
+    from += 4;
+    if (im->magic != VIPS_MAGIC_INTEL &&
+        im->magic != VIPS_MAGIC_SPARC) {
+        vips_error("VipsImage",
+            "\"%s\" is not a VIPS image", im->filename);
+        return -1;
+    }
+
+    swap = vips_amiMSBfirst() != vips_image_isMSBfirst(im);
+    for (i = 0; i < (int) G_N_ELEMENTS(safe_vips_header_fields); i++) {
+        safe_vips_header_fields[i].copy(swap,
+            &G_STRUCT_MEMBER(unsigned char, im, safe_vips_header_fields[i].offset),
+            from);
+        from += safe_vips_header_fields[i].size;
+    }
+
+    im->Bbits = vips_format_sizeof(im->BandFmt) << 3;
+    im->Xres = MAX(0, im->Xres_float);
+    im->Yres = MAX(0, im->Yres_float);
+
+    im->Xsize = VIPS_CLIP(1, im->Xsize, VIPS_MAX_COORD);
+    im->Ysize = VIPS_CLIP(1, im->Ysize, VIPS_MAX_COORD);
+    im->Bands = VIPS_CLIP(1, im->Bands, VIPS_MAX_COORD);
+    im->BandFmt = VIPS_CLIP(0, im->BandFmt, VIPS_FORMAT_LAST - 1);
+
+    value = g_enum_get_value(g_type_class_ref(VIPS_TYPE_INTERPRETATION),
+        im->Type);
+    if (!value || strcmp(value->value_nick, "last") == 0)
+        im->Type = VIPS_INTERPRETATION_ERROR;
+
+    value = g_enum_get_value(g_type_class_ref(VIPS_TYPE_CODING),
+        im->Coding);
+    if (!value || strcmp(value->value_nick, "last") == 0)
+        im->Coding = VIPS_CODING_ERROR;
+
+    switch (im->Coding) {
+    case VIPS_CODING_ERROR:
+        vips_error("VipsImage", "%s", "unknown coding");
+        return -1;
+
+    case VIPS_CODING_NONE:
+        break;
+
+    case VIPS_CODING_LABQ:
+    case VIPS_CODING_RAD:
+        if (im->Bands != 4 || im->BandFmt != VIPS_FORMAT_UCHAR) {
+            vips_error("VipsImage",
+                "%s", "malformed coded VIPS image");
+            return -1;
+        }
+        break;
+
+    default:
+        vips_error("VipsImage", "%s", "unsupported coding");
+        return -1;
+    }
+
+    return 0;
 }
 
 VIPS_PUBLIC int
 vips__write_header_bytes(VipsImage *im, unsigned char *to)
 {
-    (void) im;
-    if (to)
-        memset(to, 0, VIPS_SIZEOF_HEADER);
-    vips_error("vipsedit",
-        "%s", "editing raw VIPS headers is not supported in the safe build");
-    return -1;
+    gboolean swap;
+    unsigned char *q;
+    int i;
+
+    if (!im || !to)
+        return -1;
+
+    swap = vips_amiMSBfirst() != vips_image_isMSBfirst(im);
+    im->Xres_float = im->Xres;
+    im->Yres_float = im->Yres;
+
+    safe_vips_copy_4byte(!vips_amiMSBfirst(),
+        to, (unsigned char *) &im->magic);
+    q = to + 4;
+
+    for (i = 0; i < (int) G_N_ELEMENTS(safe_vips_header_fields); i++) {
+        safe_vips_header_fields[i].copy(swap,
+            q,
+            &G_STRUCT_MEMBER(unsigned char, im, safe_vips_header_fields[i].offset));
+        q += safe_vips_header_fields[i].size;
+    }
+
+    while (q - to < VIPS_SIZEOF_HEADER)
+        *q++ = 0;
+
+    return 0;
 }
 
 VIPS_PUBLIC int

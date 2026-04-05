@@ -23,6 +23,7 @@ pub(crate) struct ImageState {
     pub meta: Mutex<MetaStore>,
     pub pending_load: Option<PendingDecode>,
     pub source: Option<*mut VipsSource>,
+    pub fd: Option<libc::c_int>,
 }
 
 impl Drop for ImageState {
@@ -31,6 +32,9 @@ impl Drop for ImageState {
             unsafe {
                 crate::runtime::object::object_unref(source);
             }
+        }
+        if let Some(fd) = self.fd.take() {
+            crate::runtime::memory::vips_tracked_close(fd);
         }
     }
 }
@@ -135,6 +139,7 @@ fn attach_state(image: *mut VipsImage, mode: Option<&str>) -> *mut VipsImage {
                 meta: Mutex::new(MetaStore::default()),
                 pending_load: None,
                 source: None,
+                fd: None,
             },
         );
     }
@@ -809,7 +814,13 @@ pub extern "C" fn vips_image_hasalpha(image: *mut VipsImage) -> glib_sys::gboole
 
 #[no_mangle]
 pub extern "C" fn vips_image_isMSBfirst(_image: *mut VipsImage) -> glib_sys::gboolean {
-    glib_sys::GFALSE
+    const VIPS_MAGIC_SPARC: u32 = 0x08f2a6b6;
+
+    if unsafe { _image.as_ref() }.is_some_and(|image| image.magic == VIPS_MAGIC_SPARC) {
+        glib_sys::GTRUE
+    } else {
+        glib_sys::GFALSE
+    }
 }
 
 #[no_mangle]

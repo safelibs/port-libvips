@@ -59,7 +59,6 @@ original_root = root_dir / 'original'
 build_check_root = root_dir / 'build-check'
 build_check_install_root = root_dir / 'build-check-install'
 reference_libvips_artifact = build_check_root / 'libvips' / 'libvips.so'
-reference_libvips_cpp_artifact = build_check_root / 'cplusplus' / cxx_full_library_name
 
 cargo_target_dir = meson.current_source_dir() / 'target'
 cargo_artifact = cargo_target_dir / 'release' / 'libvips.so'
@@ -322,18 +321,76 @@ install_data(
   install_dir: get_option('datadir') / 'gtk-doc' / 'html' / 'libvips' / 'images',
 )
 
+cpp_include = include_directories('../build-check-install/include', '../original/cplusplus/include')
 runtime_libdir = meson.current_build_dir() / 'lib'
 runtime_link = runtime_libdir / 'libvips.so'
 runtime_module_dir = runtime_libdir / module_dir_basename
+safe_vips_link_args = [
+  '-L' + runtime_libdir,
+  '-lvips',
+]
+cpp_wrapper_args = [
+  '-D_VIPS_PUBLIC=__attribute__((visibility("default")))',
+]
+libvips_cpp_symbol_contract = files('reference/abi/libvips-cpp.symbols')
+libvips_cpp_version_script = custom_target(
+  'libvips-cpp-version-script',
+  input: libvips_cpp_symbol_contract,
+  output: 'libvips-cpp.map',
+  command: [
+    sh,
+    '-ec',
+    '''
+      set -eu
+      input="$1"
+      output="$2"
+
+      {
+        cat <<'EOF'
+{
+  global:
+EOF
+        sed 's/^/    /; s/$/;/' "$input"
+        cat <<'EOF'
+  local: *;
+};
+EOF
+      } > "$output"
+    ''',
+    'meson-stage-libvips-cpp-map',
+    '@INPUT@',
+    '@OUTPUT@',
+  ],
+)
+
+libvips_cpp_lib = shared_library(
+  'vips-cpp',
+  [
+    original_root / 'cplusplus' / 'VImage.cpp',
+    original_root / 'cplusplus' / 'VInterpolate.cpp',
+    original_root / 'cplusplus' / 'VRegion.cpp',
+    original_root / 'cplusplus' / 'VConnection.cpp',
+    original_root / 'cplusplus' / 'VError.cpp',
+  ],
+  build_by_default: true,
+  include_directories: cpp_include,
+  dependencies: [glib_dep, gobject_dep, gio_dep],
+  cpp_args: cpp_wrapper_args,
+  link_args: safe_vips_link_args + [
+    '-Wl,--version-script=' + (meson.current_build_dir() / 'libvips-cpp.map'),
+  ],
+  link_depends: [libvips_stage, libvips_cpp_version_script],
+  build_rpath: runtime_libdir,
+  version: library_version,
+  soversion: '42',
+  gnu_symbol_visibility: 'hidden',
+  install: true,
+)
 
 libvips_cpp_stage = custom_target(
   'libvips-cpp-stage',
-  input: reference_libvips_cpp_artifact,
-  output: [
-    cxx_full_library_name,
-    cxx_soname,
-    'libvips-cpp.so',
-  ],
+  input: libvips_cpp_lib,
+  output: 'libvips-cpp-stage.stamp',
   build_by_default: true,
   command: [
     sh,
@@ -341,35 +398,24 @@ libvips_cpp_stage = custom_target(
     '''
       set -eu
       input="$1"
-      out_real="$2"
-      out_soname="$3"
-      out_link="$4"
-      stage_dir="$5"
-      stage_name="$6"
-      stage_soname="$7"
+      stage_dir="$2"
+      stamp="$3"
+      stage_name="$4"
+      stage_soname="$5"
 
       mkdir -p "$stage_dir"
-      cp "$input" "$out_real"
-      ln -sf "$(basename "$out_real")" "$out_soname"
-      ln -sf "$(basename "$out_soname")" "$out_link"
       cp "$input" "$stage_dir/$stage_name"
+      chmod 0755 "$stage_dir/$stage_name"
       ln -sf "$stage_name" "$stage_dir/$stage_soname"
       ln -sf "$stage_soname" "$stage_dir/libvips-cpp.so"
+      : > "$stamp"
     ''',
-    'meson-stage-reference-libvips-cpp',
+    'meson-stage-libvips-cpp',
     '@INPUT@',
-    '@OUTPUT0@',
-    '@OUTPUT1@',
-    '@OUTPUT2@',
     runtime_libdir,
+    '@OUTPUT@',
     cxx_full_library_name,
     cxx_soname,
-  ],
-  install: true,
-  install_dir: [
-    get_option('libdir'),
-    get_option('libdir'),
-    get_option('libdir'),
   ],
 )
 
@@ -397,7 +443,6 @@ tool_c_args = [
   '-DHAVE_ORC=0',
 ]
 tool_include = include_directories('../build-check-install/include', '../original/libvips/include')
-cpp_include = include_directories('../build-check-install/include', '../original/cplusplus/include')
 
 example_targets = []
 foreach example_name : [
@@ -412,7 +457,7 @@ foreach example_name : [
     build_by_default: true,
     include_directories: test_include,
     dependencies: [glib_dep, gobject_dep, gio_dep],
-    link_args: [runtime_link],
+    link_args: safe_vips_link_args,
     link_depends: libvips_stage,
     build_rpath: runtime_libdir,
   )
@@ -644,7 +689,7 @@ if module_heif_dep.found()
     include_directories: module_include,
     dependencies: [glib_dep, gobject_dep, gmodule_dep, module_config_dep, module_heif_dep],
     c_args: ['-DHEIF_MODULE=1'],
-    link_args: [runtime_link],
+    link_args: ['-L' + runtime_libdir, '-lvips'],
     link_depends: libvips_stage,
     build_rpath: runtime_libdir,
     install_rpath: '$ORIGIN/..',
@@ -666,7 +711,7 @@ if module_jxl_dep.found() and module_jxl_threads_dep.found()
     include_directories: module_include,
     dependencies: [glib_dep, gobject_dep, gmodule_dep, module_config_dep, module_jxl_dep, module_jxl_threads_dep],
     c_args: ['-DLIBJXL_MODULE=1'],
-    link_args: [runtime_link],
+    link_args: ['-L' + runtime_libdir, '-lvips'],
     link_depends: libvips_stage,
     build_rpath: runtime_libdir,
     install_rpath: '$ORIGIN/..',
@@ -697,7 +742,7 @@ if module_magick_dep.found()
     include_directories: module_include,
     dependencies: [glib_dep, gobject_dep, gmodule_dep, module_config_dep, module_magick_dep, module_fftw_dep, module_lcms_dep],
     c_args: ['-DMAGICK_MODULE=1'],
-    link_args: [runtime_link],
+    link_args: ['-L' + runtime_libdir, '-lvips'],
     link_depends: libvips_stage,
     build_rpath: runtime_libdir,
     install_rpath: '$ORIGIN/..',
@@ -718,7 +763,7 @@ if module_openslide_dep.found()
     include_directories: module_include,
     dependencies: [glib_dep, gobject_dep, gmodule_dep, module_config_dep, module_openslide_dep],
     c_args: ['-DOPENSLIDE_MODULE=1'],
-    link_args: [runtime_link],
+    link_args: ['-L' + runtime_libdir, '-lvips'],
     link_depends: libvips_stage,
     build_rpath: runtime_libdir,
     install_rpath: '$ORIGIN/..',
@@ -739,7 +784,7 @@ if module_poppler_dep.found() and module_cairo_dep.found()
     include_directories: module_include,
     dependencies: [glib_dep, gobject_dep, gmodule_dep, module_config_dep, module_poppler_dep, module_cairo_dep],
     c_args: ['-DPOPPLER_MODULE=1'],
-    link_args: [runtime_link],
+    link_args: ['-L' + runtime_libdir, '-lvips'],
     link_depends: libvips_stage,
     build_rpath: runtime_libdir,
     install_rpath: '$ORIGIN/..',
@@ -916,7 +961,7 @@ foreach fuzz_prog : [
     build_by_default: true,
     include_directories: test_include,
     dependencies: [glib_dep, gobject_dep, gio_dep],
-    link_args: [runtime_link],
+    link_args: safe_vips_link_args,
     link_depends: libvips_stage,
     link_with: standalone_engine,
     build_rpath: runtime_libdir,

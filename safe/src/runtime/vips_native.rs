@@ -128,7 +128,26 @@ pub extern "C" fn vips__write(fd: c_int, buf: *const c_void, count: usize) -> c_
     if fd < 0 || buf.is_null() {
         return -1;
     }
-    unsafe { libc::write(fd, buf, count) as c_int }
+    let mut written = 0usize;
+    while written < count {
+        let chunk = unsafe {
+            libc::write(
+                fd,
+                buf.cast::<u8>().add(written).cast::<c_void>(),
+                count - written,
+            )
+        };
+        if chunk < 0 {
+            append_message_str("vips__write", "write failed");
+            return -1;
+        }
+        if chunk == 0 {
+            append_message_str("vips__write", "short write");
+            return -1;
+        }
+        written += chunk as usize;
+    }
+    0
 }
 
 #[no_mangle]

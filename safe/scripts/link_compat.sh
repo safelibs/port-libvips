@@ -43,26 +43,59 @@ EXPECTED_NAMES = {
 }
 
 
-def run(cmd: list[str], *, env: dict[str, str] | None = None, cwd: Path | None = None, capture: bool = False) -> str:
+def run(
+    cmd: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    cwd: Path | None = None,
+    capture: bool = False,
+    allowed_returncodes: set[int] | None = None,
+) -> str:
+    allowed_returncodes = allowed_returncodes or {0}
     kwargs = {
-        "check": True,
         "cwd": str(cwd) if cwd else None,
         "env": env,
         "text": True,
     }
     if capture:
         completed = subprocess.run(cmd, capture_output=True, **kwargs)
+        if completed.returncode not in allowed_returncodes:
+            raise subprocess.CalledProcessError(
+                completed.returncode,
+                cmd,
+                output=completed.stdout,
+                stderr=completed.stderr,
+            )
         return completed.stdout
-    subprocess.run(cmd, **kwargs)
+    completed = subprocess.run(cmd, **kwargs)
+    if completed.returncode not in allowed_returncodes:
+        raise subprocess.CalledProcessError(completed.returncode, cmd)
     return ""
+
+
+def pkg_config_env(pcdir: Path) -> dict[str, str]:
+    env = os.environ.copy()
+    for key in ["PKG_CONFIG_PATH", "PKG_CONFIG_LIBDIR", "PKG_CONFIG_SYSROOT_DIR"]:
+        env.pop(key, None)
+    env["PKG_CONFIG_PATH"] = str(pcdir)
+    return env
 
 
 def pkg_config(pcdir: Path, *args: str) -> list[str]:
     output = run(
-        ["env", f"PKG_CONFIG_PATH={pcdir}", "pkg-config", *args],
+        ["pkg-config", *args],
+        env=pkg_config_env(pcdir),
         capture=True,
     ).strip()
     return shlex.split(output)
+
+
+def pkg_config_value(pcdir: Path, package: str, variable: str) -> str:
+    return run(
+        ["pkg-config", f"--variable={variable}", package],
+        env=pkg_config_env(pcdir),
+        capture=True,
+    ).strip()
 
 
 def find_first(root: Path, pattern: str) -> Path:
@@ -96,6 +129,10 @@ def ensure_paths_exist(paths: list[Path], *, label: str) -> None:
         raise SystemExit(f"missing {label}: {missing}")
 
 
+def path_within_root(path: Path, root: Path) -> bool:
+    return path == root or root in path.parents
+
+
 def expand_arg(text: str, *, output: Path, case_workdir: Path, safe_prefix: Path, corpus: Path | None = None) -> str:
     result = text
     replacements = {
@@ -116,8 +153,6 @@ def runtime_env(*, safe_prefix: Path, safe_libdir: Path, cpp_libdir: Path | None
     if cpp_libdir is not None:
         ld_parts.append(str(cpp_libdir))
     ld_parts.append(str(safe_libdir))
-    if env.get("LD_LIBRARY_PATH"):
-        ld_parts.append(env["LD_LIBRARY_PATH"])
     env["LD_LIBRARY_PATH"] = ":".join(ld_parts)
     env["VIPSHOME"] = str(safe_prefix)
     if fuzz:
@@ -171,6 +206,94 @@ def verify_artifacts(artifacts: list[str], *, output: Path, case_workdir: Path, 
             raise SystemExit(f"expected runtime artifact was not created: {artifact_path}")
 
 
+def assert_pkg_config_prefix(pcdir: Path, package: str, expected_prefix: Path) -> None:
+    actual_prefix = Path(pkg_config_value(pcdir, package, "prefix")).resolve()
+    expected_prefix = expected_prefix.resolve()
+    if actual_prefix != expected_prefix:
+        raise SystemExit(
+            f"pkg-config for {package} resolved prefix {actual_prefix}, expected {expected_prefix}"
+        )
+
+
+def resolve_shared_objects(path: Path, *, env: dict[str, str]) -> dict[str, Path]:
+    output = run(["ldd", str(path)], env=env, capture=True)
+    mappings: dict[str, Path] = {}
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        if "=>" not in line:
+            continue
+        soname, resolved = line.split("=>", 1)
+        soname = soname.strip()
+        resolved = resolved.strip().split(" (", 1)[0]
+        if resolved == "not found":
+            raise SystemExit(f"{path} has unresolved dependency {soname}")
+        resolved_path = Path(resolved).resolve()
+        mappings[soname] = resolved_path
+    return mappings
+
+
+def assert_no_reference_runpath(path: Path, *, forbidden_roots: list[Path]) -> None:
+    output = run(["readelf", "-d", str(path)], capture=True)
+    for raw_line in output.splitlines():
+        if "(RPATH)" not in raw_line and "(RUNPATH)" not in raw_line:
+            continue
+        for root in forbidden_roots:
+            if str(root) in raw_line:
+                raise SystemExit(
+                    f"{path} embeds forbidden runtime search path {root}: {raw_line.strip()}"
+                )
+
+
+def assert_vips_resolution(
+    path: Path,
+    *,
+    env: dict[str, str],
+    safe_libdir: Path,
+    forbidden_roots: list[Path],
+    expected_cpp_libdir: Path | None = None,
+) -> None:
+    assert_no_reference_runpath(path, forbidden_roots=forbidden_roots)
+    mappings = resolve_shared_objects(path, env=env)
+
+    libvips = mappings.get("libvips.so.42")
+    if libvips is None:
+        raise SystemExit(f"{path} is not linked against libvips.so.42")
+    if libvips.parent != safe_libdir:
+        raise SystemExit(
+            f"{path} resolved libvips.so.42 from {libvips}, expected {safe_libdir}"
+        )
+
+    if expected_cpp_libdir is not None:
+        libvips_cpp = mappings.get("libvips-cpp.so.42")
+        if libvips_cpp is None:
+            raise SystemExit(f"{path} is not linked against libvips-cpp.so.42")
+        if libvips_cpp.parent != expected_cpp_libdir:
+            raise SystemExit(
+                f"{path} resolved libvips-cpp.so.42 from {libvips_cpp}, "
+                f"expected {expected_cpp_libdir}"
+            )
+
+    for soname, resolved in mappings.items():
+        if not soname.startswith("libvips"):
+            continue
+        for root in forbidden_roots:
+            if path_within_root(resolved, root):
+                raise SystemExit(
+                    f"{path} resolved {soname} from forbidden root {resolved}"
+                )
+
+
+def assert_not_reference_binary(reference: Path, candidate: Path) -> None:
+    run(
+        [
+            sys.executable,
+            str(safe_root / "scripts" / "assert_not_reference_binary.py"),
+            str(reference),
+            str(candidate),
+        ]
+    )
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -207,14 +330,26 @@ def main(argv: list[str]) -> int:
 
     reference_pcdir = find_pkgconfig_dir(reference_install, "vips.pc")
     safe_pcdir = find_pkgconfig_dir(safe_prefix, "vips.pc")
-    safe_libvips = find_first(safe_prefix, "libvips.so.42.17.1")
-    safe_libvips_cpp = find_first(safe_prefix, "libvips-cpp.so.42.17.1")
-    safe_libdir = safe_libvips.parent
-    if safe_libvips_cpp.parent != safe_libdir:
+    assert_pkg_config_prefix(reference_pcdir, "vips", reference_install)
+    assert_pkg_config_prefix(reference_pcdir, "vips-cpp", reference_install)
+    assert_pkg_config_prefix(safe_pcdir, "vips", safe_prefix)
+    assert_pkg_config_prefix(safe_pcdir, "vips-cpp", safe_prefix)
+
+    safe_libdir = Path(pkg_config_value(safe_pcdir, "vips", "libdir")).resolve()
+    safe_cpp_libdir = Path(pkg_config_value(safe_pcdir, "vips-cpp", "libdir")).resolve()
+    if safe_cpp_libdir != safe_libdir:
         raise SystemExit(
             f"libvips and libvips-cpp must share a runtime directory, found "
-            f"{safe_libdir} and {safe_libvips_cpp.parent}"
+            f"{safe_libdir} and {safe_cpp_libdir}"
         )
+    safe_libvips = safe_libdir / "libvips.so.42.17.1"
+    safe_libvips_cpp = safe_libdir / "libvips-cpp.so.42.17.1"
+    ensure_paths_exist(
+        [safe_libvips, safe_libvips_cpp],
+        label="safe libraries selected by pkg-config",
+    )
+
+    forbidden_roots = [reference_install, build_check]
 
     cxx = os.environ.get("CXX", "c++")
     cc = os.environ.get("CC", "cc")
@@ -257,6 +392,19 @@ def main(argv: list[str]) -> int:
                 *vips_libs,
             ]
             run(link_cmd)
+            assert_not_reference_binary(
+                build_check / "cplusplus" / output_name,
+                real_output,
+            )
+            assert_vips_resolution(
+                real_output,
+                env=runtime_env(
+                    safe_prefix=safe_prefix,
+                    safe_libdir=safe_libdir,
+                ),
+                safe_libdir=safe_libdir,
+                forbidden_roots=forbidden_roots,
+            )
             soname = lib_dir / "libvips-cpp.so.42"
             link_name = lib_dir / "libvips-cpp.so"
             for symlink, target in [(soname, real_output.name), (link_name, soname.name)]:
@@ -295,6 +443,13 @@ def main(argv: list[str]) -> int:
                 safe_libdir=safe_libdir,
                 cpp_libdir=lib_dir,
             )
+            assert_vips_resolution(
+                smoke_binary,
+                env=case_env,
+                safe_libdir=safe_libdir,
+                forbidden_roots=forbidden_roots,
+                expected_cpp_libdir=lib_dir,
+            )
         else:
             if category == "fuzz":
                 case_output = fuzz_dir / output_name
@@ -316,6 +471,12 @@ def main(argv: list[str]) -> int:
                 safe_prefix=safe_prefix,
                 safe_libdir=safe_libdir,
                 fuzz=(category == "fuzz"),
+            )
+            assert_vips_resolution(
+                case_output,
+                env=case_env,
+                safe_libdir=safe_libdir,
+                forbidden_roots=forbidden_roots,
             )
 
         run_spec = case["run"]
@@ -346,7 +507,7 @@ def main(argv: list[str]) -> int:
                     )
                     for item in run_spec["argv"]
                 ]
-                run(argv, env=case_env, cwd=case_workdir)
+                run(argv, env=case_env, cwd=case_workdir, allowed_returncodes={0, 77})
         else:
             argv = [
                 expand_arg(
@@ -357,7 +518,7 @@ def main(argv: list[str]) -> int:
                 )
                 for item in run_spec["argv"]
             ]
-            run(argv, env=case_env, cwd=case_workdir)
+            run(argv, env=case_env, cwd=case_workdir, allowed_returncodes={0, 77})
 
         if run_spec.get("post_check"):
             run_post_check(

@@ -557,12 +557,18 @@ fn manual_wrapper(function: &str) -> bool {
     matches!(
         function,
         "vips_avg"
+            | "vips_affine"
+            | "vips_arrayjoin"
+            | "vips_bandrank"
             | "vips_bandjoin"
             | "vips_bandjoin_const"
+            | "vips_case"
             | "vips_crop"
+            | "vips_getpoint"
             | "vips_linear"
             | "vips_pngload_buffer"
             | "vips_pngsave_buffer"
+            | "vips_switch"
             | "vips_sum"
     )
 }
@@ -840,6 +846,7 @@ fn deprecated_manual_symbols() -> BTreeSet<&'static str> {
         "im_skip_dir",
         "im_verrormsg",
         "im_warning",
+        "vips_amiMSBfirst",
         "vips_image_open_input",
         "vips_image_open_output",
         "vips_mapfile",
@@ -878,6 +885,18 @@ safe_vips_im_log(GLogLevelFlags level, const char *fmt, va_list ap)
     message = g_strdup_vprintf(fmt, ap);
     g_log("VIPS", level, "%s", message ? message : "");
     g_free(message);
+}
+
+int
+vips_amiMSBfirst(void)
+{
+#if G_BYTE_ORDER == G_BIG_ENDIAN
+    return 1;
+#elif G_BYTE_ORDER == G_LITTLE_ENDIAN
+    return 0;
+#else
+#error "Byte order not recognised"
+#endif
 }
 
 static const char *safe_im_type_names[] = {

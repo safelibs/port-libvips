@@ -1,5 +1,8 @@
 use crate::foreign::base::{ForeignKind, CONTAINER_MAGIC};
 
+const VIPS_MAGIC_INTEL_BYTES: &[u8; 4] = &[0x08, 0xf2, 0xa6, 0xb6];
+const VIPS_MAGIC_SPARC_BYTES: &[u8; 4] = &[0xb6, 0xa6, 0xf2, 0x08];
+
 pub fn kind_from_suffix(filename: &str) -> ForeignKind {
     let lower = filename.to_ascii_lowercase();
     if lower.ends_with(".jpg") || lower.ends_with(".jpeg") {
@@ -71,6 +74,9 @@ pub fn kind_from_bytes(bytes: &[u8], filename_hint: Option<&str>) -> ForeignKind
 
     if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
         return ForeignKind::Jpeg;
+    }
+    if bytes.starts_with(VIPS_MAGIC_INTEL_BYTES) || bytes.starts_with(VIPS_MAGIC_SPARC_BYTES) {
+        return ForeignKind::Vips;
     }
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         return ForeignKind::Png;
