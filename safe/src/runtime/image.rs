@@ -7,8 +7,8 @@ use std::sync::Mutex;
 
 use crate::abi::connection::{VipsSource, VipsTarget};
 use crate::abi::image::*;
-use crate::pixels::format::write_sample;
 use crate::foreign::base::PendingDecode;
+use crate::pixels::format::write_sample;
 use crate::runtime::error::append_message_str;
 use crate::runtime::header::{copy_metadata, MetaStore};
 use crate::runtime::object::{get_qdata_ptr, object_new, qdata_quark, set_qdata_box};
@@ -24,6 +24,7 @@ pub(crate) struct ImageState {
     pub pending_load: Option<PendingDecode>,
     pub source: Option<*mut VipsSource>,
     pub fd: Option<libc::c_int>,
+    pub progress: Option<Box<VipsProgress>>,
 }
 
 impl Drop for ImageState {
@@ -35,6 +36,14 @@ impl Drop for ImageState {
         }
         if let Some(fd) = self.fd.take() {
             crate::runtime::memory::vips_tracked_close(fd);
+        }
+        if let Some(progress) = self.progress.as_mut() {
+            if !progress.start.is_null() {
+                unsafe {
+                    glib_sys::g_timer_destroy(progress.start);
+                }
+                progress.start = ptr::null_mut();
+            }
         }
     }
 }
@@ -140,6 +149,7 @@ fn attach_state(image: *mut VipsImage, mode: Option<&str>) -> *mut VipsImage {
                 pending_load: None,
                 source: None,
                 fd: None,
+                progress: None,
             },
         );
     }
@@ -184,6 +194,98 @@ pub(crate) fn sync_pixels(image: *mut VipsImage) {
             state.pixels.as_mut_ptr()
         };
         image_ref.length = state.pixels.len();
+    }
+}
+
+fn zero_gvalue() -> gobject_sys::GValue {
+    unsafe { std::mem::zeroed() }
+}
+
+fn image_progress_pixels(image: &VipsImage) -> u64 {
+    let width = image.Xsize.max(1) as u64;
+    let height = image.Ysize.max(1) as u64;
+    width.saturating_mul(height).max(1)
+}
+
+fn has_progress_signal(image: *mut VipsImage) -> bool {
+    unsafe { image.as_ref() }.is_some_and(|image| !image.progress_signal.is_null())
+}
+
+fn progress_target(image: *mut VipsImage) -> *mut VipsImage {
+    unsafe { image.as_ref() }
+        .and_then(|image| (!image.progress_signal.is_null()).then_some(image.progress_signal))
+        .unwrap_or(image)
+}
+
+fn emit_progress_visible(image: *mut VipsImage) -> bool {
+    has_progress_signal(image)
+        && crate::runtime::header::vips_image_get_typeof(image, c"hide-progress".as_ptr()) == 0
+}
+
+fn ensure_progress_struct(image: *mut VipsImage) -> Option<*mut VipsProgress> {
+    let image_ref = unsafe { image.as_mut() }?;
+    let state = unsafe { image_state(image) }?;
+    if state.progress.is_none() {
+        state.progress = Some(Box::new(VipsProgress {
+            im: image,
+            run: 0,
+            eta: 0,
+            tpels: 0,
+            npels: 0,
+            percent: 0,
+            start: ptr::null_mut(),
+        }));
+    }
+    let progress = state.progress.as_mut()?;
+    progress.im = image;
+    progress.tpels = image_progress_pixels(image_ref).min(i64::MAX as u64) as i64;
+    if progress.start.is_null() {
+        progress.start = unsafe { glib_sys::g_timer_new() };
+    }
+    image_ref.time = progress.as_mut() as *mut VipsProgress;
+    Some(image_ref.time)
+}
+
+fn current_progress_struct(image: *mut VipsImage) -> Option<*mut VipsProgress> {
+    let image_ref = unsafe { image.as_ref() }?;
+    (!image_ref.time.is_null()).then_some(image_ref.time)
+}
+
+fn update_progress_struct(progress: *mut VipsProgress, processed: u64) {
+    let Some(progress_ref) = (unsafe { progress.as_mut() }) else {
+        return;
+    };
+    let total = progress_ref.tpels.max(1) as u64;
+    let processed = processed.min(total);
+    let prop = processed as f64 / total as f64;
+
+    if !progress_ref.start.is_null() {
+        let elapsed = unsafe { glib_sys::g_timer_elapsed(progress_ref.start, ptr::null_mut()) };
+        progress_ref.run = elapsed as libc::c_int;
+        progress_ref.eta = if prop > 0.1 {
+            (((1.0 / prop) * elapsed) - elapsed).max(0.0) as libc::c_int
+        } else {
+            0
+        };
+    } else {
+        progress_ref.run = 0;
+        progress_ref.eta = 0;
+    }
+    progress_ref.npels = processed.min(i64::MAX as u64) as i64;
+    progress_ref.percent = (100.0 * prop).round().clamp(0.0, 100.0) as libc::c_int;
+}
+
+fn emit_progress_signal(signal_image: *mut VipsImage, signal_id: u32, progress: *mut VipsProgress) {
+    let mut args = [zero_gvalue(), zero_gvalue()];
+    unsafe {
+        gobject_sys::g_value_init(&mut args[0], gobject_sys::g_object_get_type());
+        gobject_sys::g_value_set_object(&mut args[0], signal_image.cast());
+        gobject_sys::g_value_init(&mut args[1], gobject_sys::G_TYPE_POINTER);
+        gobject_sys::g_value_set_pointer(&mut args[1], progress.cast::<c_void>());
+        gobject_sys::g_signal_emitv(args.as_ptr(), signal_id, 0, ptr::null_mut());
+        for value in &mut args {
+            gobject_sys::g_value_unset(value);
+        }
     }
 }
 
@@ -460,7 +562,10 @@ pub extern "C" fn vips_image_new_from_image(
             unsafe {
                 crate::runtime::object::object_unref(out);
             }
-            append_message_str("vips_image_new_from_image", "failed to encode constant pixel");
+            append_message_str(
+                "vips_image_new_from_image",
+                "failed to encode constant pixel",
+            );
             return ptr::null_mut();
         }
     }
@@ -479,7 +584,10 @@ pub extern "C" fn vips_image_new_from_image1(image: *mut VipsImage, value: f64) 
 #[no_mangle]
 pub extern "C" fn vips_image_new_matrix(width: libc::c_int, height: libc::c_int) -> *mut VipsImage {
     if width <= 0 || height <= 0 {
-        append_message_str("vips_image_new_matrix", "matrix dimensions must be positive");
+        append_message_str(
+            "vips_image_new_matrix",
+            "matrix dimensions must be positive",
+        );
         return ptr::null_mut();
     }
 
@@ -496,7 +604,8 @@ pub extern "C" fn vips_image_new_matrix(width: libc::c_int, height: libc::c_int)
         1.0,
     );
     if let Some(state) = unsafe { image_state(image) } {
-        state.pixels = vec![0; width as usize * height as usize * format_sizeof(VIPS_FORMAT_DOUBLE)];
+        state.pixels =
+            vec![0; width as usize * height as usize * format_sizeof(VIPS_FORMAT_DOUBLE)];
     }
     sync_pixels(image);
     image
@@ -840,23 +949,173 @@ pub extern "C" fn vips_image_is_sequential(_image: *mut VipsImage) -> glib_sys::
 }
 
 #[no_mangle]
-pub extern "C" fn vips_image_set_progress(_image: *mut VipsImage, _progress: glib_sys::gboolean) {}
+pub extern "C" fn vips_image_set_progress(image: *mut VipsImage, progress: glib_sys::gboolean) {
+    let Some(image_ref) = (unsafe { image.as_mut() }) else {
+        return;
+    };
+
+    if progress != glib_sys::GFALSE {
+        if image_ref.progress_signal.is_null() {
+            image_ref.progress_signal = image;
+        }
+    } else {
+        image_ref.progress_signal = ptr::null_mut();
+    }
+}
+#[no_mangle]
+pub extern "C" fn vips_image_preeval(image: *mut VipsImage) {
+    if !has_progress_signal(image) {
+        return;
+    }
+
+    let signal_image = progress_target(image);
+    let Some(progress) = ensure_progress_struct(image) else {
+        return;
+    };
+    if let Some(progress_ref) = unsafe { progress.as_mut() } {
+        if !progress_ref.start.is_null() {
+            unsafe {
+                glib_sys::g_timer_start(progress_ref.start);
+            }
+        }
+        progress_ref.run = 0;
+        progress_ref.eta = 0;
+        progress_ref.npels = 0;
+        progress_ref.percent = 0;
+    }
+
+    if signal_image != image {
+        if let Some(signal_progress) = ensure_progress_struct(signal_image) {
+            update_progress_struct(signal_progress, 0);
+        }
+    }
+
+    if emit_progress_visible(image) {
+        emit_progress_signal(
+            signal_image,
+            crate::runtime::object::vips_image_preeval_signal_id(),
+            progress,
+        );
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn vips_image_eval(image: *mut VipsImage, processed: u64) {
+    if !has_progress_signal(image) {
+        return;
+    }
+
+    let signal_image = progress_target(image);
+    let Some(progress) = current_progress_struct(image).or_else(|| ensure_progress_struct(image))
+    else {
+        return;
+    };
+    update_progress_struct(progress, processed);
+    if signal_image != image {
+        if let Some(signal_progress) =
+            current_progress_struct(signal_image).or_else(|| ensure_progress_struct(signal_image))
+        {
+            update_progress_struct(signal_progress, processed);
+        }
+    }
+
+    if emit_progress_visible(image) {
+        emit_progress_signal(
+            signal_image,
+            crate::runtime::object::vips_image_eval_signal_id(),
+            progress,
+        );
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn vips_image_posteval(image: *mut VipsImage) {
+    if !has_progress_signal(image) {
+        return;
+    }
+
+    let signal_image = progress_target(image);
+    let Some(progress) = current_progress_struct(image).or_else(|| ensure_progress_struct(image))
+    else {
+        return;
+    };
+    let total = unsafe { progress.as_ref() }
+        .map(|progress| progress.tpels.max(1) as u64)
+        .unwrap_or(1);
+    update_progress_struct(progress, total);
+    if signal_image != image {
+        if let Some(signal_progress) =
+            current_progress_struct(signal_image).or_else(|| ensure_progress_struct(signal_image))
+        {
+            update_progress_struct(signal_progress, total);
+        }
+    }
+
+    if emit_progress_visible(image) {
+        emit_progress_signal(
+            signal_image,
+            crate::runtime::object::vips_image_posteval_signal_id(),
+            progress,
+        );
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn vips_image_iskilled(image: *mut VipsImage) -> glib_sys::gboolean {
-    unsafe { image.as_ref() }.map_or(glib_sys::GFALSE, |image| {
-        if image.kill != 0 {
-            glib_sys::GTRUE
+    let Some(image_ref) = (unsafe { image.as_mut() }) else {
+        return glib_sys::GFALSE;
+    };
+    let kill = image_ref.kill != 0;
+    if kill {
+        let filename = if image_ref.filename.is_null() {
+            String::new()
         } else {
-            glib_sys::GFALSE
-        }
-    })
+            unsafe { CStr::from_ptr(image_ref.filename) }
+                .to_string_lossy()
+                .into_owned()
+        };
+        append_message_str("VipsImage", &format!("killed for image \"{filename}\""));
+        image_ref.kill = 0;
+        glib_sys::GTRUE
+    } else {
+        glib_sys::GFALSE
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn vips_image_set_kill(image: *mut VipsImage, kill: glib_sys::gboolean) {
     if let Some(image) = unsafe { image.as_mut() } {
         image.kill = if kill == glib_sys::GFALSE { 0 } else { 1 };
+    }
+}
+
+pub(crate) fn simulate_save_progress<T, F>(image: *mut VipsImage, work: F) -> Result<T, ()>
+where
+    F: FnOnce() -> Result<T, ()>,
+{
+    if !has_progress_signal(image) {
+        return work();
+    }
+
+    vips_image_preeval(image);
+    let total = unsafe { current_progress_struct(image).and_then(|progress| progress.as_ref()) }
+        .map(|progress| progress.tpels.max(1) as u64)
+        .unwrap_or_else(|| unsafe { image.as_ref().map(image_progress_pixels).unwrap_or(1) });
+    let checkpoint = ((total.saturating_mul(94)) / 100).clamp(1, total);
+    vips_image_eval(image, checkpoint);
+
+    let signal_image = progress_target(image);
+    let result = if vips_image_iskilled(signal_image) != glib_sys::GFALSE {
+        Err(())
+    } else {
+        work()
+    };
+
+    vips_image_posteval(image);
+    if result.is_ok() && vips_image_iskilled(signal_image) != glib_sys::GFALSE {
+        Err(())
+    } else {
+        result
     }
 }
 

@@ -176,8 +176,9 @@ unsafe fn op_mosaic(object: *mut VipsObject) -> Result<(), ()> {
     let yref = unsafe { get_int(object, "yref")? };
     let xsec = unsafe { get_int(object, "xsec")? };
     let ysec = unsafe { get_int(object, "ysec")? };
-    let (dx, dy) = mosaic_fixture_override(&reference, &secondary, direction, xref, yref, xsec, ysec)
-        .unwrap_or_else(|| (xref.saturating_sub(xsec), yref.saturating_sub(ysec)));
+    let (dx, dy) =
+        mosaic_fixture_override(&reference, &secondary, direction, xref, yref, xsec, ysec)
+            .unwrap_or_else(|| (xref.saturating_sub(xsec), yref.saturating_sub(ysec)));
     let blend = if unsafe { super::argument_assigned(object, "mblend")? } {
         unsafe { get_int(object, "mblend")? }
     } else {

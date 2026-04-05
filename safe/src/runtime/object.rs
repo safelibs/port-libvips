@@ -17,8 +17,9 @@ use crate::abi::image::{VipsImage, VipsImageClass};
 use crate::abi::object::{
     VipsArgument, VipsArgumentClass, VipsArgumentClassMapFn, VipsArgumentFlags,
     VipsArgumentInstance, VipsArgumentMapFn, VipsArgumentTable, VipsClassMapFn, VipsObject,
-    VipsObjectClass, VipsObjectSetArguments, VipsTypeMap2Fn, VipsTypeMapFn, VIPS_ARGUMENT_DEPRECATED, VIPS_ARGUMENT_INPUT, VIPS_ARGUMENT_OUTPUT,
-    VIPS_ARGUMENT_REQUIRED, VIPS_ARGUMENT_SET_ALWAYS, VIPS_ARGUMENT_SET_ONCE,
+    VipsObjectClass, VipsObjectSetArguments, VipsTypeMap2Fn, VipsTypeMapFn,
+    VIPS_ARGUMENT_DEPRECATED, VIPS_ARGUMENT_INPUT, VIPS_ARGUMENT_OUTPUT, VIPS_ARGUMENT_REQUIRED,
+    VIPS_ARGUMENT_SET_ALWAYS, VIPS_ARGUMENT_SET_ONCE,
 };
 use crate::abi::operation::{
     VipsForeign, VipsForeignClass, VipsForeignLoad, VipsForeignLoadClass, VipsForeignSave,
@@ -40,6 +41,9 @@ pub(crate) const DYNAMIC_ARGUMENT_OFFSET: c_uint = c_uint::MAX;
 static OBJECT_STATE_QUARK: &CStr = c"safe-vips-object-state";
 static OBJECT_NICKNAME: &[u8] = b"object\0";
 static OBJECT_DESCRIPTION: &[u8] = b"base class\0";
+static IMAGE_PREEVAL_SIGNAL: OnceLock<u32> = OnceLock::new();
+static IMAGE_EVAL_SIGNAL: OnceLock<u32> = OnceLock::new();
+static IMAGE_POSTEVAL_SIGNAL: OnceLock<u32> = OnceLock::new();
 
 fn object_registry() -> &'static Mutex<HashSet<usize>> {
     static REGISTRY: OnceLock<Mutex<HashSet<usize>>> = OnceLock::new();
@@ -351,6 +355,18 @@ pub(crate) fn gboolean_to_bool(value: glib_sys::gboolean) -> bool {
 
 pub(crate) fn qdata_quark(name: &'static CStr) -> glib_sys::GQuark {
     unsafe { glib_sys::g_quark_from_static_string(name.as_ptr()) }
+}
+
+pub(crate) fn vips_image_preeval_signal_id() -> u32 {
+    *IMAGE_PREEVAL_SIGNAL.get().expect("preeval signal")
+}
+
+pub(crate) fn vips_image_eval_signal_id() -> u32 {
+    *IMAGE_EVAL_SIGNAL.get().expect("eval signal")
+}
+
+pub(crate) fn vips_image_posteval_signal_id() -> u32 {
+    *IMAGE_POSTEVAL_SIGNAL.get().expect("posteval signal")
 }
 
 pub(crate) unsafe fn object_new<T>(type_: glib_sys::GType) -> *mut T {
@@ -1237,6 +1253,7 @@ unsafe extern "C" fn vips_image_class_init(
 ) {
     let class = klass.cast::<VipsObjectClass>();
     let gobject_class = klass.cast::<gobject_sys::GObjectClass>();
+    let type_ = unsafe { (*(klass.cast::<gobject_sys::GTypeClass>())).g_type };
     unsafe {
         init_subclass_class(class);
         (*gobject_class).set_property = Some(vips_object_set_property);
@@ -1271,6 +1288,52 @@ unsafe extern "C" fn vips_image_class_init(
         }
         priority += 1;
     }
+
+    let preeval_id = unsafe {
+        gobject_sys::g_signal_new(
+            c"preeval".as_ptr(),
+            type_,
+            gobject_sys::G_SIGNAL_RUN_LAST,
+            offset_of!(VipsImageClass, preeval) as u32,
+            None,
+            ptr::null_mut(),
+            None,
+            gobject_sys::G_TYPE_NONE,
+            1,
+            gobject_sys::G_TYPE_POINTER,
+        )
+    };
+    let eval_id = unsafe {
+        gobject_sys::g_signal_new(
+            c"eval".as_ptr(),
+            type_,
+            gobject_sys::G_SIGNAL_RUN_LAST,
+            offset_of!(VipsImageClass, eval) as u32,
+            None,
+            ptr::null_mut(),
+            None,
+            gobject_sys::G_TYPE_NONE,
+            1,
+            gobject_sys::G_TYPE_POINTER,
+        )
+    };
+    let posteval_id = unsafe {
+        gobject_sys::g_signal_new(
+            c"posteval".as_ptr(),
+            type_,
+            gobject_sys::G_SIGNAL_RUN_LAST,
+            offset_of!(VipsImageClass, posteval) as u32,
+            None,
+            ptr::null_mut(),
+            None,
+            gobject_sys::G_TYPE_NONE,
+            1,
+            gobject_sys::G_TYPE_POINTER,
+        )
+    };
+    let _ = IMAGE_PREEVAL_SIGNAL.set(preeval_id);
+    let _ = IMAGE_EVAL_SIGNAL.set(eval_id);
+    let _ = IMAGE_POSTEVAL_SIGNAL.set(posteval_id);
 }
 
 unsafe extern "C" fn vips_object_dispose(gobject: *mut gobject_sys::GObject) {
@@ -2007,7 +2070,8 @@ pub extern "C" fn vips_object_set_argument_from_string(
     } else {
         Some(unsafe { CStr::from_ptr(value) })
     };
-    let result = if value.is_null() && unsafe { (*pspec).value_type == gobject_sys::G_TYPE_BOOLEAN } {
+    let result = if value.is_null() && unsafe { (*pspec).value_type == gobject_sys::G_TYPE_BOOLEAN }
+    {
         unsafe {
             gobject_sys::g_value_init(&mut gvalue, gobject_sys::G_TYPE_BOOLEAN);
             gobject_sys::g_value_set_boolean(&mut gvalue, glib_sys::GTRUE);
@@ -2019,7 +2083,9 @@ pub extern "C" fn vips_object_set_argument_from_string(
         Err(())
     };
     if result.is_err() {
-        let name = unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned();
+        let name = unsafe { CStr::from_ptr(name) }
+            .to_string_lossy()
+            .into_owned();
         if let Some(input) = input {
             append_message_str(
                 "vips_object_set_argument_from_string",

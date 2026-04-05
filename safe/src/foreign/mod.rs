@@ -604,7 +604,7 @@ pub fn save_to_bytes(
     kind: ForeignKind,
     options: &SaveOptions,
 ) -> Result<Vec<u8>, ()> {
-    match kind {
+    crate::runtime::image::simulate_save_progress(image, || match kind {
         ForeignKind::Ppm => savers::text::save_ppm(image, false),
         ForeignKind::Pfm => savers::text::save_ppm(image, true),
         ForeignKind::Csv => savers::text::save_csv(image),
@@ -621,7 +621,7 @@ pub fn save_to_bytes(
             append_message_str("foreignsave", "unsupported saver");
             Err(())
         }
-    }
+    })
 }
 
 fn load_options_from_object(
@@ -1214,29 +1214,22 @@ pub fn dispatch_operation(
             };
             let options = save_options_from_object(object)?;
             let bytes = if matches!(nickname, "pngsave_buffer") {
-                if ensure_pixels(image).is_err() {
-                    unsafe {
-                        object::object_unref(image);
+                crate::runtime::image::simulate_save_progress(image, || {
+                    if ensure_pixels(image).is_err() {
+                        return Err(());
                     }
-                    return Err(());
-                }
-                let Some(image_ref) = (unsafe { image.as_ref() }) else {
-                    unsafe {
-                        object::object_unref(image);
-                    }
-                    return Err(());
-                };
-                let Some(state) = (unsafe { image_state(image) }) else {
-                    unsafe {
-                        object::object_unref(image);
-                    }
-                    return Err(());
-                };
-                crate::runtime::image::safe_encode_png_bytes(image_ref, &state.pixels).map_err(
-                    |message| {
-                        append_message_str("pngsave", &message);
-                    },
-                )?
+                    let Some(image_ref) = (unsafe { image.as_ref() }) else {
+                        return Err(());
+                    };
+                    let Some(state) = (unsafe { image_state(image) }) else {
+                        return Err(());
+                    };
+                    crate::runtime::image::safe_encode_png_bytes(image_ref, &state.pixels).map_err(
+                        |message| {
+                            append_message_str("pngsave", &message);
+                        },
+                    )
+                })?
             } else {
                 save_to_bytes(image, kind, &options)?
             };

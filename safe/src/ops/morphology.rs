@@ -1,7 +1,8 @@
 use std::collections::VecDeque;
 
 use crate::abi::basic::{
-    VipsDirection, VipsOperationMorphology, VIPS_DIRECTION_VERTICAL, VIPS_OPERATION_MORPHOLOGY_ERODE,
+    VipsDirection, VipsOperationMorphology, VIPS_DIRECTION_VERTICAL,
+    VIPS_OPERATION_MORPHOLOGY_ERODE,
 };
 use crate::abi::image::{
     VIPS_CODING_NONE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_INT, VIPS_INTERPRETATION_MULTIBAND,
@@ -216,7 +217,8 @@ unsafe fn op_labelregions(object: *mut VipsObject) -> Result<(), ()> {
 
     let mask_image = mask.into_image_like(like);
     let result = unsafe {
-        set_output_image(object, "mask", mask_image).and_then(|_| set_output_int(object, "segments", segments))
+        set_output_image(object, "mask", mask_image)
+            .and_then(|_| set_output_int(object, "segments", segments))
     };
     unsafe { crate::runtime::object::object_unref(like) };
     result

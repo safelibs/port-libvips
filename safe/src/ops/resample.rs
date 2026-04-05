@@ -2,18 +2,17 @@ use std::ffi::c_void;
 use std::ptr;
 
 use crate::abi::basic::{
-    VipsExtend, VipsKernel, VipsSize, VIPS_EXTEND_BACKGROUND, VIPS_EXTEND_BLACK,
-    VIPS_EXTEND_COPY, VIPS_EXTEND_MIRROR, VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE,
-    VIPS_KERNEL_CUBIC, VIPS_KERNEL_LANCZOS2, VIPS_KERNEL_LANCZOS3, VIPS_KERNEL_LINEAR,
-    VIPS_KERNEL_MITCHELL, VIPS_KERNEL_NEAREST, VIPS_SIZE_BOTH, VIPS_SIZE_DOWN, VIPS_SIZE_FORCE,
-    VIPS_SIZE_UP,
+    VipsExtend, VipsKernel, VipsSize, VIPS_EXTEND_BACKGROUND, VIPS_EXTEND_BLACK, VIPS_EXTEND_COPY,
+    VIPS_EXTEND_MIRROR, VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE, VIPS_KERNEL_CUBIC,
+    VIPS_KERNEL_LANCZOS2, VIPS_KERNEL_LANCZOS3, VIPS_KERNEL_LINEAR, VIPS_KERNEL_MITCHELL,
+    VIPS_KERNEL_NEAREST, VIPS_SIZE_BOTH, VIPS_SIZE_DOWN, VIPS_SIZE_FORCE, VIPS_SIZE_UP,
 };
 use crate::abi::connection::VipsSource;
 use crate::abi::image::{VipsBandFormat, VipsImage};
 use crate::abi::object::VipsObject;
 use crate::abi::operation::VipsInterpolate;
-use crate::pixels::ImageBuffer;
 use crate::pixels::format::{format_kind, format_max, NumericKind};
+use crate::pixels::ImageBuffer;
 use crate::runtime::image::safe_vips_image_new_from_source_internal;
 use crate::runtime::object::object_unref;
 use crate::runtime::source::{vips_source_new_from_file, vips_source_new_from_memory};
@@ -631,10 +630,8 @@ fn mapim_sample_extended(
         return bg;
     }
 
-    let inside = x >= 0
-        && y >= 0
-        && (x as usize) < input.spec.width
-        && (y as usize) < input.spec.height;
+    let inside =
+        x >= 0 && y >= 0 && (x as usize) < input.spec.width && (y as usize) < input.spec.height;
     if inside {
         return input.get(x as usize, y as usize, band);
     }
@@ -687,7 +684,14 @@ fn mapim_sample_nearest(
         return background.get(band).copied().unwrap_or(0.0);
     }
 
-    mapim_sample_extended(input, x.round() as isize, y.round() as isize, band, extend, background)
+    mapim_sample_extended(
+        input,
+        x.round() as isize,
+        y.round() as isize,
+        band,
+        extend,
+        background,
+    )
 }
 
 fn mapim_sample_bilinear(
@@ -725,9 +729,7 @@ fn mapim_sample(
     background: &[f64],
 ) -> f64 {
     match interpolator {
-        AffineInterpolator::Nearest => {
-            mapim_sample_nearest(input, x, y, band, extend, background)
-        }
+        AffineInterpolator::Nearest => mapim_sample_nearest(input, x, y, band, extend, background),
         AffineInterpolator::Bilinear => {
             mapim_sample_bilinear(input, x, y, band, extend, background)
         }

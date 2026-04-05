@@ -207,7 +207,10 @@ unsafe fn bool_property(operation: *mut VipsOperation, name: &CStr) -> bool {
         return false;
     }
     let pspec = unsafe {
-        gobject_sys::g_object_class_find_property(class.cast::<gobject_sys::GObjectClass>(), name.as_ptr())
+        gobject_sys::g_object_class_find_property(
+            class.cast::<gobject_sys::GObjectClass>(),
+            name.as_ptr(),
+        )
     };
     if pspec.is_null() {
         return false;
@@ -515,11 +518,7 @@ pub extern "C" fn vips_cache_operation_buildp(operation: *mut *mut VipsOperation
                 let state = state().lock().expect("cache state");
                 state.config
             },
-            if bypass_cache {
-                ":"
-            } else {
-                "*"
-            },
+            if bypass_cache { ":" } else { "*" },
             current,
         );
     }

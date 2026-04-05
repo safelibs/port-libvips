@@ -6,7 +6,9 @@ use crate::abi::image::{
 };
 use crate::foreign::base::{build_load_result, ForeignLoadResult, ForeignMetadata};
 use crate::runtime::error::append_message_str;
-use crate::runtime::image::{ensure_pixels, format_sizeof, image_state, set_filename, set_mode, sync_pixels};
+use crate::runtime::image::{
+    ensure_pixels, format_sizeof, image_state, set_filename, set_mode, sync_pixels,
+};
 
 const HEADER_SIZE: usize = 64;
 const VIPS_MAGIC_INTEL: u32 = 0xb6a6f208;
