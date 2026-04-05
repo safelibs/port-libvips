@@ -161,6 +161,7 @@ scripts/check_introspection.sh \
   --lib-dir "${SAFE_LIBDIR}" \
   --typelib-dir "${SAFE_GIRDIR}" \
   --expect-version 8.15.1
+g-ir-inspect Vips >/dev/null
 scripts/check_introspection.sh \
   --lib-dir "${SAFE_LIBDIR}" \
   --gir "${SAFE_GIR}" \
@@ -227,6 +228,9 @@ scripts/check_introspection.sh \
   --lib-dir "${packaged_libdir}" \
   --typelib-dir "${packaged_typelib_dir}" \
   --expect-version 8.15.1
+GI_TYPELIB_PATH="${packaged_typelib_dir}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}" \
+LD_LIBRARY_PATH="${packaged_libdir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
+  g-ir-inspect Vips >/dev/null
 scripts/check_introspection.sh \
   --lib-dir "${packaged_libdir}" \
   --gir "${packaged_gir}" \
