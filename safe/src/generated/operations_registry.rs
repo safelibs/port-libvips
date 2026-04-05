@@ -3156,6 +3156,134 @@ static ARGS_VIPSFOREIGNLOADCSVSOURCE_SOURCE: GeneratedArgumentMetadata = Generat
     max_value: None,
 };
 
+static ARGS_VIPSFOREIGNLOADHEIF_PAGE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "page",
+    long_name: "Page",
+    description: "First page to load",
+    priority: 2,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("0"),
+    min_value: Some("0"),
+    max_value: Some("100000"),
+};
+
+static ARGS_VIPSFOREIGNLOADHEIF_N: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "n",
+    long_name: "n",
+    description: "Number of pages to load, -1 for all",
+    priority: 3,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("1"),
+    min_value: Some("-1"),
+    max_value: Some("100000"),
+};
+
+static ARGS_VIPSFOREIGNLOADHEIF_THUMBNAIL: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "thumbnail",
+    long_name: "Thumbnail",
+    description: "Fetch thumbnail image",
+    priority: 4,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADHEIF_AUTOROTATE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "autorotate",
+    long_name: "Autorotate",
+    description: "Rotate image using exif orientation",
+    priority: 21,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT | crate::abi::object::VIPS_ARGUMENT_DEPRECATED,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADHEIF_UNLIMITED: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "unlimited",
+    long_name: "Unlimited",
+    description: "Remove all denial of service limits",
+    priority: 22,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADHEIFBUFFER_BUFFER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "buffer",
+    long_name: "Buffer",
+    description: "Buffer to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsBlob"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADHEIFFILE_FILENAME: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "filename",
+    long_name: "Filename",
+    description: "Filename to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADHEIFSOURCE_SOURCE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "source",
+    long_name: "Source",
+    description: "Source to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Object,
+    value_type_name: Some("VipsSource"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
 static ARGS_VIPSFOREIGNLOADJPEG_SHRINK: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
     name: "shrink",
     long_name: "Shrink",
@@ -3248,6 +3376,246 @@ static ARGS_VIPSFOREIGNLOADJPEGSOURCE_SOURCE: GeneratedArgumentMetadata = Genera
     kind: GeneratedArgumentKind::Object,
     value_type_name: Some("VipsSource"),
     default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADJXLBUFFER_BUFFER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "buffer",
+    long_name: "Buffer",
+    description: "Buffer to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsBlob"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADJXLFILE_FILENAME: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "filename",
+    long_name: "Filename",
+    description: "Filename to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADJXLSOURCE_SOURCE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "source",
+    long_name: "Source",
+    description: "Source to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Object,
+    value_type_name: Some("VipsSource"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICK_DENSITY: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "density",
+    long_name: "Density",
+    description: "Canvas resolution for rendering vector formats like SVG",
+    priority: 21,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICK_PAGE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "page",
+    long_name: "Page",
+    description: "First page to load",
+    priority: 22,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("0"),
+    min_value: Some("0"),
+    max_value: Some("100000"),
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICK_N: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "n",
+    long_name: "n",
+    description: "Number of pages to load, -1 for all",
+    priority: 23,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("1"),
+    min_value: Some("-1"),
+    max_value: Some("100000"),
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICK_ALL_FRAMES: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "all_frames",
+    long_name: "All frames",
+    description: "Read all frames from an image",
+    priority: 20,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT | crate::abi::object::VIPS_ARGUMENT_DEPRECATED,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICK7_DENSITY: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "density",
+    long_name: "Density",
+    description: "Canvas resolution for rendering vector formats like SVG",
+    priority: 20,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICK7_PAGE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "page",
+    long_name: "Page",
+    description: "First page to load",
+    priority: 21,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("0"),
+    min_value: Some("0"),
+    max_value: Some("100000"),
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICK7_N: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "n",
+    long_name: "n",
+    description: "Number of pages to load, -1 for all",
+    priority: 22,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("1"),
+    min_value: Some("-1"),
+    max_value: Some("100000"),
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICK7_ALL_FRAMES: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "all_frames",
+    long_name: "All frames",
+    description: "Read all frames from an image",
+    priority: 23,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT | crate::abi::object::VIPS_ARGUMENT_DEPRECATED,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICK7BUFFER_BUFFER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "buffer",
+    long_name: "Buffer",
+    description: "Buffer to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsBlob"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICK7FILE_FILENAME: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "filename",
+    long_name: "Filename",
+    description: "Filename to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICKBUFFER_BUFFER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "buffer",
+    long_name: "Buffer",
+    description: "Buffer to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsBlob"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADMAGICKFILE_FILENAME: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "filename",
+    long_name: "Filename",
+    description: "Filename to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
     min_value: None,
     max_value: None,
 };
@@ -3349,6 +3717,262 @@ static ARGS_VIPSFOREIGNLOADNSGIFFILE_FILENAME: GeneratedArgumentMetadata = Gener
 };
 
 static ARGS_VIPSFOREIGNLOADNSGIFSOURCE_SOURCE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "source",
+    long_name: "Source",
+    description: "Source to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Object,
+    value_type_name: Some("VipsSource"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADOPENSLIDE_LEVEL: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "level",
+    long_name: "Level",
+    description: "Load this level from the file",
+    priority: 20,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("0"),
+    min_value: Some("0"),
+    max_value: Some("100000"),
+};
+
+static ARGS_VIPSFOREIGNLOADOPENSLIDE_AUTOCROP: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "autocrop",
+    long_name: "Autocrop",
+    description: "Crop to image bounds",
+    priority: 21,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADOPENSLIDE_ASSOCIATED: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "associated",
+    long_name: "Associated",
+    description: "Load this associated image",
+    priority: 22,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADOPENSLIDE_ATTACH_ASSOCIATED: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "attach_associated",
+    long_name: "Attach associated",
+    description: "Attach all associated images",
+    priority: 23,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADOPENSLIDE_RGB: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "rgb",
+    long_name: "RGB",
+    description: "Output RGB (not RGBA)",
+    priority: 24,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADOPENSLIDEFILE_FILENAME: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "filename",
+    long_name: "Filename",
+    description: "Filename to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADOPENSLIDESOURCE_SOURCE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "source",
+    long_name: "Source",
+    description: "Source to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Object,
+    value_type_name: Some("VipsSource"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADPDF_PAGE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "page",
+    long_name: "Page",
+    description: "First page to load",
+    priority: 20,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("0"),
+    min_value: Some("0"),
+    max_value: Some("100000"),
+};
+
+static ARGS_VIPSFOREIGNLOADPDF_N: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "n",
+    long_name: "n",
+    description: "Number of pages to load, -1 for all",
+    priority: 21,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("1"),
+    min_value: Some("-1"),
+    max_value: Some("100000"),
+};
+
+static ARGS_VIPSFOREIGNLOADPDF_DPI: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "dpi",
+    long_name: "DPI",
+    description: "DPI to render at",
+    priority: 22,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Double,
+    value_type_name: Some("gdouble"),
+    default_value: Some("72.0"),
+    min_value: Some("0.001"),
+    max_value: Some("100000.0"),
+};
+
+static ARGS_VIPSFOREIGNLOADPDF_SCALE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "scale",
+    long_name: "Scale",
+    description: "Factor to scale by",
+    priority: 23,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Double,
+    value_type_name: Some("gdouble"),
+    default_value: Some("1.0"),
+    min_value: Some("0.001"),
+    max_value: Some("100000.0"),
+};
+
+static ARGS_VIPSFOREIGNLOADPDF_BACKGROUND: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "background",
+    long_name: "Background",
+    description: "Background colour",
+    priority: 24,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsArrayDouble"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADPDF_PASSWORD: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "password",
+    long_name: "Password",
+    description: "Password to decrypt with",
+    priority: 25,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADPDFBUFFER_BUFFER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "buffer",
+    long_name: "Buffer",
+    description: "Buffer to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsBlob"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADPDFFILE_FILENAME: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "filename",
+    long_name: "Filename",
+    description: "Filename to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADPDFSOURCE_SOURCE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
     name: "source",
     long_name: "Source",
     description: "Source to load from",
@@ -4020,6 +4644,182 @@ static ARGS_VIPSFOREIGNSAVECSVTARGET_TARGET: GeneratedArgumentMetadata = Generat
     max_value: None,
 };
 
+static ARGS_VIPSFOREIGNSAVEHEIF_Q: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "Q",
+    long_name: "Q",
+    description: "Q factor",
+    priority: 10,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("50"),
+    min_value: Some("1"),
+    max_value: Some("100"),
+};
+
+static ARGS_VIPSFOREIGNSAVEHEIF_BITDEPTH: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "bitdepth",
+    long_name: "Bit depth",
+    description: "Number of bits per pixel",
+    priority: 11,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("12"),
+    min_value: Some("1"),
+    max_value: Some("16"),
+};
+
+static ARGS_VIPSFOREIGNSAVEHEIF_LOSSLESS: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "lossless",
+    long_name: "Lossless",
+    description: "Enable lossless compression",
+    priority: 13,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEHEIF_COMPRESSION: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "compression",
+    long_name: "Compression",
+    description: "Compression format",
+    priority: 14,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Enum,
+    value_type_name: Some("VipsForeignHeifCompression"),
+    default_value: Some("VIPS_FOREIGN_HEIF_COMPRESSION_HEVC"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEHEIF_EFFORT: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "effort",
+    long_name: "Effort",
+    description: "CPU effort",
+    priority: 15,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("4"),
+    min_value: Some("0"),
+    max_value: Some("9"),
+};
+
+static ARGS_VIPSFOREIGNSAVEHEIF_SUBSAMPLE_MODE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "subsample_mode",
+    long_name: "Subsample mode",
+    description: "Select chroma subsample operation mode",
+    priority: 16,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Enum,
+    value_type_name: Some("VipsForeignSubsample"),
+    default_value: Some("VIPS_FOREIGN_SUBSAMPLE_AUTO"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEHEIF_SPEED: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "speed",
+    long_name: "Speed",
+    description: "CPU effort",
+    priority: 17,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT | crate::abi::object::VIPS_ARGUMENT_DEPRECATED,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("5"),
+    min_value: Some("0"),
+    max_value: Some("9"),
+};
+
+static ARGS_VIPSFOREIGNSAVEHEIF_ENCODER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "encoder",
+    long_name: "Encoder",
+    description: "Select encoder to use",
+    priority: 18,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Enum,
+    value_type_name: Some("VipsForeignHeifEncoder"),
+    default_value: Some("VIPS_FOREIGN_HEIF_ENCODER_AUTO"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEHEIFBUFFER_BUFFER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "buffer",
+    long_name: "Buffer",
+    description: "Buffer to save to",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_OUTPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "output",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsBlob"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEHEIFFILE_FILENAME: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "filename",
+    long_name: "Filename",
+    description: "Filename to save to",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEHEIFTARGET_TARGET: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "target",
+    long_name: "Target",
+    description: "Target to save to",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Object,
+    value_type_name: Some("VipsTarget"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
 static ARGS_VIPSFOREIGNSAVEJPEG_Q: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
     name: "Q",
     long_name: "Q",
@@ -4224,6 +5024,246 @@ static ARGS_VIPSFOREIGNSAVEJPEGTARGET_TARGET: GeneratedArgumentMetadata = Genera
     kind: GeneratedArgumentKind::Object,
     value_type_name: Some("VipsTarget"),
     default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEJXL_TIER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "tier",
+    long_name: "Tier",
+    description: "Decode speed tier",
+    priority: 10,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("0"),
+    min_value: Some("0"),
+    max_value: Some("4"),
+};
+
+static ARGS_VIPSFOREIGNSAVEJXL_DISTANCE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "distance",
+    long_name: "Distance",
+    description: "Target butteraugli distance",
+    priority: 11,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Double,
+    value_type_name: Some("gdouble"),
+    default_value: Some("1.0"),
+    min_value: Some("0.0"),
+    max_value: Some("25.0"),
+};
+
+static ARGS_VIPSFOREIGNSAVEJXL_EFFORT: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "effort",
+    long_name: "Effort",
+    description: "Encoding effort",
+    priority: 12,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("7"),
+    min_value: Some("1"),
+    max_value: Some("9"),
+};
+
+static ARGS_VIPSFOREIGNSAVEJXL_LOSSLESS: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "lossless",
+    long_name: "Lossless",
+    description: "Enable lossless compression",
+    priority: 13,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEJXL_Q: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "Q",
+    long_name: "Q",
+    description: "Quality factor",
+    priority: 14,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("75"),
+    min_value: Some("0"),
+    max_value: Some("100"),
+};
+
+static ARGS_VIPSFOREIGNSAVEJXLBUFFER_BUFFER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "buffer",
+    long_name: "Buffer",
+    description: "Buffer to save to",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_OUTPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "output",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsBlob"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEJXLFILE_FILENAME: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "filename",
+    long_name: "Filename",
+    description: "Filename to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEJXLTARGET_TARGET: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "target",
+    long_name: "Target",
+    description: "Target to save to",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Object,
+    value_type_name: Some("VipsTarget"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEMAGICK_FORMAT: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "format",
+    long_name: "Format",
+    description: "Format to save in",
+    priority: 2,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEMAGICK_QUALITY: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "quality",
+    long_name: "Quality",
+    description: "Quality to use",
+    priority: 3,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("0"),
+    min_value: Some("0"),
+    max_value: Some("100"),
+};
+
+static ARGS_VIPSFOREIGNSAVEMAGICK_OPTIMIZE_GIF_FRAMES: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "optimize_gif_frames",
+    long_name: "Optimize_gif_frames",
+    description: "Apply GIF frames optimization",
+    priority: 4,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEMAGICK_OPTIMIZE_GIF_TRANSPARENCY: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "optimize_gif_transparency",
+    long_name: "Optimize_gif_transparency",
+    description: "Apply GIF transparency optimization",
+    priority: 5,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEMAGICK_BITDEPTH: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "bitdepth",
+    long_name: "Bit depth",
+    description: "Number of bits per pixel",
+    priority: 6,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("0"),
+    min_value: Some("0"),
+    max_value: Some("8"),
+};
+
+static ARGS_VIPSFOREIGNSAVEMAGICKBUFFER_BUFFER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "buffer",
+    long_name: "Buffer",
+    description: "Buffer to save to",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_OUTPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "output",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsBlob"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNSAVEMAGICKFILE_FILENAME: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "filename",
+    long_name: "Filename",
+    description: "Filename to save to",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::String,
+    value_type_name: Some("gchararray"),
+    default_value: Some("NULL"),
     min_value: None,
     max_value: None,
 };
@@ -12713,6 +13753,34 @@ static OPERATION_VIPSFOREIGNLOADCSVSOURCE: GeneratedOperationMetadata = Generate
     wrapper_function: Some("vips_csvload_source"),
 };
 
+static OPERATION_VIPSFOREIGNLOADHEIF: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADHEIF_PAGE, &ARGS_VIPSFOREIGNLOADHEIF_N, &ARGS_VIPSFOREIGNLOADHEIF_THUMBNAIL, &ARGS_VIPSFOREIGNLOADHEIF_AUTOROTATE, &ARGS_VIPSFOREIGNLOADHEIF_UNLIMITED],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNLOADHEIFBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADHEIFBUFFER_BUFFER],
+    wrapper_function: Some("vips_heifload_buffer"),
+};
+
+static OPERATION_VIPSFOREIGNLOADHEIFFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADHEIFFILE_FILENAME],
+    wrapper_function: Some("vips_heifload"),
+};
+
+static OPERATION_VIPSFOREIGNLOADHEIFSOURCE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_NOCACHE,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADHEIFSOURCE_SOURCE],
+    wrapper_function: Some("vips_heifload_source"),
+};
+
 static OPERATION_VIPSFOREIGNLOADJPEG: GeneratedOperationMetadata = GeneratedOperationMetadata {
     flags: 0,
     supported: false,
@@ -12739,6 +13807,76 @@ static OPERATION_VIPSFOREIGNLOADJPEGSOURCE: GeneratedOperationMetadata = Generat
     supported: false,
     arguments: &[&ARGS_VIPSFOREIGNLOADJPEGSOURCE_SOURCE],
     wrapper_function: Some("vips_jpegload_source"),
+};
+
+static OPERATION_VIPSFOREIGNLOADJXL: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_UNTRUSTED,
+    supported: false,
+    arguments: &[],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNLOADJXLBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADJXLBUFFER_BUFFER],
+    wrapper_function: Some("vips_jxlload_buffer"),
+};
+
+static OPERATION_VIPSFOREIGNLOADJXLFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADJXLFILE_FILENAME],
+    wrapper_function: Some("vips_jxlload"),
+};
+
+static OPERATION_VIPSFOREIGNLOADJXLSOURCE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_NOCACHE,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADJXLSOURCE_SOURCE],
+    wrapper_function: Some("vips_jxlload_source"),
+};
+
+static OPERATION_VIPSFOREIGNLOADMAGICK: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_NOCACHE | crate::abi::operation::VIPS_OPERATION_UNTRUSTED,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADMAGICK_DENSITY, &ARGS_VIPSFOREIGNLOADMAGICK_PAGE, &ARGS_VIPSFOREIGNLOADMAGICK_N, &ARGS_VIPSFOREIGNLOADMAGICK_ALL_FRAMES],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNLOADMAGICK7: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_NOCACHE | crate::abi::operation::VIPS_OPERATION_UNTRUSTED,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADMAGICK7_DENSITY, &ARGS_VIPSFOREIGNLOADMAGICK7_PAGE, &ARGS_VIPSFOREIGNLOADMAGICK7_N, &ARGS_VIPSFOREIGNLOADMAGICK7_ALL_FRAMES],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNLOADMAGICK7BUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADMAGICK7BUFFER_BUFFER],
+    wrapper_function: Some("vips_magickload_buffer"),
+};
+
+static OPERATION_VIPSFOREIGNLOADMAGICK7FILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADMAGICK7FILE_FILENAME],
+    wrapper_function: Some("vips_magickload"),
+};
+
+static OPERATION_VIPSFOREIGNLOADMAGICKBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADMAGICKBUFFER_BUFFER],
+    wrapper_function: Some("vips_magickload_buffer"),
+};
+
+static OPERATION_VIPSFOREIGNLOADMAGICKFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADMAGICKFILE_FILENAME],
+    wrapper_function: Some("vips_magickload"),
 };
 
 static OPERATION_VIPSFOREIGNLOADMATRIX: GeneratedOperationMetadata = GeneratedOperationMetadata {
@@ -12788,6 +13926,55 @@ static OPERATION_VIPSFOREIGNLOADNSGIFSOURCE: GeneratedOperationMetadata = Genera
     supported: false,
     arguments: &[&ARGS_VIPSFOREIGNLOADNSGIFSOURCE_SOURCE],
     wrapper_function: Some("vips_gifload_source"),
+};
+
+static OPERATION_VIPSFOREIGNLOADOPENSLIDE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_NOCACHE | crate::abi::operation::VIPS_OPERATION_UNTRUSTED,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADOPENSLIDE_LEVEL, &ARGS_VIPSFOREIGNLOADOPENSLIDE_AUTOCROP, &ARGS_VIPSFOREIGNLOADOPENSLIDE_ASSOCIATED, &ARGS_VIPSFOREIGNLOADOPENSLIDE_ATTACH_ASSOCIATED, &ARGS_VIPSFOREIGNLOADOPENSLIDE_RGB],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNLOADOPENSLIDEFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADOPENSLIDEFILE_FILENAME],
+    wrapper_function: Some("vips_openslideload"),
+};
+
+static OPERATION_VIPSFOREIGNLOADOPENSLIDESOURCE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADOPENSLIDESOURCE_SOURCE],
+    wrapper_function: Some("vips_openslideload_source"),
+};
+
+static OPERATION_VIPSFOREIGNLOADPDF: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_UNTRUSTED,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADPDF_PAGE, &ARGS_VIPSFOREIGNLOADPDF_N, &ARGS_VIPSFOREIGNLOADPDF_DPI, &ARGS_VIPSFOREIGNLOADPDF_SCALE, &ARGS_VIPSFOREIGNLOADPDF_BACKGROUND, &ARGS_VIPSFOREIGNLOADPDF_PASSWORD],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNLOADPDFBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADPDFBUFFER_BUFFER],
+    wrapper_function: Some("vips_pdfload_buffer"),
+};
+
+static OPERATION_VIPSFOREIGNLOADPDFFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADPDFFILE_FILENAME],
+    wrapper_function: Some("vips_pdfload"),
+};
+
+static OPERATION_VIPSFOREIGNLOADPDFSOURCE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_NOCACHE,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNLOADPDFSOURCE_SOURCE],
+    wrapper_function: Some("vips_pdfload_source"),
 };
 
 static OPERATION_VIPSFOREIGNLOADPNG: GeneratedOperationMetadata = GeneratedOperationMetadata {
@@ -12965,6 +14152,20 @@ static OPERATION_VIPSFOREIGNSAVE: GeneratedOperationMetadata = GeneratedOperatio
     wrapper_function: None,
 };
 
+static OPERATION_VIPSFOREIGNSAVEAVIFFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNSAVEAVIFTARGET: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_DEPRECATED,
+    supported: false,
+    arguments: &[],
+    wrapper_function: None,
+};
+
 static OPERATION_VIPSFOREIGNSAVECSV: GeneratedOperationMetadata = GeneratedOperationMetadata {
     flags: 0,
     supported: false,
@@ -12984,6 +14185,34 @@ static OPERATION_VIPSFOREIGNSAVECSVTARGET: GeneratedOperationMetadata = Generate
     supported: false,
     arguments: &[&ARGS_VIPSFOREIGNSAVECSVTARGET_TARGET],
     wrapper_function: Some("vips_csvsave_target"),
+};
+
+static OPERATION_VIPSFOREIGNSAVEHEIF: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEHEIF_Q, &ARGS_VIPSFOREIGNSAVEHEIF_BITDEPTH, &ARGS_VIPSFOREIGNSAVEHEIF_LOSSLESS, &ARGS_VIPSFOREIGNSAVEHEIF_COMPRESSION, &ARGS_VIPSFOREIGNSAVEHEIF_EFFORT, &ARGS_VIPSFOREIGNSAVEHEIF_SUBSAMPLE_MODE, &ARGS_VIPSFOREIGNSAVEHEIF_SPEED, &ARGS_VIPSFOREIGNSAVEHEIF_ENCODER],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNSAVEHEIFBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEHEIFBUFFER_BUFFER],
+    wrapper_function: Some("vips_heifsave_buffer"),
+};
+
+static OPERATION_VIPSFOREIGNSAVEHEIFFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEHEIFFILE_FILENAME],
+    wrapper_function: Some("vips_heifsave"),
+};
+
+static OPERATION_VIPSFOREIGNSAVEHEIFTARGET: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEHEIFTARGET_TARGET],
+    wrapper_function: Some("vips_heifsave_target"),
 };
 
 static OPERATION_VIPSFOREIGNSAVEJPEG: GeneratedOperationMetadata = GeneratedOperationMetadata {
@@ -13019,6 +14248,83 @@ static OPERATION_VIPSFOREIGNSAVEJPEGTARGET: GeneratedOperationMetadata = Generat
     supported: false,
     arguments: &[&ARGS_VIPSFOREIGNSAVEJPEGTARGET_TARGET],
     wrapper_function: Some("vips_jpegsave_target"),
+};
+
+static OPERATION_VIPSFOREIGNSAVEJXL: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_UNTRUSTED,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEJXL_TIER, &ARGS_VIPSFOREIGNSAVEJXL_DISTANCE, &ARGS_VIPSFOREIGNSAVEJXL_EFFORT, &ARGS_VIPSFOREIGNSAVEJXL_LOSSLESS, &ARGS_VIPSFOREIGNSAVEJXL_Q],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNSAVEJXLBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEJXLBUFFER_BUFFER],
+    wrapper_function: Some("vips_jxlsave_buffer"),
+};
+
+static OPERATION_VIPSFOREIGNSAVEJXLFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEJXLFILE_FILENAME],
+    wrapper_function: Some("vips_jxlsave"),
+};
+
+static OPERATION_VIPSFOREIGNSAVEJXLTARGET: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEJXLTARGET_TARGET],
+    wrapper_function: Some("vips_jxlsave_target"),
+};
+
+static OPERATION_VIPSFOREIGNSAVEMAGICK: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_UNTRUSTED,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEMAGICK_FORMAT, &ARGS_VIPSFOREIGNSAVEMAGICK_QUALITY, &ARGS_VIPSFOREIGNSAVEMAGICK_OPTIMIZE_GIF_FRAMES, &ARGS_VIPSFOREIGNSAVEMAGICK_OPTIMIZE_GIF_TRANSPARENCY, &ARGS_VIPSFOREIGNSAVEMAGICK_BITDEPTH],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNSAVEMAGICKBMPBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_DEPRECATED,
+    supported: false,
+    arguments: &[],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNSAVEMAGICKBMPFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_DEPRECATED,
+    supported: false,
+    arguments: &[],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNSAVEMAGICKBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEMAGICKBUFFER_BUFFER],
+    wrapper_function: Some("vips_magicksave_buffer"),
+};
+
+static OPERATION_VIPSFOREIGNSAVEMAGICKFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: 0,
+    supported: false,
+    arguments: &[&ARGS_VIPSFOREIGNSAVEMAGICKFILE_FILENAME],
+    wrapper_function: Some("vips_magicksave"),
+};
+
+static OPERATION_VIPSFOREIGNSAVEMAGICKGIFBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_DEPRECATED,
+    supported: false,
+    arguments: &[],
+    wrapper_function: None,
+};
+
+static OPERATION_VIPSFOREIGNSAVEMAGICKGIFFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_DEPRECATED,
+    supported: false,
+    arguments: &[],
+    wrapper_function: None,
 };
 
 static OPERATION_VIPSFOREIGNSAVEMATRIX: GeneratedOperationMetadata = GeneratedOperationMetadata {
@@ -14597,10 +15903,10 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
     },
     GeneratedTypeMetadata {
         type_name: "VipsCMYK2XYZ",
-        parent_type_name: Some("VipsColourCode"),
+        parent_type_name: Some("VipsOperation"),
         nickname: "CMYK2XYZ",
         description: "transform CMYK to XYZ",
-        depth: 4,
+        depth: 2,
         abstract_: false,
         source_file: Some("original/libvips/colour/CMYK2XYZ.c"),
         operation: Some(&OPERATION_VIPSCMYK2XYZ),
@@ -14771,7 +16077,7 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         nickname: "composite_base",
         description: "blend images together",
         depth: 3,
-        abstract_: true,
+        abstract_: false,
         source_file: None,
         operation: Some(&OPERATION_VIPSCOMPOSITEBASE),
     },
@@ -15206,6 +16512,46 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         operation: Some(&OPERATION_VIPSFOREIGNLOADCSVSOURCE),
     },
     GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadHeif",
+        parent_type_name: Some("VipsForeignLoad"),
+        nickname: "heifload_base",
+        description: "load a HEIF image",
+        depth: 4,
+        abstract_: true,
+        source_file: Some("original/libvips/foreign/heifload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADHEIF),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadHeifBuffer",
+        parent_type_name: Some("VipsForeignLoadHeif"),
+        nickname: "heifload_buffer",
+        description: "load heif from buffer",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/heifload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADHEIFBUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadHeifFile",
+        parent_type_name: Some("VipsForeignLoadHeif"),
+        nickname: "heifload",
+        description: "load heif from file",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/heifload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADHEIFFILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadHeifSource",
+        parent_type_name: Some("VipsForeignLoadHeif"),
+        nickname: "heifload_source",
+        description: "load heif from source",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/heifload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADHEIFSOURCE),
+    },
+    GeneratedTypeMetadata {
         type_name: "VipsForeignLoadJpeg",
         parent_type_name: Some("VipsForeignLoad"),
         nickname: "jpegload_base",
@@ -15244,6 +16590,106 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         abstract_: false,
         source_file: Some("original/libvips/foreign/jpegload.c"),
         operation: Some(&OPERATION_VIPSFOREIGNLOADJPEGSOURCE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadJxl",
+        parent_type_name: Some("VipsForeignLoad"),
+        nickname: "jxlload_base",
+        description: "load JPEG-XL image",
+        depth: 4,
+        abstract_: true,
+        source_file: Some("original/libvips/foreign/jxlload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADJXL),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadJxlBuffer",
+        parent_type_name: Some("VipsForeignLoadJxl"),
+        nickname: "jxlload_buffer",
+        description: "load jxl from buffer",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/jxlload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADJXLBUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadJxlFile",
+        parent_type_name: Some("VipsForeignLoadJxl"),
+        nickname: "jxlload",
+        description: "load jxl from file",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/jxlload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADJXLFILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadJxlSource",
+        parent_type_name: Some("VipsForeignLoadJxl"),
+        nickname: "jxlload_source",
+        description: "load jxl from source",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/jxlload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADJXLSOURCE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadMagick",
+        parent_type_name: Some("VipsForeignLoad"),
+        nickname: "magickload_base",
+        description: "load with ImageMagick",
+        depth: 4,
+        abstract_: true,
+        source_file: Some("original/libvips/foreign/magick6load.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADMAGICK),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadMagick7",
+        parent_type_name: Some("VipsForeignLoad"),
+        nickname: "magickload_base",
+        description: "load with ImageMagick7",
+        depth: 4,
+        abstract_: true,
+        source_file: Some("original/libvips/foreign/magick7load.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADMAGICK7),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadMagick7Buffer",
+        parent_type_name: Some("VipsForeignLoadMagick7"),
+        nickname: "magickload_buffer",
+        description: "load buffer with ImageMagick7",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/magick7load.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADMAGICK7BUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadMagick7File",
+        parent_type_name: Some("VipsForeignLoadMagick7"),
+        nickname: "magickload",
+        description: "load file with ImageMagick7",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/magick7load.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADMAGICK7FILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadMagickBuffer",
+        parent_type_name: Some("VipsForeignLoadMagick"),
+        nickname: "magickload_buffer",
+        description: "load buffer with ImageMagick",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/magick6load.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADMAGICKBUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadMagickFile",
+        parent_type_name: Some("VipsForeignLoadMagick"),
+        nickname: "magickload",
+        description: "load file with ImageMagick",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/magick6load.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADMAGICKFILE),
     },
     GeneratedTypeMetadata {
         type_name: "VipsForeignLoadMatrix",
@@ -15314,6 +16760,76 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         abstract_: false,
         source_file: Some("original/libvips/foreign/nsgifload.c"),
         operation: Some(&OPERATION_VIPSFOREIGNLOADNSGIFSOURCE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadOpenslide",
+        parent_type_name: Some("VipsForeignLoad"),
+        nickname: "openslideload_base",
+        description: "load OpenSlide base class",
+        depth: 4,
+        abstract_: true,
+        source_file: Some("original/libvips/foreign/openslideload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADOPENSLIDE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadOpenslideFile",
+        parent_type_name: Some("VipsForeignLoadOpenslide"),
+        nickname: "openslideload",
+        description: "load file with OpenSlide",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/openslideload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADOPENSLIDEFILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadOpenslideSource",
+        parent_type_name: Some("VipsForeignLoadOpenslide"),
+        nickname: "openslideload_source",
+        description: "load source with OpenSlide",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/openslideload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADOPENSLIDESOURCE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadPdf",
+        parent_type_name: Some("VipsForeignLoad"),
+        nickname: "pdfload_base",
+        description: "load PDF with PDFium",
+        depth: 4,
+        abstract_: true,
+        source_file: Some("original/libvips/foreign/popplerload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADPDF),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadPdfBuffer",
+        parent_type_name: Some("VipsForeignLoadPdf"),
+        nickname: "pdfload_buffer",
+        description: "load PDF from buffer",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/popplerload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADPDFBUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadPdfFile",
+        parent_type_name: Some("VipsForeignLoadPdf"),
+        nickname: "pdfload",
+        description: "load PDF from file",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/popplerload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADPDFFILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadPdfSource",
+        parent_type_name: Some("VipsForeignLoadPdf"),
+        nickname: "pdfload_source",
+        description: "load PDF from source",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/popplerload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADPDFSOURCE),
     },
     GeneratedTypeMetadata {
         type_name: "VipsForeignLoadPng",
@@ -15566,6 +17082,26 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         operation: Some(&OPERATION_VIPSFOREIGNSAVE),
     },
     GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveAvifFile",
+        parent_type_name: Some("VipsForeignSaveHeif"),
+        nickname: "avifsave",
+        description: "save avif to file",
+        depth: 5,
+        abstract_: false,
+        source_file: None,
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEAVIFFILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveAvifTarget",
+        parent_type_name: Some("VipsForeignSaveHeifTarget"),
+        nickname: "avifsave_target",
+        description: "save image in AVIF format",
+        depth: 6,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/heifsave.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEAVIFTARGET),
+    },
+    GeneratedTypeMetadata {
         type_name: "VipsForeignSaveCsv",
         parent_type_name: Some("VipsForeignSave"),
         nickname: "csvsave_base",
@@ -15594,6 +17130,46 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         abstract_: false,
         source_file: Some("original/libvips/foreign/csvsave.c"),
         operation: Some(&OPERATION_VIPSFOREIGNSAVECSVTARGET),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveHeif",
+        parent_type_name: Some("VipsForeignSave"),
+        nickname: "heifsave_base",
+        description: "save image in HEIF format",
+        depth: 4,
+        abstract_: true,
+        source_file: Some("original/libvips/foreign/heifsave.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEHEIF),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveHeifBuffer",
+        parent_type_name: Some("VipsForeignSaveHeif"),
+        nickname: "heifsave_buffer",
+        description: "save heif to buffer",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/heifsave.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEHEIFBUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveHeifFile",
+        parent_type_name: Some("VipsForeignSaveHeif"),
+        nickname: "heifsave",
+        description: "save heif to file",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/heifsave.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEHEIFFILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveHeifTarget",
+        parent_type_name: Some("VipsForeignSaveHeif"),
+        nickname: "heifsave_target",
+        description: "save heif to target",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/heifsave.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEHEIFTARGET),
     },
     GeneratedTypeMetadata {
         type_name: "VipsForeignSaveJpeg",
@@ -15644,6 +17220,116 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         abstract_: false,
         source_file: Some("original/libvips/foreign/jpegsave.c"),
         operation: Some(&OPERATION_VIPSFOREIGNSAVEJPEGTARGET),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveJxl",
+        parent_type_name: Some("VipsForeignSave"),
+        nickname: "jxlsave_base",
+        description: "save image in JPEG-XL format",
+        depth: 4,
+        abstract_: true,
+        source_file: Some("original/libvips/foreign/jxlsave.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEJXL),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveJxlBuffer",
+        parent_type_name: Some("VipsForeignSaveJxl"),
+        nickname: "jxlsave_buffer",
+        description: "save jxl to buffer",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/jxlsave.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEJXLBUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveJxlFile",
+        parent_type_name: Some("VipsForeignSaveJxl"),
+        nickname: "jxlsave",
+        description: "save jxl to file",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/jxlsave.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEJXLFILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveJxlTarget",
+        parent_type_name: Some("VipsForeignSaveJxl"),
+        nickname: "jxlsave_target",
+        description: "save jxl to target",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/jxlsave.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEJXLTARGET),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveMagick",
+        parent_type_name: Some("VipsForeignSave"),
+        nickname: "magicksave_base",
+        description: "save with ImageMagick",
+        depth: 4,
+        abstract_: true,
+        source_file: Some("original/libvips/foreign/vips2magick.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEMAGICK),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveMagickBmpBuffer",
+        parent_type_name: Some("VipsForeignSaveMagickBuffer"),
+        nickname: "magicksave_bmp_buffer",
+        description: "save bmp image to magick buffer",
+        depth: 6,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/vips2magick.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEMAGICKBMPBUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveMagickBmpFile",
+        parent_type_name: Some("VipsForeignSaveMagickFile"),
+        nickname: "magicksave_bmp",
+        description: "save bmp image with ImageMagick",
+        depth: 6,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/vips2magick.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEMAGICKBMPFILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveMagickBuffer",
+        parent_type_name: Some("VipsForeignSaveMagick"),
+        nickname: "magicksave_buffer",
+        description: "save image to magick buffer",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/vips2magick.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEMAGICKBUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveMagickFile",
+        parent_type_name: Some("VipsForeignSaveMagick"),
+        nickname: "magicksave",
+        description: "save file with ImageMagick",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/vips2magick.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEMAGICKFILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveMagickGifBuffer",
+        parent_type_name: Some("VipsForeignSaveMagickBuffer"),
+        nickname: "magicksave_gif_buffer",
+        description: "save gif image to magick buffer",
+        depth: 6,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/vips2magick.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEMAGICKGIFBUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignSaveMagickGifFile",
+        parent_type_name: Some("VipsForeignSaveMagickFile"),
+        nickname: "magicksave_gif",
+        description: "save gif image with ImageMagick",
+        depth: 6,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/vips2magick.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNSAVEMAGICKGIFFILE),
     },
     GeneratedTypeMetadata {
         type_name: "VipsForeignSaveMatrix",
@@ -17231,7 +18917,7 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         nickname: "source",
         description: "input source",
         depth: 2,
-        abstract_: true,
+        abstract_: false,
         source_file: Some("original/libvips/iofuncs/source.c"),
         operation: None,
     },
@@ -17351,7 +19037,7 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         nickname: "target",
         description: "Target",
         depth: 2,
-        abstract_: true,
+        abstract_: false,
         source_file: Some("original/libvips/iofuncs/target.c"),
         operation: None,
     },
@@ -17381,7 +19067,7 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         nickname: "threadstate",
         description: "per-thread state for vipsthreadpool",
         depth: 1,
-        abstract_: true,
+        abstract_: false,
         source_file: Some("original/libvips/iofuncs/threadpool.c"),
         operation: None,
     },
@@ -17517,10 +19203,10 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
     },
     GeneratedTypeMetadata {
         type_name: "VipsXYZ2CMYK",
-        parent_type_name: Some("VipsColourCode"),
+        parent_type_name: Some("VipsOperation"),
         nickname: "XYZ2CMYK",
         description: "transform XYZ to CMYK",
-        depth: 4,
+        depth: 2,
         abstract_: false,
         source_file: Some("original/libvips/colour/XYZ2CMYK.c"),
         operation: Some(&OPERATION_VIPSXYZ2CMYK),

@@ -6,11 +6,13 @@ use crate::abi::image::{
 };
 use crate::foreign::base::{build_load_result, ForeignLoadResult, ForeignMetadata};
 use crate::runtime::error::append_message_str;
+use crate::runtime::header::{install_save_string_metadata, snapshot_save_string_metadata};
 use crate::runtime::image::{
     ensure_pixels, format_sizeof, image_state, set_filename, set_mode, sync_pixels,
 };
 
 const HEADER_SIZE: usize = 64;
+const METADATA_MAGIC: &[u8; 8] = b"SVIPSMD1";
 const VIPS_MAGIC_INTEL: u32 = 0xb6a6f208;
 const VIPS_MAGIC_SPARC: u32 = 0x08f2a6b6;
 
@@ -46,6 +48,76 @@ fn pixel_length(image: &VipsImage) -> Result<usize, ()> {
             .ok_or(()),
         _ => usize::try_from(image.Length).map_err(|_| ()),
     }
+}
+
+fn take_u32(bytes: &[u8], offset: &mut usize) -> Result<u32, ()> {
+    if *offset + 4 > bytes.len() {
+        return Err(());
+    }
+    let value = u32::from_le_bytes(bytes[*offset..*offset + 4].try_into().unwrap());
+    *offset += 4;
+    Ok(value)
+}
+
+fn take_u64(bytes: &[u8], offset: &mut usize) -> Result<u64, ()> {
+    if *offset + 8 > bytes.len() {
+        return Err(());
+    }
+    let value = u64::from_le_bytes(bytes[*offset..*offset + 8].try_into().unwrap());
+    *offset += 8;
+    Ok(value)
+}
+
+fn encode_extension_block(image: *mut VipsImage) -> Result<Vec<u8>, ()> {
+    let entries = snapshot_save_string_metadata(image);
+    if entries.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut out = Vec::new();
+    out.extend_from_slice(METADATA_MAGIC);
+    out.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+    for (name, type_name, value) in entries {
+        out.extend_from_slice(&(name.len() as u32).to_le_bytes());
+        out.extend_from_slice(&(type_name.len() as u32).to_le_bytes());
+        out.extend_from_slice(&(value.len() as u64).to_le_bytes());
+        out.extend_from_slice(name.as_bytes());
+        out.extend_from_slice(type_name.as_bytes());
+        out.extend_from_slice(value.as_bytes());
+    }
+    Ok(out)
+}
+
+fn decode_extension_block(image: *mut VipsImage, bytes: &[u8]) -> Result<(), ()> {
+    if bytes.is_empty() || !bytes.starts_with(METADATA_MAGIC) {
+        return Ok(());
+    }
+
+    let mut offset = METADATA_MAGIC.len();
+    let count = take_u32(bytes, &mut offset)? as usize;
+    for _ in 0..count {
+        let name_len = take_u32(bytes, &mut offset)? as usize;
+        let type_len = take_u32(bytes, &mut offset)? as usize;
+        let value_len = take_u64(bytes, &mut offset)? as usize;
+        if offset + name_len + type_len + value_len > bytes.len() {
+            append_message_str("vipsload", "truncated vips metadata extension");
+            return Err(());
+        }
+
+        let name = String::from_utf8_lossy(&bytes[offset..offset + name_len]).into_owned();
+        offset += name_len;
+        let type_name = String::from_utf8_lossy(&bytes[offset..offset + type_len]).into_owned();
+        offset += type_len;
+        let value = String::from_utf8_lossy(&bytes[offset..offset + value_len]).into_owned();
+        offset += value_len;
+
+        if install_save_string_metadata(image, &name, &type_name, &value).is_err() {
+            append_message_str("vipsload", "invalid vips metadata extension");
+            return Err(());
+        }
+    }
+
+    Ok(())
 }
 
 fn open_image_fd(filename: &CStr) -> Result<c_int, ()> {
@@ -127,6 +199,9 @@ pub fn load_file_into_image(filename: &CStr, image: *mut VipsImage) -> *mut Vips
         append_message_str("vipsload", "truncated vips pixel payload");
         return std::ptr::null_mut();
     }
+    if decode_extension_block(image, &bytes[HEADER_SIZE + payload_len..]).is_err() {
+        return std::ptr::null_mut();
+    }
 
     let Ok(fd) = open_image_fd(filename) else {
         return std::ptr::null_mut();
@@ -184,6 +259,8 @@ pub fn save_bytes(image: *mut VipsImage) -> Result<Vec<u8>, ()> {
     let mut bytes = Vec::with_capacity(HEADER_SIZE + payload_len);
     bytes.extend_from_slice(&header);
     bytes.extend_from_slice(&state.pixels[..payload_len]);
+    let extension = encode_extension_block(image)?;
+    bytes.extend_from_slice(&extension);
     Ok(bytes)
 }
 

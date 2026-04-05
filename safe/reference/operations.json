@@ -1,11 +1,11 @@
 {
-  "count": 316,
+  "count": 354,
   "entries": [
     {
       "depth": 1,
       "description": "operations",
       "nickname": "operation",
-      "parent": null,
+      "parent": "VipsObject",
       "type_name": "VipsOperation"
     },
     {
@@ -19,7 +19,7 @@
       "depth": 2,
       "description": "arithmetic operations",
       "nickname": "arithmetic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsArithmetic"
     },
     {
@@ -215,7 +215,7 @@
       "depth": 2,
       "description": "VIPS statistic operations",
       "nickname": "statistic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsStatistic"
     },
     {
@@ -313,28 +313,28 @@
       "depth": 2,
       "description": "measure a set of patches on a color chart",
       "nickname": "measure",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMeasure"
     },
     {
       "depth": 2,
       "description": "read a point from an image",
       "nickname": "getpoint",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsGetpoint"
     },
     {
       "depth": 2,
       "description": "search an image for non-edge areas",
       "nickname": "find_trim",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsFindTrim"
     },
     {
       "depth": 2,
       "description": "conversion operations",
       "nickname": "conversion",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsConversion"
     },
     {
@@ -677,7 +677,7 @@
       "depth": 2,
       "description": "create operations",
       "nickname": "create",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsCreate"
     },
     {
@@ -887,14 +887,14 @@
       "depth": 2,
       "description": "find the index of the first non-zero pixel in tests",
       "nickname": "switch",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsSwitch"
     },
     {
       "depth": 2,
       "description": "load and save image files, priority=0",
       "nickname": "foreign",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsForeign"
     },
     {
@@ -1440,7 +1440,7 @@
       "depth": 2,
       "description": "thumbnail generation",
       "nickname": "thumbnail_base",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsThumbnail"
     },
     {
@@ -1475,7 +1475,7 @@
       "depth": 2,
       "description": "resample operations",
       "nickname": "resample",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsResample"
     },
     {
@@ -1573,14 +1573,14 @@
       "depth": 2,
       "description": "convert to a new colorspace",
       "nickname": "colourspace",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsColourspace"
     },
     {
       "depth": 2,
       "description": "color operations",
       "nickname": "colour",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsColour"
     },
     {
@@ -1731,17 +1731,17 @@
       "type_name": "VipsHSV2sRGB"
     },
     {
-      "depth": 4,
+      "depth": 2,
       "description": "transform CMYK to XYZ",
       "nickname": "CMYK2XYZ",
-      "parent": "VipsColourCode",
+      "parent": "VipsOperation",
       "type_name": "VipsCMYK2XYZ"
     },
     {
-      "depth": 4,
+      "depth": 2,
       "description": "transform XYZ to CMYK",
       "nickname": "XYZ2CMYK",
-      "parent": "VipsColourCode",
+      "parent": "VipsOperation",
       "type_name": "VipsXYZ2CMYK"
     },
     {
@@ -1776,77 +1776,77 @@
       "depth": 2,
       "description": "convert an sRGB image to scRGB",
       "nickname": "sRGB2scRGB",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipssRGB2scRGB"
     },
     {
       "depth": 2,
       "description": "transform scRGB to XYZ",
       "nickname": "scRGB2XYZ",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsscRGB2XYZ"
     },
     {
       "depth": 2,
       "description": "convert scRGB to BW",
       "nickname": "scRGB2BW",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsscRGB2BW"
     },
     {
       "depth": 2,
       "description": "transform XYZ to scRGB",
       "nickname": "XYZ2scRGB",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsXYZ2scRGB"
     },
     {
       "depth": 2,
       "description": "convert an scRGB image to sRGB",
       "nickname": "scRGB2sRGB",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsscRGB2sRGB"
     },
     {
       "depth": 2,
       "description": "load named ICC profile",
       "nickname": "profile_load",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsProfileLoad"
     },
     {
       "depth": 2,
       "description": "map an image though a lut",
       "nickname": "maplut",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMaplut"
     },
     {
       "depth": 2,
       "description": "use pixel values to pick cases from an array of images",
       "nickname": "case",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsCase"
     },
     {
       "depth": 2,
       "description": "find threshold for percent of pixels",
       "nickname": "percent",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsPercent"
     },
     {
       "depth": 2,
       "description": "statistical difference",
       "nickname": "stdif",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsStdif"
     },
     {
       "depth": 2,
       "description": "histogram operations",
       "nickname": "histogram",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistogram"
     },
     {
@@ -1874,49 +1874,49 @@
       "depth": 2,
       "description": "normalise histogram",
       "nickname": "hist_norm",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistNorm"
     },
     {
       "depth": 2,
       "description": "histogram equalisation",
       "nickname": "hist_equal",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistEqual"
     },
     {
       "depth": 2,
       "description": "plot histogram",
       "nickname": "hist_plot",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistPlot"
     },
     {
       "depth": 2,
       "description": "local histogram equalisation",
       "nickname": "hist_local",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistLocal"
     },
     {
       "depth": 2,
       "description": "test for monotonicity",
       "nickname": "hist_ismonotonic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistIsmonotonic"
     },
     {
       "depth": 2,
       "description": "estimate image entropy",
       "nickname": "hist_entropy",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistEntropy"
     },
     {
       "depth": 2,
       "description": "convolution operations",
       "nickname": "convolution",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsConvolution"
     },
     {
@@ -1972,7 +1972,7 @@
       "depth": 2,
       "description": "correlation operation",
       "nickname": "correlation",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsCorrelation"
     },
     {
@@ -1993,21 +1993,21 @@
       "depth": 2,
       "description": "unsharp masking for print",
       "nickname": "sharpen",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsSharpen"
     },
     {
       "depth": 2,
       "description": "gaussian blur",
       "nickname": "gaussblur",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsGaussblur"
     },
     {
       "depth": 2,
       "description": "Edge detector",
       "nickname": "edge",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsEdge"
     },
     {
@@ -2035,14 +2035,14 @@
       "depth": 2,
       "description": "Canny edge detector",
       "nickname": "canny",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsCanny"
     },
     {
       "depth": 2,
       "description": "frequency-domain filter operations",
       "nickname": "freqfilt",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsFreqfilt"
     },
     {
@@ -2070,7 +2070,7 @@
       "depth": 2,
       "description": "morphological operations",
       "nickname": "morphology",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMorphology"
     },
     {
@@ -2112,7 +2112,7 @@
       "depth": 2,
       "description": "draw operations",
       "nickname": "draw",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsDraw"
     },
     {
@@ -2175,43 +2175,309 @@
       "depth": 2,
       "description": "merge two images",
       "nickname": "merge",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMerge"
     },
     {
       "depth": 2,
       "description": "mosaic two images",
       "nickname": "mosaic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMosaic"
     },
     {
       "depth": 2,
       "description": "first-order mosaic of two images",
       "nickname": "mosaic1",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMosaic1"
     },
     {
       "depth": 2,
       "description": "invert an matrix",
       "nickname": "matrixinvert",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMatrixinvert"
     },
     {
       "depth": 2,
       "description": "first-order match of two images",
       "nickname": "match",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMatch"
     },
     {
       "depth": 2,
       "description": "global balance an image mosaic",
       "nickname": "globalbalance",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsGlobalbalance"
+    },
+    {
+      "depth": 4,
+      "description": "load a HEIF image",
+      "nickname": "heifload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadHeif"
+    },
+    {
+      "depth": 5,
+      "description": "load heif from buffer",
+      "nickname": "heifload_buffer",
+      "parent": "VipsForeignLoadHeif",
+      "type_name": "VipsForeignLoadHeifBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load heif from file",
+      "nickname": "heifload",
+      "parent": "VipsForeignLoadHeif",
+      "type_name": "VipsForeignLoadHeifFile"
+    },
+    {
+      "depth": 5,
+      "description": "load heif from source",
+      "nickname": "heifload_source",
+      "parent": "VipsForeignLoadHeif",
+      "type_name": "VipsForeignLoadHeifSource"
+    },
+    {
+      "depth": 4,
+      "description": "load JPEG-XL image",
+      "nickname": "jxlload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadJxl"
+    },
+    {
+      "depth": 5,
+      "description": "load jxl from buffer",
+      "nickname": "jxlload_buffer",
+      "parent": "VipsForeignLoadJxl",
+      "type_name": "VipsForeignLoadJxlBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load jxl from file",
+      "nickname": "jxlload",
+      "parent": "VipsForeignLoadJxl",
+      "type_name": "VipsForeignLoadJxlFile"
+    },
+    {
+      "depth": 5,
+      "description": "load jxl from source",
+      "nickname": "jxlload_source",
+      "parent": "VipsForeignLoadJxl",
+      "type_name": "VipsForeignLoadJxlSource"
+    },
+    {
+      "depth": 4,
+      "description": "load with ImageMagick",
+      "nickname": "magickload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadMagick"
+    },
+    {
+      "depth": 4,
+      "description": "load with ImageMagick7",
+      "nickname": "magickload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadMagick7"
+    },
+    {
+      "depth": 5,
+      "description": "load buffer with ImageMagick7",
+      "nickname": "magickload_buffer",
+      "parent": "VipsForeignLoadMagick7",
+      "type_name": "VipsForeignLoadMagick7Buffer"
+    },
+    {
+      "depth": 5,
+      "description": "load file with ImageMagick7",
+      "nickname": "magickload",
+      "parent": "VipsForeignLoadMagick7",
+      "type_name": "VipsForeignLoadMagick7File"
+    },
+    {
+      "depth": 5,
+      "description": "load buffer with ImageMagick",
+      "nickname": "magickload_buffer",
+      "parent": "VipsForeignLoadMagick",
+      "type_name": "VipsForeignLoadMagickBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load file with ImageMagick",
+      "nickname": "magickload",
+      "parent": "VipsForeignLoadMagick",
+      "type_name": "VipsForeignLoadMagickFile"
+    },
+    {
+      "depth": 4,
+      "description": "load OpenSlide base class",
+      "nickname": "openslideload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadOpenslide"
+    },
+    {
+      "depth": 5,
+      "description": "load file with OpenSlide",
+      "nickname": "openslideload",
+      "parent": "VipsForeignLoadOpenslide",
+      "type_name": "VipsForeignLoadOpenslideFile"
+    },
+    {
+      "depth": 5,
+      "description": "load source with OpenSlide",
+      "nickname": "openslideload_source",
+      "parent": "VipsForeignLoadOpenslide",
+      "type_name": "VipsForeignLoadOpenslideSource"
+    },
+    {
+      "depth": 4,
+      "description": "load PDF with PDFium",
+      "nickname": "pdfload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadPdf"
+    },
+    {
+      "depth": 5,
+      "description": "load PDF from buffer",
+      "nickname": "pdfload_buffer",
+      "parent": "VipsForeignLoadPdf",
+      "type_name": "VipsForeignLoadPdfBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load PDF from file",
+      "nickname": "pdfload",
+      "parent": "VipsForeignLoadPdf",
+      "type_name": "VipsForeignLoadPdfFile"
+    },
+    {
+      "depth": 5,
+      "description": "load PDF from source",
+      "nickname": "pdfload_source",
+      "parent": "VipsForeignLoadPdf",
+      "type_name": "VipsForeignLoadPdfSource"
+    },
+    {
+      "depth": 5,
+      "description": "save avif to file",
+      "nickname": "avifsave",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveAvifFile"
+    },
+    {
+      "depth": 6,
+      "description": "save image in AVIF format",
+      "nickname": "avifsave_target",
+      "parent": "VipsForeignSaveHeifTarget",
+      "type_name": "VipsForeignSaveAvifTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save image in HEIF format",
+      "nickname": "heifsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveHeif"
+    },
+    {
+      "depth": 5,
+      "description": "save heif to buffer",
+      "nickname": "heifsave_buffer",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveHeifBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save heif to file",
+      "nickname": "heifsave",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveHeifFile"
+    },
+    {
+      "depth": 5,
+      "description": "save heif to target",
+      "nickname": "heifsave_target",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveHeifTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save image in JPEG-XL format",
+      "nickname": "jxlsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveJxl"
+    },
+    {
+      "depth": 5,
+      "description": "save jxl to buffer",
+      "nickname": "jxlsave_buffer",
+      "parent": "VipsForeignSaveJxl",
+      "type_name": "VipsForeignSaveJxlBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save jxl to file",
+      "nickname": "jxlsave",
+      "parent": "VipsForeignSaveJxl",
+      "type_name": "VipsForeignSaveJxlFile"
+    },
+    {
+      "depth": 5,
+      "description": "save jxl to target",
+      "nickname": "jxlsave_target",
+      "parent": "VipsForeignSaveJxl",
+      "type_name": "VipsForeignSaveJxlTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save with ImageMagick",
+      "nickname": "magicksave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveMagick"
+    },
+    {
+      "depth": 6,
+      "description": "save bmp image to magick buffer",
+      "nickname": "magicksave_bmp_buffer",
+      "parent": "VipsForeignSaveMagickBuffer",
+      "type_name": "VipsForeignSaveMagickBmpBuffer"
+    },
+    {
+      "depth": 6,
+      "description": "save bmp image with ImageMagick",
+      "nickname": "magicksave_bmp",
+      "parent": "VipsForeignSaveMagickFile",
+      "type_name": "VipsForeignSaveMagickBmpFile"
+    },
+    {
+      "depth": 5,
+      "description": "save image to magick buffer",
+      "nickname": "magicksave_buffer",
+      "parent": "VipsForeignSaveMagick",
+      "type_name": "VipsForeignSaveMagickBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save file with ImageMagick",
+      "nickname": "magicksave",
+      "parent": "VipsForeignSaveMagick",
+      "type_name": "VipsForeignSaveMagickFile"
+    },
+    {
+      "depth": 6,
+      "description": "save gif image to magick buffer",
+      "nickname": "magicksave_gif_buffer",
+      "parent": "VipsForeignSaveMagickBuffer",
+      "type_name": "VipsForeignSaveMagickGifBuffer"
+    },
+    {
+      "depth": 6,
+      "description": "save gif image with ImageMagick",
+      "nickname": "magicksave_gif",
+      "parent": "VipsForeignSaveMagickFile",
+      "type_name": "VipsForeignSaveMagickGifFile"
     }
   ],
   "nicknames": [
@@ -2242,6 +2508,8 @@
     "arrayjoin",
     "autorot",
     "avg",
+    "avifsave",
+    "avifsave_target",
     "bandary",
     "bandbool",
     "bandfold",
@@ -2335,6 +2603,14 @@
     "gravity",
     "grey",
     "grid",
+    "heifload",
+    "heifload_base",
+    "heifload_buffer",
+    "heifload_source",
+    "heifsave",
+    "heifsave_base",
+    "heifsave_buffer",
+    "heifsave_target",
     "hist_cum",
     "hist_entropy",
     "hist_equal",
@@ -2366,11 +2642,29 @@
     "jpegsave_buffer",
     "jpegsave_mime",
     "jpegsave_target",
+    "jxlload",
+    "jxlload_base",
+    "jxlload_buffer",
+    "jxlload_source",
+    "jxlsave",
+    "jxlsave_base",
+    "jxlsave_buffer",
+    "jxlsave_target",
     "labelregions",
     "linear",
     "linecache",
     "load",
     "logmat",
+    "magickload",
+    "magickload_base",
+    "magickload_buffer",
+    "magicksave",
+    "magicksave_base",
+    "magicksave_bmp",
+    "magicksave_bmp_buffer",
+    "magicksave_buffer",
+    "magicksave_gif",
+    "magicksave_gif_buffer",
     "mapim",
     "maplut",
     "mask",
@@ -2407,7 +2701,14 @@
     "msb",
     "multiply",
     "nary",
+    "openslideload",
+    "openslideload_base",
+    "openslideload_source",
     "operation",
+    "pdfload",
+    "pdfload_base",
+    "pdfload_buffer",
+    "pdfload_source",
     "percent",
     "perlin",
     "phasecor",
@@ -2616,10 +2917,24 @@
     "VipsForeignLoadCsv",
     "VipsForeignLoadCsvFile",
     "VipsForeignLoadCsvSource",
+    "VipsForeignLoadHeif",
+    "VipsForeignLoadHeifBuffer",
+    "VipsForeignLoadHeifFile",
+    "VipsForeignLoadHeifSource",
     "VipsForeignLoadJpeg",
     "VipsForeignLoadJpegBuffer",
     "VipsForeignLoadJpegFile",
     "VipsForeignLoadJpegSource",
+    "VipsForeignLoadJxl",
+    "VipsForeignLoadJxlBuffer",
+    "VipsForeignLoadJxlFile",
+    "VipsForeignLoadJxlSource",
+    "VipsForeignLoadMagick",
+    "VipsForeignLoadMagick7",
+    "VipsForeignLoadMagick7Buffer",
+    "VipsForeignLoadMagick7File",
+    "VipsForeignLoadMagickBuffer",
+    "VipsForeignLoadMagickFile",
     "VipsForeignLoadMatrix",
     "VipsForeignLoadMatrixFile",
     "VipsForeignLoadMatrixSource",
@@ -2627,6 +2942,13 @@
     "VipsForeignLoadNsgifBuffer",
     "VipsForeignLoadNsgifFile",
     "VipsForeignLoadNsgifSource",
+    "VipsForeignLoadOpenslide",
+    "VipsForeignLoadOpenslideFile",
+    "VipsForeignLoadOpenslideSource",
+    "VipsForeignLoadPdf",
+    "VipsForeignLoadPdfBuffer",
+    "VipsForeignLoadPdfFile",
+    "VipsForeignLoadPdfSource",
     "VipsForeignLoadPng",
     "VipsForeignLoadPngBuffer",
     "VipsForeignLoadPngFile",
@@ -2652,14 +2974,31 @@
     "VipsForeignLoadWebpSource",
     "VipsForeignPrintMatrix",
     "VipsForeignSave",
+    "VipsForeignSaveAvifFile",
+    "VipsForeignSaveAvifTarget",
     "VipsForeignSaveCsv",
     "VipsForeignSaveCsvFile",
     "VipsForeignSaveCsvTarget",
+    "VipsForeignSaveHeif",
+    "VipsForeignSaveHeifBuffer",
+    "VipsForeignSaveHeifFile",
+    "VipsForeignSaveHeifTarget",
     "VipsForeignSaveJpeg",
     "VipsForeignSaveJpegBuffer",
     "VipsForeignSaveJpegFile",
     "VipsForeignSaveJpegMime",
     "VipsForeignSaveJpegTarget",
+    "VipsForeignSaveJxl",
+    "VipsForeignSaveJxlBuffer",
+    "VipsForeignSaveJxlFile",
+    "VipsForeignSaveJxlTarget",
+    "VipsForeignSaveMagick",
+    "VipsForeignSaveMagickBmpBuffer",
+    "VipsForeignSaveMagickBmpFile",
+    "VipsForeignSaveMagickBuffer",
+    "VipsForeignSaveMagickFile",
+    "VipsForeignSaveMagickGifBuffer",
+    "VipsForeignSaveMagickGifFile",
     "VipsForeignSaveMatrix",
     "VipsForeignSaveMatrixFile",
     "VipsForeignSaveMatrixTarget",

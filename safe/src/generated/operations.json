@@ -1,11 +1,11 @@
 {
-  "count": 316,
+  "count": 354,
   "entries": [
     {
       "depth": 1,
       "description": "operations",
       "nickname": "operation",
-      "parent": null,
+      "parent": "VipsObject",
       "type_name": "VipsOperation"
     },
     {
@@ -19,7 +19,7 @@
       "depth": 2,
       "description": "arithmetic operations",
       "nickname": "arithmetic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsArithmetic"
     },
     {
@@ -215,7 +215,7 @@
       "depth": 2,
       "description": "VIPS statistic operations",
       "nickname": "statistic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsStatistic"
     },
     {
@@ -313,28 +313,28 @@
       "depth": 2,
       "description": "measure a set of patches on a color chart",
       "nickname": "measure",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMeasure"
     },
     {
       "depth": 2,
       "description": "read a point from an image",
       "nickname": "getpoint",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsGetpoint"
     },
     {
       "depth": 2,
       "description": "search an image for non-edge areas",
       "nickname": "find_trim",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsFindTrim"
     },
     {
       "depth": 2,
       "description": "conversion operations",
       "nickname": "conversion",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsConversion"
     },
     {
@@ -677,7 +677,7 @@
       "depth": 2,
       "description": "create operations",
       "nickname": "create",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsCreate"
     },
     {
@@ -887,14 +887,14 @@
       "depth": 2,
       "description": "find the index of the first non-zero pixel in tests",
       "nickname": "switch",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsSwitch"
     },
     {
       "depth": 2,
       "description": "load and save image files, priority=0",
       "nickname": "foreign",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsForeign"
     },
     {
@@ -1440,7 +1440,7 @@
       "depth": 2,
       "description": "thumbnail generation",
       "nickname": "thumbnail_base",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsThumbnail"
     },
     {
@@ -1475,7 +1475,7 @@
       "depth": 2,
       "description": "resample operations",
       "nickname": "resample",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsResample"
     },
     {
@@ -1573,14 +1573,14 @@
       "depth": 2,
       "description": "convert to a new colorspace",
       "nickname": "colourspace",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsColourspace"
     },
     {
       "depth": 2,
       "description": "color operations",
       "nickname": "colour",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsColour"
     },
     {
@@ -1731,17 +1731,17 @@
       "type_name": "VipsHSV2sRGB"
     },
     {
-      "depth": 4,
+      "depth": 2,
       "description": "transform CMYK to XYZ",
       "nickname": "CMYK2XYZ",
-      "parent": "VipsColourCode",
+      "parent": "VipsOperation",
       "type_name": "VipsCMYK2XYZ"
     },
     {
-      "depth": 4,
+      "depth": 2,
       "description": "transform XYZ to CMYK",
       "nickname": "XYZ2CMYK",
-      "parent": "VipsColourCode",
+      "parent": "VipsOperation",
       "type_name": "VipsXYZ2CMYK"
     },
     {
@@ -1776,77 +1776,77 @@
       "depth": 2,
       "description": "convert an sRGB image to scRGB",
       "nickname": "sRGB2scRGB",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipssRGB2scRGB"
     },
     {
       "depth": 2,
       "description": "transform scRGB to XYZ",
       "nickname": "scRGB2XYZ",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsscRGB2XYZ"
     },
     {
       "depth": 2,
       "description": "convert scRGB to BW",
       "nickname": "scRGB2BW",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsscRGB2BW"
     },
     {
       "depth": 2,
       "description": "transform XYZ to scRGB",
       "nickname": "XYZ2scRGB",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsXYZ2scRGB"
     },
     {
       "depth": 2,
       "description": "convert an scRGB image to sRGB",
       "nickname": "scRGB2sRGB",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsscRGB2sRGB"
     },
     {
       "depth": 2,
       "description": "load named ICC profile",
       "nickname": "profile_load",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsProfileLoad"
     },
     {
       "depth": 2,
       "description": "map an image though a lut",
       "nickname": "maplut",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMaplut"
     },
     {
       "depth": 2,
       "description": "use pixel values to pick cases from an array of images",
       "nickname": "case",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsCase"
     },
     {
       "depth": 2,
       "description": "find threshold for percent of pixels",
       "nickname": "percent",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsPercent"
     },
     {
       "depth": 2,
       "description": "statistical difference",
       "nickname": "stdif",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsStdif"
     },
     {
       "depth": 2,
       "description": "histogram operations",
       "nickname": "histogram",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistogram"
     },
     {
@@ -1874,49 +1874,49 @@
       "depth": 2,
       "description": "normalise histogram",
       "nickname": "hist_norm",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistNorm"
     },
     {
       "depth": 2,
       "description": "histogram equalisation",
       "nickname": "hist_equal",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistEqual"
     },
     {
       "depth": 2,
       "description": "plot histogram",
       "nickname": "hist_plot",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistPlot"
     },
     {
       "depth": 2,
       "description": "local histogram equalisation",
       "nickname": "hist_local",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistLocal"
     },
     {
       "depth": 2,
       "description": "test for monotonicity",
       "nickname": "hist_ismonotonic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistIsmonotonic"
     },
     {
       "depth": 2,
       "description": "estimate image entropy",
       "nickname": "hist_entropy",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsHistEntropy"
     },
     {
       "depth": 2,
       "description": "convolution operations",
       "nickname": "convolution",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsConvolution"
     },
     {
@@ -1972,7 +1972,7 @@
       "depth": 2,
       "description": "correlation operation",
       "nickname": "correlation",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsCorrelation"
     },
     {
@@ -1993,21 +1993,21 @@
       "depth": 2,
       "description": "unsharp masking for print",
       "nickname": "sharpen",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsSharpen"
     },
     {
       "depth": 2,
       "description": "gaussian blur",
       "nickname": "gaussblur",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsGaussblur"
     },
     {
       "depth": 2,
       "description": "Edge detector",
       "nickname": "edge",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsEdge"
     },
     {
@@ -2035,14 +2035,14 @@
       "depth": 2,
       "description": "Canny edge detector",
       "nickname": "canny",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsCanny"
     },
     {
       "depth": 2,
       "description": "frequency-domain filter operations",
       "nickname": "freqfilt",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsFreqfilt"
     },
     {
@@ -2070,7 +2070,7 @@
       "depth": 2,
       "description": "morphological operations",
       "nickname": "morphology",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMorphology"
     },
     {
@@ -2112,7 +2112,7 @@
       "depth": 2,
       "description": "draw operations",
       "nickname": "draw",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsDraw"
     },
     {
@@ -2175,43 +2175,309 @@
       "depth": 2,
       "description": "merge two images",
       "nickname": "merge",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMerge"
     },
     {
       "depth": 2,
       "description": "mosaic two images",
       "nickname": "mosaic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMosaic"
     },
     {
       "depth": 2,
       "description": "first-order mosaic of two images",
       "nickname": "mosaic1",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMosaic1"
     },
     {
       "depth": 2,
       "description": "invert an matrix",
       "nickname": "matrixinvert",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMatrixinvert"
     },
     {
       "depth": 2,
       "description": "first-order match of two images",
       "nickname": "match",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsMatch"
     },
     {
       "depth": 2,
       "description": "global balance an image mosaic",
       "nickname": "globalbalance",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "type_name": "VipsGlobalbalance"
+    },
+    {
+      "depth": 4,
+      "description": "load a HEIF image",
+      "nickname": "heifload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadHeif"
+    },
+    {
+      "depth": 5,
+      "description": "load heif from buffer",
+      "nickname": "heifload_buffer",
+      "parent": "VipsForeignLoadHeif",
+      "type_name": "VipsForeignLoadHeifBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load heif from file",
+      "nickname": "heifload",
+      "parent": "VipsForeignLoadHeif",
+      "type_name": "VipsForeignLoadHeifFile"
+    },
+    {
+      "depth": 5,
+      "description": "load heif from source",
+      "nickname": "heifload_source",
+      "parent": "VipsForeignLoadHeif",
+      "type_name": "VipsForeignLoadHeifSource"
+    },
+    {
+      "depth": 4,
+      "description": "load JPEG-XL image",
+      "nickname": "jxlload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadJxl"
+    },
+    {
+      "depth": 5,
+      "description": "load jxl from buffer",
+      "nickname": "jxlload_buffer",
+      "parent": "VipsForeignLoadJxl",
+      "type_name": "VipsForeignLoadJxlBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load jxl from file",
+      "nickname": "jxlload",
+      "parent": "VipsForeignLoadJxl",
+      "type_name": "VipsForeignLoadJxlFile"
+    },
+    {
+      "depth": 5,
+      "description": "load jxl from source",
+      "nickname": "jxlload_source",
+      "parent": "VipsForeignLoadJxl",
+      "type_name": "VipsForeignLoadJxlSource"
+    },
+    {
+      "depth": 4,
+      "description": "load with ImageMagick",
+      "nickname": "magickload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadMagick"
+    },
+    {
+      "depth": 4,
+      "description": "load with ImageMagick7",
+      "nickname": "magickload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadMagick7"
+    },
+    {
+      "depth": 5,
+      "description": "load buffer with ImageMagick7",
+      "nickname": "magickload_buffer",
+      "parent": "VipsForeignLoadMagick7",
+      "type_name": "VipsForeignLoadMagick7Buffer"
+    },
+    {
+      "depth": 5,
+      "description": "load file with ImageMagick7",
+      "nickname": "magickload",
+      "parent": "VipsForeignLoadMagick7",
+      "type_name": "VipsForeignLoadMagick7File"
+    },
+    {
+      "depth": 5,
+      "description": "load buffer with ImageMagick",
+      "nickname": "magickload_buffer",
+      "parent": "VipsForeignLoadMagick",
+      "type_name": "VipsForeignLoadMagickBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load file with ImageMagick",
+      "nickname": "magickload",
+      "parent": "VipsForeignLoadMagick",
+      "type_name": "VipsForeignLoadMagickFile"
+    },
+    {
+      "depth": 4,
+      "description": "load OpenSlide base class",
+      "nickname": "openslideload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadOpenslide"
+    },
+    {
+      "depth": 5,
+      "description": "load file with OpenSlide",
+      "nickname": "openslideload",
+      "parent": "VipsForeignLoadOpenslide",
+      "type_name": "VipsForeignLoadOpenslideFile"
+    },
+    {
+      "depth": 5,
+      "description": "load source with OpenSlide",
+      "nickname": "openslideload_source",
+      "parent": "VipsForeignLoadOpenslide",
+      "type_name": "VipsForeignLoadOpenslideSource"
+    },
+    {
+      "depth": 4,
+      "description": "load PDF with PDFium",
+      "nickname": "pdfload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadPdf"
+    },
+    {
+      "depth": 5,
+      "description": "load PDF from buffer",
+      "nickname": "pdfload_buffer",
+      "parent": "VipsForeignLoadPdf",
+      "type_name": "VipsForeignLoadPdfBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load PDF from file",
+      "nickname": "pdfload",
+      "parent": "VipsForeignLoadPdf",
+      "type_name": "VipsForeignLoadPdfFile"
+    },
+    {
+      "depth": 5,
+      "description": "load PDF from source",
+      "nickname": "pdfload_source",
+      "parent": "VipsForeignLoadPdf",
+      "type_name": "VipsForeignLoadPdfSource"
+    },
+    {
+      "depth": 5,
+      "description": "save avif to file",
+      "nickname": "avifsave",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveAvifFile"
+    },
+    {
+      "depth": 6,
+      "description": "save image in AVIF format",
+      "nickname": "avifsave_target",
+      "parent": "VipsForeignSaveHeifTarget",
+      "type_name": "VipsForeignSaveAvifTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save image in HEIF format",
+      "nickname": "heifsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveHeif"
+    },
+    {
+      "depth": 5,
+      "description": "save heif to buffer",
+      "nickname": "heifsave_buffer",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveHeifBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save heif to file",
+      "nickname": "heifsave",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveHeifFile"
+    },
+    {
+      "depth": 5,
+      "description": "save heif to target",
+      "nickname": "heifsave_target",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveHeifTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save image in JPEG-XL format",
+      "nickname": "jxlsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveJxl"
+    },
+    {
+      "depth": 5,
+      "description": "save jxl to buffer",
+      "nickname": "jxlsave_buffer",
+      "parent": "VipsForeignSaveJxl",
+      "type_name": "VipsForeignSaveJxlBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save jxl to file",
+      "nickname": "jxlsave",
+      "parent": "VipsForeignSaveJxl",
+      "type_name": "VipsForeignSaveJxlFile"
+    },
+    {
+      "depth": 5,
+      "description": "save jxl to target",
+      "nickname": "jxlsave_target",
+      "parent": "VipsForeignSaveJxl",
+      "type_name": "VipsForeignSaveJxlTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save with ImageMagick",
+      "nickname": "magicksave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveMagick"
+    },
+    {
+      "depth": 6,
+      "description": "save bmp image to magick buffer",
+      "nickname": "magicksave_bmp_buffer",
+      "parent": "VipsForeignSaveMagickBuffer",
+      "type_name": "VipsForeignSaveMagickBmpBuffer"
+    },
+    {
+      "depth": 6,
+      "description": "save bmp image with ImageMagick",
+      "nickname": "magicksave_bmp",
+      "parent": "VipsForeignSaveMagickFile",
+      "type_name": "VipsForeignSaveMagickBmpFile"
+    },
+    {
+      "depth": 5,
+      "description": "save image to magick buffer",
+      "nickname": "magicksave_buffer",
+      "parent": "VipsForeignSaveMagick",
+      "type_name": "VipsForeignSaveMagickBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save file with ImageMagick",
+      "nickname": "magicksave",
+      "parent": "VipsForeignSaveMagick",
+      "type_name": "VipsForeignSaveMagickFile"
+    },
+    {
+      "depth": 6,
+      "description": "save gif image to magick buffer",
+      "nickname": "magicksave_gif_buffer",
+      "parent": "VipsForeignSaveMagickBuffer",
+      "type_name": "VipsForeignSaveMagickGifBuffer"
+    },
+    {
+      "depth": 6,
+      "description": "save gif image with ImageMagick",
+      "nickname": "magicksave_gif",
+      "parent": "VipsForeignSaveMagickFile",
+      "type_name": "VipsForeignSaveMagickGifFile"
     }
   ],
   "nicknames": [
@@ -2242,6 +2508,8 @@
     "arrayjoin",
     "autorot",
     "avg",
+    "avifsave",
+    "avifsave_target",
     "bandary",
     "bandbool",
     "bandfold",
@@ -2335,6 +2603,14 @@
     "gravity",
     "grey",
     "grid",
+    "heifload",
+    "heifload_base",
+    "heifload_buffer",
+    "heifload_source",
+    "heifsave",
+    "heifsave_base",
+    "heifsave_buffer",
+    "heifsave_target",
     "hist_cum",
     "hist_entropy",
     "hist_equal",
@@ -2366,11 +2642,29 @@
     "jpegsave_buffer",
     "jpegsave_mime",
     "jpegsave_target",
+    "jxlload",
+    "jxlload_base",
+    "jxlload_buffer",
+    "jxlload_source",
+    "jxlsave",
+    "jxlsave_base",
+    "jxlsave_buffer",
+    "jxlsave_target",
     "labelregions",
     "linear",
     "linecache",
     "load",
     "logmat",
+    "magickload",
+    "magickload_base",
+    "magickload_buffer",
+    "magicksave",
+    "magicksave_base",
+    "magicksave_bmp",
+    "magicksave_bmp_buffer",
+    "magicksave_buffer",
+    "magicksave_gif",
+    "magicksave_gif_buffer",
     "mapim",
     "maplut",
     "mask",
@@ -2407,7 +2701,14 @@
     "msb",
     "multiply",
     "nary",
+    "openslideload",
+    "openslideload_base",
+    "openslideload_source",
     "operation",
+    "pdfload",
+    "pdfload_base",
+    "pdfload_buffer",
+    "pdfload_source",
     "percent",
     "perlin",
     "phasecor",
@@ -2929,7 +3230,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "arithmetic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/arithmetic/arithmetic.c",
       "supported": false,
       "type_name": "VipsArithmetic",
@@ -4525,11 +4826,11 @@
     "VipsCMYK2XYZ": {
       "abstract": false,
       "arguments": [],
-      "depth": 4,
+      "depth": 2,
       "description": "transform CMYK to XYZ",
       "flags": [],
       "nickname": "CMYK2XYZ",
-      "parent": "VipsColourCode",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/CMYK2XYZ.c",
       "supported": false,
       "type_name": "VipsCMYK2XYZ",
@@ -4787,7 +5088,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "canny",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/convolution/canny.c",
       "supported": false,
       "type_name": "VipsCanny",
@@ -4894,7 +5195,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "case",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/case.c",
       "supported": false,
       "type_name": "VipsCase",
@@ -5080,7 +5381,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "colour",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/colour.c",
       "supported": false,
       "type_name": "VipsColour",
@@ -5315,7 +5616,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "colourspace",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/colourspace.c",
       "supported": false,
       "type_name": "VipsColourspace",
@@ -5879,7 +6180,7 @@
       }
     },
     "VipsCompositeBase": {
-      "abstract": true,
+      "abstract": false,
       "arguments": [],
       "depth": 3,
       "description": "blend images together",
@@ -6190,7 +6491,7 @@
       "description": "conversion operations",
       "flags": [],
       "nickname": "conversion",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/conversion/conversion.c",
       "supported": false,
       "type_name": "VipsConversion",
@@ -6358,7 +6659,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "convolution",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/convolution/convolution.c",
       "supported": false,
       "type_name": "VipsConvolution",
@@ -6864,7 +7165,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "correlation",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/convolution/correlation.c",
       "supported": false,
       "type_name": "VipsCorrelation",
@@ -6991,7 +7292,7 @@
       "description": "create operations",
       "flags": [],
       "nickname": "create",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/create/create.c",
       "supported": false,
       "type_name": "VipsCreate",
@@ -7133,7 +7434,7 @@
       "description": "draw operations",
       "flags": [],
       "nickname": "draw",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/draw/draw.c",
       "supported": false,
       "type_name": "VipsDraw",
@@ -8396,7 +8697,7 @@
       "description": "Edge detector",
       "flags": [],
       "nickname": "edge",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/convolution/edge.c",
       "supported": false,
       "type_name": "VipsEdge",
@@ -9382,7 +9683,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "find_trim",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/arithmetic/find_trim.c",
       "supported": false,
       "type_name": "VipsFindTrim",
@@ -9670,7 +9971,7 @@
       "description": "load and save image files, priority=0",
       "flags": [],
       "nickname": "foreign",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/foreign/foreign.c",
       "supported": false,
       "type_name": "VipsForeign",
@@ -10176,6 +10477,320 @@
         "variadic": true
       }
     },
+    "VipsForeignLoadHeif": {
+      "abstract": true,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "0",
+          "description": "First page to load",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Page",
+          "max": "100000",
+          "min": "0",
+          "name": "page",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadHeif, page)",
+          "priority": 2,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "1",
+          "description": "Number of pages to load, -1 for all",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "n",
+          "max": "100000",
+          "min": "-1",
+          "name": "n",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadHeif, n)",
+          "priority": 3,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Fetch thumbnail image",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOOL",
+          "long_name": "Thumbnail",
+          "name": "thumbnail",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadHeif, thumbnail)",
+          "priority": 4,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Rotate image using exif orientation",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT",
+            "VIPS_ARGUMENT_DEPRECATED"
+          ],
+          "kind": "BOOL",
+          "long_name": "Autorotate",
+          "name": "autorotate",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadHeif, autorotate)",
+          "priority": 21,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT | VIPS_ARGUMENT_DEPRECATED",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Remove all denial of service limits",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOOL",
+          "long_name": "Unlimited",
+          "name": "unlimited",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadHeif, unlimited)",
+          "priority": 22,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        }
+      ],
+      "depth": 4,
+      "description": "load a HEIF image",
+      "flags": [],
+      "nickname": "heifload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/heifload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadHeif",
+      "wrapper": null
+    },
+    "VipsForeignLoadHeifBuffer": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Buffer to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Buffer",
+          "name": "buffer",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadHeifBuffer, buf)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_BLOB",
+            "type_macro": "VIPS_TYPE_BLOB",
+            "value_type": "VipsBlob"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load heif from buffer",
+      "flags": [],
+      "nickname": "heifload_buffer",
+      "parent": "VipsForeignLoadHeif",
+      "source_file": "original/libvips/foreign/heifload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadHeifBuffer",
+      "wrapper": {
+        "function": "vips_heifload_buffer",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "buf",
+            "text": "void *buf",
+            "type": "void",
+            "variadic": false
+          },
+          {
+            "name": "len",
+            "text": "size_t len",
+            "type": "size_t",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_heifload_buffer(void *buf, size_t len, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadHeifFile": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Filename to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Filename",
+          "name": "filename",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadHeifFile, filename)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load heif from file",
+      "flags": [],
+      "nickname": "heifload",
+      "parent": "VipsForeignLoadHeif",
+      "source_file": "original/libvips/foreign/heifload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadHeifFile",
+      "wrapper": {
+        "function": "vips_heifload",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "filename",
+            "text": "const char *filename",
+            "type": "const char",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_heifload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadHeifSource": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Source to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "OBJECT",
+          "long_name": "Source",
+          "name": "source",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadHeifSource, source)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_SOURCE",
+            "type_macro": "VIPS_TYPE_SOURCE",
+            "value_type": "VipsSource"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load heif from source",
+      "flags": [
+        "VIPS_OPERATION_NOCACHE"
+      ],
+      "nickname": "heifload_source",
+      "parent": "VipsForeignLoadHeif",
+      "source_file": "original/libvips/foreign/heifload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadHeifSource",
+      "wrapper": {
+        "function": "vips_heifload_source",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "source",
+            "text": "VipsSource *source",
+            "type": "VipsSource",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_heifload_source(VipsSource *source, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
     "VipsForeignLoadJpeg": {
       "abstract": true,
       "arguments": [
@@ -10442,6 +11057,677 @@
           }
         ],
         "signature": "VIPS_API int vips_jpegload_source(VipsSource *source, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadJxl": {
+      "abstract": true,
+      "arguments": [],
+      "depth": 4,
+      "description": "load JPEG-XL image",
+      "flags": [
+        "VIPS_OPERATION_UNTRUSTED"
+      ],
+      "nickname": "jxlload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/jxlload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadJxl",
+      "wrapper": null
+    },
+    "VipsForeignLoadJxlBuffer": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Buffer to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Buffer",
+          "name": "buffer",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadJxlBuffer, buf)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_BLOB",
+            "type_macro": "VIPS_TYPE_BLOB",
+            "value_type": "VipsBlob"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load jxl from buffer",
+      "flags": [],
+      "nickname": "jxlload_buffer",
+      "parent": "VipsForeignLoadJxl",
+      "source_file": "original/libvips/foreign/jxlload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadJxlBuffer",
+      "wrapper": {
+        "function": "vips_jxlload_buffer",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "buf",
+            "text": "void *buf",
+            "type": "void",
+            "variadic": false
+          },
+          {
+            "name": "len",
+            "text": "size_t len",
+            "type": "size_t",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_jxlload_buffer(void *buf, size_t len, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadJxlFile": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Filename to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Filename",
+          "name": "filename",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadJxlFile, filename)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load jxl from file",
+      "flags": [],
+      "nickname": "jxlload",
+      "parent": "VipsForeignLoadJxl",
+      "source_file": "original/libvips/foreign/jxlload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadJxlFile",
+      "wrapper": {
+        "function": "vips_jxlload",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "filename",
+            "text": "const char *filename",
+            "type": "const char",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_jxlload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadJxlSource": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Source to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "OBJECT",
+          "long_name": "Source",
+          "name": "source",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadJxlSource, source)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_SOURCE",
+            "type_macro": "VIPS_TYPE_SOURCE",
+            "value_type": "VipsSource"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load jxl from source",
+      "flags": [
+        "VIPS_OPERATION_NOCACHE"
+      ],
+      "nickname": "jxlload_source",
+      "parent": "VipsForeignLoadJxl",
+      "source_file": "original/libvips/foreign/jxlload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadJxlSource",
+      "wrapper": {
+        "function": "vips_jxlload_source",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "source",
+            "text": "VipsSource *source",
+            "type": "VipsSource",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_jxlload_source(VipsSource *source, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadMagick": {
+      "abstract": true,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Canvas resolution for rendering vector formats like SVG",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Density",
+          "name": "density",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagick, density)",
+          "priority": 21,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        },
+        {
+          "construct": true,
+          "default": "0",
+          "description": "First page to load",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Page",
+          "max": "100000",
+          "min": "0",
+          "name": "page",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagick, page)",
+          "priority": 22,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "1",
+          "description": "Number of pages to load, -1 for all",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "n",
+          "max": "100000",
+          "min": "-1",
+          "name": "n",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagick, n)",
+          "priority": 23,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Read all frames from an image",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT",
+            "VIPS_ARGUMENT_DEPRECATED"
+          ],
+          "kind": "BOOL",
+          "long_name": "All frames",
+          "name": "all_frames",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagick, all_frames)",
+          "priority": 20,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT | VIPS_ARGUMENT_DEPRECATED",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        }
+      ],
+      "depth": 4,
+      "description": "load with ImageMagick",
+      "flags": [
+        "VIPS_OPERATION_NOCACHE",
+        "VIPS_OPERATION_UNTRUSTED"
+      ],
+      "nickname": "magickload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/magick6load.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadMagick",
+      "wrapper": null
+    },
+    "VipsForeignLoadMagick7": {
+      "abstract": true,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Canvas resolution for rendering vector formats like SVG",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Density",
+          "name": "density",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagick7, density)",
+          "priority": 20,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        },
+        {
+          "construct": true,
+          "default": "0",
+          "description": "First page to load",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Page",
+          "max": "100000",
+          "min": "0",
+          "name": "page",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagick7, page)",
+          "priority": 21,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "1",
+          "description": "Number of pages to load, -1 for all",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "n",
+          "max": "100000",
+          "min": "-1",
+          "name": "n",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagick7, n)",
+          "priority": 22,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Read all frames from an image",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT",
+            "VIPS_ARGUMENT_DEPRECATED"
+          ],
+          "kind": "BOOL",
+          "long_name": "All frames",
+          "name": "all_frames",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagick7, all_frames)",
+          "priority": 23,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT | VIPS_ARGUMENT_DEPRECATED",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        }
+      ],
+      "depth": 4,
+      "description": "load with ImageMagick7",
+      "flags": [
+        "VIPS_OPERATION_NOCACHE",
+        "VIPS_OPERATION_UNTRUSTED"
+      ],
+      "nickname": "magickload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/magick7load.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadMagick7",
+      "wrapper": null
+    },
+    "VipsForeignLoadMagick7Buffer": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Buffer to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Buffer",
+          "name": "buffer",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagick7Buffer, buf)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_BLOB",
+            "type_macro": "VIPS_TYPE_BLOB",
+            "value_type": "VipsBlob"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load buffer with ImageMagick7",
+      "flags": [],
+      "nickname": "magickload_buffer",
+      "parent": "VipsForeignLoadMagick7",
+      "source_file": "original/libvips/foreign/magick7load.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadMagick7Buffer",
+      "wrapper": {
+        "function": "vips_magickload_buffer",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "buf",
+            "text": "void *buf",
+            "type": "void",
+            "variadic": false
+          },
+          {
+            "name": "len",
+            "text": "size_t len",
+            "type": "size_t",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_magickload_buffer(void *buf, size_t len, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadMagick7File": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Filename to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Filename",
+          "name": "filename",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagick7File, filename)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load file with ImageMagick7",
+      "flags": [],
+      "nickname": "magickload",
+      "parent": "VipsForeignLoadMagick7",
+      "source_file": "original/libvips/foreign/magick7load.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadMagick7File",
+      "wrapper": {
+        "function": "vips_magickload",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "filename",
+            "text": "const char *filename",
+            "type": "const char",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_magickload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadMagickBuffer": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Buffer to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Buffer",
+          "name": "buffer",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagickBuffer, buf)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_BLOB",
+            "type_macro": "VIPS_TYPE_BLOB",
+            "value_type": "VipsBlob"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load buffer with ImageMagick",
+      "flags": [],
+      "nickname": "magickload_buffer",
+      "parent": "VipsForeignLoadMagick",
+      "source_file": "original/libvips/foreign/magick6load.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadMagickBuffer",
+      "wrapper": {
+        "function": "vips_magickload_buffer",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "buf",
+            "text": "void *buf",
+            "type": "void",
+            "variadic": false
+          },
+          {
+            "name": "len",
+            "text": "size_t len",
+            "type": "size_t",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_magickload_buffer(void *buf, size_t len, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadMagickFile": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Filename to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Filename",
+          "name": "filename",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadMagickFile, filename)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load file with ImageMagick",
+      "flags": [],
+      "nickname": "magickload",
+      "parent": "VipsForeignLoadMagick",
+      "source_file": "original/libvips/foreign/magick6load.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadMagickFile",
+      "wrapper": {
+        "function": "vips_magickload",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "filename",
+            "text": "const char *filename",
+            "type": "const char",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_magickload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
         "variadic": true
       }
     },
@@ -10828,6 +12114,592 @@
           }
         ],
         "signature": "VIPS_API int vips_gifload_source(VipsSource *source, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadOpenslide": {
+      "abstract": true,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "0",
+          "description": "Load this level from the file",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Level",
+          "max": "100000",
+          "min": "0",
+          "name": "level",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadOpenslide, level)",
+          "priority": 20,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Crop to image bounds",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOOL",
+          "long_name": "Autocrop",
+          "name": "autocrop",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadOpenslide, autocrop)",
+          "priority": 21,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        },
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Load this associated image",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Associated",
+          "name": "associated",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadOpenslide, associated)",
+          "priority": 22,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Attach all associated images",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOOL",
+          "long_name": "Attach associated",
+          "name": "attach_associated",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadOpenslide, attach_associated)",
+          "priority": 23,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Output RGB (not RGBA)",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOOL",
+          "long_name": "RGB",
+          "name": "rgb",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadOpenslide, rgb)",
+          "priority": 24,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        }
+      ],
+      "depth": 4,
+      "description": "load OpenSlide base class",
+      "flags": [
+        "VIPS_OPERATION_NOCACHE",
+        "VIPS_OPERATION_UNTRUSTED"
+      ],
+      "nickname": "openslideload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/openslideload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadOpenslide",
+      "wrapper": null
+    },
+    "VipsForeignLoadOpenslideFile": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Filename to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Filename",
+          "name": "filename",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadOpenslideFile, filename)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load file with OpenSlide",
+      "flags": [],
+      "nickname": "openslideload",
+      "parent": "VipsForeignLoadOpenslide",
+      "source_file": "original/libvips/foreign/openslideload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadOpenslideFile",
+      "wrapper": {
+        "function": "vips_openslideload",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "filename",
+            "text": "const char *filename",
+            "type": "const char",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_openslideload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadOpenslideSource": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Source to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "OBJECT",
+          "long_name": "Source",
+          "name": "source",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadOpenslideSource, source)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_SOURCE",
+            "type_macro": "VIPS_TYPE_SOURCE",
+            "value_type": "VipsSource"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load source with OpenSlide",
+      "flags": [],
+      "nickname": "openslideload_source",
+      "parent": "VipsForeignLoadOpenslide",
+      "source_file": "original/libvips/foreign/openslideload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadOpenslideSource",
+      "wrapper": {
+        "function": "vips_openslideload_source",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "source",
+            "text": "VipsSource *source",
+            "type": "VipsSource",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_openslideload_source(VipsSource *source, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadPdf": {
+      "abstract": true,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "0",
+          "description": "First page to load",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Page",
+          "max": "100000",
+          "min": "0",
+          "name": "page",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadPdf, page_no)",
+          "priority": 20,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "1",
+          "description": "Number of pages to load, -1 for all",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "n",
+          "max": "100000",
+          "min": "-1",
+          "name": "n",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadPdf, n)",
+          "priority": 21,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "72.0",
+          "description": "DPI to render at",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "DOUBLE",
+          "long_name": "DPI",
+          "max": "100000.0",
+          "min": "0.001",
+          "name": "dpi",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadPdf, dpi)",
+          "priority": 22,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_DOUBLE",
+            "value_type": "gdouble"
+          }
+        },
+        {
+          "construct": true,
+          "default": "1.0",
+          "description": "Factor to scale by",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "DOUBLE",
+          "long_name": "Scale",
+          "max": "100000.0",
+          "min": "0.001",
+          "name": "scale",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadPdf, scale)",
+          "priority": 23,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_DOUBLE",
+            "value_type": "gdouble"
+          }
+        },
+        {
+          "construct": true,
+          "default": null,
+          "description": "Background colour",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Background",
+          "name": "background",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadPdf, background)",
+          "priority": 24,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "VIPS_TYPE_ARRAY_DOUBLE",
+            "type_macro": "VIPS_TYPE_ARRAY_DOUBLE",
+            "value_type": "VipsArrayDouble"
+          }
+        },
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Password to decrypt with",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Password",
+          "name": "password",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadPdf, password)",
+          "priority": 25,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        }
+      ],
+      "depth": 4,
+      "description": "load PDF with PDFium",
+      "flags": [
+        "VIPS_OPERATION_UNTRUSTED"
+      ],
+      "nickname": "pdfload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/popplerload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadPdf",
+      "wrapper": null
+    },
+    "VipsForeignLoadPdfBuffer": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Buffer to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Buffer",
+          "name": "buffer",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadPdfBuffer, buf)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_BLOB",
+            "type_macro": "VIPS_TYPE_BLOB",
+            "value_type": "VipsBlob"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load PDF from buffer",
+      "flags": [],
+      "nickname": "pdfload_buffer",
+      "parent": "VipsForeignLoadPdf",
+      "source_file": "original/libvips/foreign/popplerload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadPdfBuffer",
+      "wrapper": {
+        "function": "vips_pdfload_buffer",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "buf",
+            "text": "void *buf",
+            "type": "void",
+            "variadic": false
+          },
+          {
+            "name": "len",
+            "text": "size_t len",
+            "type": "size_t",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_pdfload_buffer(void *buf, size_t len, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadPdfFile": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Filename to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Filename",
+          "name": "filename",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadPdfFile, filename)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load PDF from file",
+      "flags": [],
+      "nickname": "pdfload",
+      "parent": "VipsForeignLoadPdf",
+      "source_file": "original/libvips/foreign/popplerload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadPdfFile",
+      "wrapper": {
+        "function": "vips_pdfload",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "filename",
+            "text": "const char *filename",
+            "type": "const char",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_pdfload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignLoadPdfSource": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Source to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "OBJECT",
+          "long_name": "Source",
+          "name": "source",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadPdfSource, source)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_SOURCE",
+            "type_macro": "VIPS_TYPE_SOURCE",
+            "value_type": "VipsSource"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load PDF from source",
+      "flags": [
+        "VIPS_OPERATION_NOCACHE"
+      ],
+      "nickname": "pdfload_source",
+      "parent": "VipsForeignLoadPdf",
+      "source_file": "original/libvips/foreign/popplerload.c",
+      "supported": false,
+      "type_name": "VipsForeignLoadPdfSource",
+      "wrapper": {
+        "function": "vips_pdfload_source",
+        "header": "foreign.h",
+        "last_fixed_name": "out",
+        "parameters": [
+          {
+            "name": "source",
+            "text": "VipsSource *source",
+            "type": "VipsSource",
+            "variadic": false
+          },
+          {
+            "name": "out",
+            "text": "VipsImage **out",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_pdfload_source(VipsSource *source, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
         "variadic": true
       }
     },
@@ -12527,6 +14399,34 @@
       "type_name": "VipsForeignSave",
       "wrapper": null
     },
+    "VipsForeignSaveAvifFile": {
+      "abstract": false,
+      "arguments": [],
+      "depth": 5,
+      "description": "save avif to file",
+      "flags": [],
+      "nickname": "avifsave",
+      "parent": "VipsForeignSaveHeif",
+      "source_file": null,
+      "supported": false,
+      "type_name": "VipsForeignSaveAvifFile",
+      "wrapper": null
+    },
+    "VipsForeignSaveAvifTarget": {
+      "abstract": false,
+      "arguments": [],
+      "depth": 6,
+      "description": "save image in AVIF format",
+      "flags": [
+        "VIPS_OPERATION_DEPRECATED"
+      ],
+      "nickname": "avifsave_target",
+      "parent": "VipsForeignSaveHeifTarget",
+      "source_file": "original/libvips/foreign/heifsave.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveAvifTarget",
+      "wrapper": null
+    },
     "VipsForeignSaveCsv": {
       "abstract": true,
       "arguments": [
@@ -12680,6 +14580,388 @@
           }
         ],
         "signature": "VIPS_API int vips_csvsave_target(VipsImage *in, VipsTarget *target, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignSaveHeif": {
+      "abstract": true,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "50",
+          "description": "Q factor",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Q",
+          "max": "100",
+          "min": "1",
+          "name": "Q",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeif, Q)",
+          "priority": 10,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "12",
+          "description": "Number of bits per pixel",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Bit depth",
+          "max": "16",
+          "min": "1",
+          "name": "bitdepth",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeif, bitdepth)",
+          "priority": 11,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Enable lossless compression",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOOL",
+          "long_name": "Lossless",
+          "name": "lossless",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeif, lossless)",
+          "priority": 13,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        },
+        {
+          "construct": true,
+          "default": "VIPS_FOREIGN_HEIF_COMPRESSION_HEVC",
+          "description": "Compression format",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "ENUM",
+          "long_name": "Compression",
+          "name": "compression",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeif, compression)",
+          "priority": 14,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "VIPS_TYPE_FOREIGN_HEIF_COMPRESSION",
+            "type_macro": "VIPS_TYPE_FOREIGN_HEIF_COMPRESSION",
+            "value_type": "VipsForeignHeifCompression"
+          }
+        },
+        {
+          "construct": true,
+          "default": "4",
+          "description": "CPU effort",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Effort",
+          "max": "9",
+          "min": "0",
+          "name": "effort",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeif, effort)",
+          "priority": 15,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "VIPS_FOREIGN_SUBSAMPLE_AUTO",
+          "description": "Select chroma subsample operation mode",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "ENUM",
+          "long_name": "Subsample mode",
+          "name": "subsample_mode",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeif, subsample_mode)",
+          "priority": 16,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "VIPS_TYPE_FOREIGN_SUBSAMPLE",
+            "type_macro": "VIPS_TYPE_FOREIGN_SUBSAMPLE",
+            "value_type": "VipsForeignSubsample"
+          }
+        },
+        {
+          "construct": true,
+          "default": "5",
+          "description": "CPU effort",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT",
+            "VIPS_ARGUMENT_DEPRECATED"
+          ],
+          "kind": "INT",
+          "long_name": "Speed",
+          "max": "9",
+          "min": "0",
+          "name": "speed",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeif, speed)",
+          "priority": 17,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT | VIPS_ARGUMENT_DEPRECATED",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "VIPS_FOREIGN_HEIF_ENCODER_AUTO",
+          "description": "Select encoder to use",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "ENUM",
+          "long_name": "Encoder",
+          "name": "encoder",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeif, selected_encoder)",
+          "priority": 18,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "VIPS_TYPE_FOREIGN_HEIF_ENCODER",
+            "type_macro": "VIPS_TYPE_FOREIGN_HEIF_ENCODER",
+            "value_type": "VipsForeignHeifEncoder"
+          }
+        }
+      ],
+      "depth": 4,
+      "description": "save image in HEIF format",
+      "flags": [],
+      "nickname": "heifsave_base",
+      "parent": "VipsForeignSave",
+      "source_file": "original/libvips/foreign/heifsave.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveHeif",
+      "wrapper": null
+    },
+    "VipsForeignSaveHeifBuffer": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Buffer to save to",
+          "direction": "output",
+          "flags": [
+            "VIPS_ARGUMENT_OUTPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Buffer",
+          "name": "buffer",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeifBuffer, buf)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_OUTPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_BLOB",
+            "type_macro": "VIPS_TYPE_BLOB",
+            "value_type": "VipsBlob"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "save heif to buffer",
+      "flags": [],
+      "nickname": "heifsave_buffer",
+      "parent": "VipsForeignSaveHeif",
+      "source_file": "original/libvips/foreign/heifsave.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveHeifBuffer",
+      "wrapper": {
+        "function": "vips_heifsave_buffer",
+        "header": "foreign.h",
+        "last_fixed_name": "len",
+        "parameters": [
+          {
+            "name": "in",
+            "text": "VipsImage *in",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "name": "buf",
+            "text": "void **buf",
+            "type": "void",
+            "variadic": false
+          },
+          {
+            "name": "len",
+            "text": "size_t *len",
+            "type": "size_t",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_heifsave_buffer(VipsImage *in, void **buf, size_t *len, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignSaveHeifFile": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Filename to save to",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Filename",
+          "name": "filename",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeifFile, filename)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "save heif to file",
+      "flags": [],
+      "nickname": "heifsave",
+      "parent": "VipsForeignSaveHeif",
+      "source_file": "original/libvips/foreign/heifsave.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveHeifFile",
+      "wrapper": {
+        "function": "vips_heifsave",
+        "header": "foreign.h",
+        "last_fixed_name": "filename",
+        "parameters": [
+          {
+            "name": "in",
+            "text": "VipsImage *in",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "name": "filename",
+            "text": "const char *filename",
+            "type": "const char",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_heifsave(VipsImage *in, const char *filename, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignSaveHeifTarget": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Target to save to",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "OBJECT",
+          "long_name": "Target",
+          "name": "target",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveHeifTarget, target)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_TARGET",
+            "type_macro": "VIPS_TYPE_TARGET",
+            "value_type": "VipsTarget"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "save heif to target",
+      "flags": [],
+      "nickname": "heifsave_target",
+      "parent": "VipsForeignSaveHeif",
+      "source_file": "original/libvips/foreign/heifsave.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveHeifTarget",
+      "wrapper": {
+        "function": "vips_heifsave_target",
+        "header": "foreign.h",
+        "last_fixed_name": "target",
+        "parameters": [
+          {
+            "name": "in",
+            "text": "VipsImage *in",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "name": "target",
+            "text": "VipsTarget *target",
+            "type": "VipsTarget",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_heifsave_target(VipsImage *in, VipsTarget *target, ...) G_GNUC_NULL_TERMINATED;",
         "variadic": true
       }
     },
@@ -13133,6 +15415,635 @@
         "signature": "VIPS_API int vips_jpegsave_target(VipsImage *in, VipsTarget *target, ...) G_GNUC_NULL_TERMINATED;",
         "variadic": true
       }
+    },
+    "VipsForeignSaveJxl": {
+      "abstract": true,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "0",
+          "description": "Decode speed tier",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Tier",
+          "max": "4",
+          "min": "0",
+          "name": "tier",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveJxl, tier)",
+          "priority": 10,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "1.0",
+          "description": "Target butteraugli distance",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "DOUBLE",
+          "long_name": "Distance",
+          "max": "25.0",
+          "min": "0.0",
+          "name": "distance",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveJxl, distance)",
+          "priority": 11,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_DOUBLE",
+            "value_type": "gdouble"
+          }
+        },
+        {
+          "construct": true,
+          "default": "7",
+          "description": "Encoding effort",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Effort",
+          "max": "9",
+          "min": "1",
+          "name": "effort",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveJxl, effort)",
+          "priority": 12,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Enable lossless compression",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOOL",
+          "long_name": "Lossless",
+          "name": "lossless",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveJxl, lossless)",
+          "priority": 13,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        },
+        {
+          "construct": true,
+          "default": "75",
+          "description": "Quality factor",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Q",
+          "max": "100",
+          "min": "0",
+          "name": "Q",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveJxl, Q)",
+          "priority": 14,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        }
+      ],
+      "depth": 4,
+      "description": "save image in JPEG-XL format",
+      "flags": [
+        "VIPS_OPERATION_UNTRUSTED"
+      ],
+      "nickname": "jxlsave_base",
+      "parent": "VipsForeignSave",
+      "source_file": "original/libvips/foreign/jxlsave.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveJxl",
+      "wrapper": null
+    },
+    "VipsForeignSaveJxlBuffer": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Buffer to save to",
+          "direction": "output",
+          "flags": [
+            "VIPS_ARGUMENT_OUTPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Buffer",
+          "name": "buffer",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveJxlBuffer, buf)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_OUTPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_BLOB",
+            "type_macro": "VIPS_TYPE_BLOB",
+            "value_type": "VipsBlob"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "save jxl to buffer",
+      "flags": [],
+      "nickname": "jxlsave_buffer",
+      "parent": "VipsForeignSaveJxl",
+      "source_file": "original/libvips/foreign/jxlsave.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveJxlBuffer",
+      "wrapper": {
+        "function": "vips_jxlsave_buffer",
+        "header": "foreign.h",
+        "last_fixed_name": "len",
+        "parameters": [
+          {
+            "name": "in",
+            "text": "VipsImage *in",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "name": "buf",
+            "text": "void **buf",
+            "type": "void",
+            "variadic": false
+          },
+          {
+            "name": "len",
+            "text": "size_t *len",
+            "type": "size_t",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_jxlsave_buffer(VipsImage *in, void **buf, size_t *len, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignSaveJxlFile": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Filename to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Filename",
+          "name": "filename",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveJxlFile, filename)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "save jxl to file",
+      "flags": [],
+      "nickname": "jxlsave",
+      "parent": "VipsForeignSaveJxl",
+      "source_file": "original/libvips/foreign/jxlsave.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveJxlFile",
+      "wrapper": {
+        "function": "vips_jxlsave",
+        "header": "foreign.h",
+        "last_fixed_name": "filename",
+        "parameters": [
+          {
+            "name": "in",
+            "text": "VipsImage *in",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "name": "filename",
+            "text": "const char *filename",
+            "type": "const char",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_jxlsave(VipsImage *in, const char *filename, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignSaveJxlTarget": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Target to save to",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "OBJECT",
+          "long_name": "Target",
+          "name": "target",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveJxlTarget, target)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_TARGET",
+            "type_macro": "VIPS_TYPE_TARGET",
+            "value_type": "VipsTarget"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "save jxl to target",
+      "flags": [],
+      "nickname": "jxlsave_target",
+      "parent": "VipsForeignSaveJxl",
+      "source_file": "original/libvips/foreign/jxlsave.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveJxlTarget",
+      "wrapper": {
+        "function": "vips_jxlsave_target",
+        "header": "foreign.h",
+        "last_fixed_name": "target",
+        "parameters": [
+          {
+            "name": "in",
+            "text": "VipsImage *in",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "name": "target",
+            "text": "VipsTarget *target",
+            "type": "VipsTarget",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_jxlsave_target(VipsImage *in, VipsTarget *target, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignSaveMagick": {
+      "abstract": true,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Format to save in",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Format",
+          "name": "format",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveMagick, format)",
+          "priority": 2,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        },
+        {
+          "construct": true,
+          "default": "0",
+          "description": "Quality to use",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Quality",
+          "max": "100",
+          "min": "0",
+          "name": "quality",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveMagick, quality)",
+          "priority": 3,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Apply GIF frames optimization",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOOL",
+          "long_name": "Optimize_gif_frames",
+          "name": "optimize_gif_frames",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveMagick, optimize_gif_frames)",
+          "priority": 4,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Apply GIF transparency optimization",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOOL",
+          "long_name": "Optimize_gif_transparency",
+          "name": "optimize_gif_transparency",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveMagick,\n\t\t\toptimize_gif_transparency)",
+          "priority": 5,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        },
+        {
+          "construct": true,
+          "default": "0",
+          "description": "Number of bits per pixel",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "Bit depth",
+          "max": "8",
+          "min": "0",
+          "name": "bitdepth",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveMagick, bitdepth)",
+          "priority": 6,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        }
+      ],
+      "depth": 4,
+      "description": "save with ImageMagick",
+      "flags": [
+        "VIPS_OPERATION_UNTRUSTED"
+      ],
+      "nickname": "magicksave_base",
+      "parent": "VipsForeignSave",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveMagick",
+      "wrapper": null
+    },
+    "VipsForeignSaveMagickBmpBuffer": {
+      "abstract": false,
+      "arguments": [],
+      "depth": 6,
+      "description": "save bmp image to magick buffer",
+      "flags": [
+        "VIPS_OPERATION_DEPRECATED"
+      ],
+      "nickname": "magicksave_bmp_buffer",
+      "parent": "VipsForeignSaveMagickBuffer",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveMagickBmpBuffer",
+      "wrapper": null
+    },
+    "VipsForeignSaveMagickBmpFile": {
+      "abstract": false,
+      "arguments": [],
+      "depth": 6,
+      "description": "save bmp image with ImageMagick",
+      "flags": [
+        "VIPS_OPERATION_DEPRECATED"
+      ],
+      "nickname": "magicksave_bmp",
+      "parent": "VipsForeignSaveMagickFile",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveMagickBmpFile",
+      "wrapper": null
+    },
+    "VipsForeignSaveMagickBuffer": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Buffer to save to",
+          "direction": "output",
+          "flags": [
+            "VIPS_ARGUMENT_OUTPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Buffer",
+          "name": "buffer",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveMagickBuffer, buf)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_OUTPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_BLOB",
+            "type_macro": "VIPS_TYPE_BLOB",
+            "value_type": "VipsBlob"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "save image to magick buffer",
+      "flags": [],
+      "nickname": "magicksave_buffer",
+      "parent": "VipsForeignSaveMagick",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveMagickBuffer",
+      "wrapper": {
+        "function": "vips_magicksave_buffer",
+        "header": "foreign.h",
+        "last_fixed_name": "len",
+        "parameters": [
+          {
+            "name": "in",
+            "text": "VipsImage *in",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "name": "buf",
+            "text": "void **buf",
+            "type": "void",
+            "variadic": false
+          },
+          {
+            "name": "len",
+            "text": "size_t *len",
+            "type": "size_t",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_magicksave_buffer(VipsImage *in, void **buf, size_t *len, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignSaveMagickFile": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": "NULL",
+          "description": "Filename to save to",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "STRING",
+          "long_name": "Filename",
+          "name": "filename",
+          "offset": "G_STRUCT_OFFSET(VipsForeignSaveMagickFile, filename)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "G_TYPE_STRING",
+            "value_type": "gchararray"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "save file with ImageMagick",
+      "flags": [],
+      "nickname": "magicksave",
+      "parent": "VipsForeignSaveMagick",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveMagickFile",
+      "wrapper": {
+        "function": "vips_magicksave",
+        "header": "foreign.h",
+        "last_fixed_name": "filename",
+        "parameters": [
+          {
+            "name": "in",
+            "text": "VipsImage *in",
+            "type": "VipsImage",
+            "variadic": false
+          },
+          {
+            "name": "filename",
+            "text": "const char *filename",
+            "type": "const char",
+            "variadic": false
+          },
+          {
+            "text": "...",
+            "variadic": true
+          }
+        ],
+        "signature": "VIPS_API int vips_magicksave(VipsImage *in, const char *filename, ...) G_GNUC_NULL_TERMINATED;",
+        "variadic": true
+      }
+    },
+    "VipsForeignSaveMagickGifBuffer": {
+      "abstract": false,
+      "arguments": [],
+      "depth": 6,
+      "description": "save gif image to magick buffer",
+      "flags": [
+        "VIPS_OPERATION_DEPRECATED"
+      ],
+      "nickname": "magicksave_gif_buffer",
+      "parent": "VipsForeignSaveMagickBuffer",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveMagickGifBuffer",
+      "wrapper": null
+    },
+    "VipsForeignSaveMagickGifFile": {
+      "abstract": false,
+      "arguments": [],
+      "depth": 6,
+      "description": "save gif image with ImageMagick",
+      "flags": [
+        "VIPS_OPERATION_DEPRECATED"
+      ],
+      "nickname": "magicksave_gif",
+      "parent": "VipsForeignSaveMagickFile",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "supported": false,
+      "type_name": "VipsForeignSaveMagickGifFile",
+      "wrapper": null
     },
     "VipsForeignSaveMatrix": {
       "abstract": true,
@@ -15711,7 +18622,7 @@
       "description": "frequency-domain filter operations",
       "flags": [],
       "nickname": "freqfilt",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/freqfilt/freqfilt.c",
       "supported": false,
       "type_name": "VipsFreqfilt",
@@ -15991,7 +18902,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "gaussblur",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/convolution/gaussblur.c",
       "supported": false,
       "type_name": "VipsGaussblur",
@@ -16448,7 +19359,7 @@
       "description": "read a point from an image",
       "flags": [],
       "nickname": "getpoint",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/arithmetic/getpoint.c",
       "supported": false,
       "type_name": "VipsGetpoint",
@@ -16592,7 +19503,7 @@
       "description": "global balance an image mosaic",
       "flags": [],
       "nickname": "globalbalance",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/mosaicing/global_balance.c",
       "supported": false,
       "type_name": "VipsGlobalbalance",
@@ -17022,7 +19933,7 @@
       "description": "estimate image entropy",
       "flags": [],
       "nickname": "hist_entropy",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/hist_entropy.c",
       "supported": false,
       "type_name": "VipsHistEntropy",
@@ -17127,7 +20038,7 @@
       "description": "histogram equalisation",
       "flags": [],
       "nickname": "hist_equal",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/hist_equal.c",
       "supported": false,
       "type_name": "VipsHistEqual",
@@ -17485,7 +20396,7 @@
       "description": "test for monotonicity",
       "flags": [],
       "nickname": "hist_ismonotonic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/hist_ismonotonic.c",
       "supported": false,
       "type_name": "VipsHistIsmonotonic",
@@ -17640,7 +20551,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "hist_local",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/hist_local.c",
       "supported": false,
       "type_name": "VipsHistLocal",
@@ -17822,7 +20733,7 @@
       "description": "normalise histogram",
       "flags": [],
       "nickname": "hist_norm",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/hist_norm.c",
       "supported": false,
       "type_name": "VipsHistNorm",
@@ -17904,7 +20815,7 @@
       "description": "plot histogram",
       "flags": [],
       "nickname": "hist_plot",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/hist_plot.c",
       "supported": false,
       "type_name": "VipsHistPlot",
@@ -18000,7 +20911,7 @@
       "description": "histogram operations",
       "flags": [],
       "nickname": "histogram",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/histogram.c",
       "supported": false,
       "type_name": "VipsHistogram",
@@ -20070,7 +22981,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "maplut",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/maplut.c",
       "supported": false,
       "type_name": "VipsMaplut",
@@ -20154,7 +23065,7 @@
       "wrapper": null
     },
     "VipsMaskButterworth": {
-      "abstract": true,
+      "abstract": false,
       "arguments": [
         {
           "construct": true,
@@ -21643,7 +24554,7 @@
       "description": "first-order match of two images",
       "flags": [],
       "nickname": "match",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/mosaicing/match.c",
       "supported": false,
       "type_name": "VipsMatch",
@@ -21998,7 +24909,7 @@
       "description": "invert an matrix",
       "flags": [],
       "nickname": "matrixinvert",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/mosaicing/matrixinvert.c",
       "supported": false,
       "type_name": "VipsMatrixinvert",
@@ -22417,7 +25328,7 @@
       "description": "measure a set of patches on a color chart",
       "flags": [],
       "nickname": "measure",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/arithmetic/measure.c",
       "supported": false,
       "type_name": "VipsMeasure",
@@ -22629,7 +25540,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "merge",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/mosaicing/merge.c",
       "supported": false,
       "type_name": "VipsMerge",
@@ -22979,7 +25890,7 @@
       "description": "morphological operations",
       "flags": [],
       "nickname": "morphology",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/morphology/morphology.c",
       "supported": false,
       "type_name": "VipsMorphology",
@@ -23408,7 +26319,7 @@
       "description": "mosaic two images",
       "flags": [],
       "nickname": "mosaic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/mosaicing/mosaic.c",
       "supported": false,
       "type_name": "VipsMosaic",
@@ -23898,7 +26809,7 @@
       "description": "first-order mosaic of two images",
       "flags": [],
       "nickname": "mosaic1",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/mosaicing/mosaic1.c",
       "supported": false,
       "type_name": "VipsMosaic1",
@@ -24160,7 +27071,7 @@
       "description": "operations",
       "flags": [],
       "nickname": "operation",
-      "parent": null,
+      "parent": "VipsObject",
       "source_file": "original/libvips/iofuncs/operation.c",
       "supported": false,
       "type_name": "VipsOperation",
@@ -24244,7 +27155,7 @@
       "description": "find threshold for percent of pixels",
       "flags": [],
       "nickname": "percent",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/percent.c",
       "supported": false,
       "type_name": "VipsPercent",
@@ -24851,7 +27762,7 @@
       "description": "load named ICC profile",
       "flags": [],
       "nickname": "profile_load",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/profile_load.c",
       "supported": false,
       "type_name": "VipsProfileLoad",
@@ -26052,7 +28963,7 @@
       "description": "resample operations",
       "flags": [],
       "nickname": "resample",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/resample/resample.c",
       "supported": false,
       "type_name": "VipsResample",
@@ -27079,7 +29990,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "sharpen",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/convolution/sharpen.c",
       "supported": false,
       "type_name": "VipsSharpen",
@@ -28230,7 +31141,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "statistic",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/arithmetic/statistic.c",
       "supported": false,
       "type_name": "VipsStatistic",
@@ -28488,7 +31399,7 @@
       "description": "statistical difference",
       "flags": [],
       "nickname": "stdif",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/histogram/stdif.c",
       "supported": false,
       "type_name": "VipsStdif",
@@ -28812,7 +31723,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "switch",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/conversion/switch.c",
       "supported": false,
       "type_name": "VipsSwitch",
@@ -29586,7 +32497,7 @@
         "VIPS_OPERATION_NOCACHE"
       ],
       "nickname": "thumbnail_base",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/resample/thumbnail.c",
       "supported": false,
       "type_name": "VipsThumbnail",
@@ -30763,11 +33674,11 @@
     "VipsXYZ2CMYK": {
       "abstract": false,
       "arguments": [],
-      "depth": 4,
+      "depth": 2,
       "description": "transform XYZ to CMYK",
       "flags": [],
       "nickname": "XYZ2CMYK",
-      "parent": "VipsColourCode",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/XYZ2CMYK.c",
       "supported": false,
       "type_name": "VipsXYZ2CMYK",
@@ -30948,7 +33859,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "XYZ2scRGB",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/XYZ2scRGB.c",
       "supported": false,
       "type_name": "VipsXYZ2scRGB",
@@ -31561,7 +34472,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "sRGB2scRGB",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/sRGB2scRGB.c",
       "supported": false,
       "type_name": "VipssRGB2scRGB",
@@ -31668,7 +34579,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "scRGB2BW",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/scRGB2BW.c",
       "supported": false,
       "type_name": "VipsscRGB2BW",
@@ -31752,7 +34663,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "scRGB2XYZ",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/scRGB2XYZ.c",
       "supported": false,
       "type_name": "VipsscRGB2XYZ",
@@ -31859,7 +34770,7 @@
         "VIPS_OPERATION_SEQUENTIAL"
       ],
       "nickname": "scRGB2sRGB",
-      "parent": "VipsSystem",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/scRGB2sRGB.c",
       "supported": false,
       "type_name": "VipsscRGB2sRGB",
@@ -32180,10 +35091,10 @@
     },
     "VipsCMYK2XYZ": {
       "abstract": false,
-      "depth": 4,
+      "depth": 2,
       "description": "transform CMYK to XYZ",
       "nickname": "CMYK2XYZ",
-      "parent": "VipsColourCode",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/CMYK2XYZ.c",
       "type_name": "VipsCMYK2XYZ"
     },
@@ -32332,7 +35243,7 @@
       "type_name": "VipsComposite2"
     },
     "VipsCompositeBase": {
-      "abstract": true,
+      "abstract": false,
       "depth": 3,
       "description": "blend images together",
       "nickname": "composite_base",
@@ -32727,6 +35638,42 @@
       "source_file": "original/libvips/foreign/csvload.c",
       "type_name": "VipsForeignLoadCsvSource"
     },
+    "VipsForeignLoadHeif": {
+      "abstract": true,
+      "depth": 4,
+      "description": "load a HEIF image",
+      "nickname": "heifload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/heifload.c",
+      "type_name": "VipsForeignLoadHeif"
+    },
+    "VipsForeignLoadHeifBuffer": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load heif from buffer",
+      "nickname": "heifload_buffer",
+      "parent": "VipsForeignLoadHeif",
+      "source_file": "original/libvips/foreign/heifload.c",
+      "type_name": "VipsForeignLoadHeifBuffer"
+    },
+    "VipsForeignLoadHeifFile": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load heif from file",
+      "nickname": "heifload",
+      "parent": "VipsForeignLoadHeif",
+      "source_file": "original/libvips/foreign/heifload.c",
+      "type_name": "VipsForeignLoadHeifFile"
+    },
+    "VipsForeignLoadHeifSource": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load heif from source",
+      "nickname": "heifload_source",
+      "parent": "VipsForeignLoadHeif",
+      "source_file": "original/libvips/foreign/heifload.c",
+      "type_name": "VipsForeignLoadHeifSource"
+    },
     "VipsForeignLoadJpeg": {
       "abstract": true,
       "depth": 4,
@@ -32762,6 +35709,96 @@
       "parent": "VipsForeignLoadJpeg",
       "source_file": "original/libvips/foreign/jpegload.c",
       "type_name": "VipsForeignLoadJpegSource"
+    },
+    "VipsForeignLoadJxl": {
+      "abstract": true,
+      "depth": 4,
+      "description": "load JPEG-XL image",
+      "nickname": "jxlload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/jxlload.c",
+      "type_name": "VipsForeignLoadJxl"
+    },
+    "VipsForeignLoadJxlBuffer": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load jxl from buffer",
+      "nickname": "jxlload_buffer",
+      "parent": "VipsForeignLoadJxl",
+      "source_file": "original/libvips/foreign/jxlload.c",
+      "type_name": "VipsForeignLoadJxlBuffer"
+    },
+    "VipsForeignLoadJxlFile": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load jxl from file",
+      "nickname": "jxlload",
+      "parent": "VipsForeignLoadJxl",
+      "source_file": "original/libvips/foreign/jxlload.c",
+      "type_name": "VipsForeignLoadJxlFile"
+    },
+    "VipsForeignLoadJxlSource": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load jxl from source",
+      "nickname": "jxlload_source",
+      "parent": "VipsForeignLoadJxl",
+      "source_file": "original/libvips/foreign/jxlload.c",
+      "type_name": "VipsForeignLoadJxlSource"
+    },
+    "VipsForeignLoadMagick": {
+      "abstract": true,
+      "depth": 4,
+      "description": "load with ImageMagick",
+      "nickname": "magickload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/magick6load.c",
+      "type_name": "VipsForeignLoadMagick"
+    },
+    "VipsForeignLoadMagick7": {
+      "abstract": true,
+      "depth": 4,
+      "description": "load with ImageMagick7",
+      "nickname": "magickload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/magick7load.c",
+      "type_name": "VipsForeignLoadMagick7"
+    },
+    "VipsForeignLoadMagick7Buffer": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load buffer with ImageMagick7",
+      "nickname": "magickload_buffer",
+      "parent": "VipsForeignLoadMagick7",
+      "source_file": "original/libvips/foreign/magick7load.c",
+      "type_name": "VipsForeignLoadMagick7Buffer"
+    },
+    "VipsForeignLoadMagick7File": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load file with ImageMagick7",
+      "nickname": "magickload",
+      "parent": "VipsForeignLoadMagick7",
+      "source_file": "original/libvips/foreign/magick7load.c",
+      "type_name": "VipsForeignLoadMagick7File"
+    },
+    "VipsForeignLoadMagickBuffer": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load buffer with ImageMagick",
+      "nickname": "magickload_buffer",
+      "parent": "VipsForeignLoadMagick",
+      "source_file": "original/libvips/foreign/magick6load.c",
+      "type_name": "VipsForeignLoadMagickBuffer"
+    },
+    "VipsForeignLoadMagickFile": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load file with ImageMagick",
+      "nickname": "magickload",
+      "parent": "VipsForeignLoadMagick",
+      "source_file": "original/libvips/foreign/magick6load.c",
+      "type_name": "VipsForeignLoadMagickFile"
     },
     "VipsForeignLoadMatrix": {
       "abstract": true,
@@ -32825,6 +35862,69 @@
       "parent": "VipsForeignLoadNsgif",
       "source_file": "original/libvips/foreign/nsgifload.c",
       "type_name": "VipsForeignLoadNsgifSource"
+    },
+    "VipsForeignLoadOpenslide": {
+      "abstract": true,
+      "depth": 4,
+      "description": "load OpenSlide base class",
+      "nickname": "openslideload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/openslideload.c",
+      "type_name": "VipsForeignLoadOpenslide"
+    },
+    "VipsForeignLoadOpenslideFile": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load file with OpenSlide",
+      "nickname": "openslideload",
+      "parent": "VipsForeignLoadOpenslide",
+      "source_file": "original/libvips/foreign/openslideload.c",
+      "type_name": "VipsForeignLoadOpenslideFile"
+    },
+    "VipsForeignLoadOpenslideSource": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load source with OpenSlide",
+      "nickname": "openslideload_source",
+      "parent": "VipsForeignLoadOpenslide",
+      "source_file": "original/libvips/foreign/openslideload.c",
+      "type_name": "VipsForeignLoadOpenslideSource"
+    },
+    "VipsForeignLoadPdf": {
+      "abstract": true,
+      "depth": 4,
+      "description": "load PDF with PDFium",
+      "nickname": "pdfload_base",
+      "parent": "VipsForeignLoad",
+      "source_file": "original/libvips/foreign/popplerload.c",
+      "type_name": "VipsForeignLoadPdf"
+    },
+    "VipsForeignLoadPdfBuffer": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load PDF from buffer",
+      "nickname": "pdfload_buffer",
+      "parent": "VipsForeignLoadPdf",
+      "source_file": "original/libvips/foreign/popplerload.c",
+      "type_name": "VipsForeignLoadPdfBuffer"
+    },
+    "VipsForeignLoadPdfFile": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load PDF from file",
+      "nickname": "pdfload",
+      "parent": "VipsForeignLoadPdf",
+      "source_file": "original/libvips/foreign/popplerload.c",
+      "type_name": "VipsForeignLoadPdfFile"
+    },
+    "VipsForeignLoadPdfSource": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load PDF from source",
+      "nickname": "pdfload_source",
+      "parent": "VipsForeignLoadPdf",
+      "source_file": "original/libvips/foreign/popplerload.c",
+      "type_name": "VipsForeignLoadPdfSource"
     },
     "VipsForeignLoadPng": {
       "abstract": true,
@@ -33051,6 +36151,24 @@
       "source_file": "original/libvips/foreign/foreign.c",
       "type_name": "VipsForeignSave"
     },
+    "VipsForeignSaveAvifFile": {
+      "abstract": false,
+      "depth": 5,
+      "description": "save avif to file",
+      "nickname": "avifsave",
+      "parent": "VipsForeignSaveHeif",
+      "source_file": null,
+      "type_name": "VipsForeignSaveAvifFile"
+    },
+    "VipsForeignSaveAvifTarget": {
+      "abstract": false,
+      "depth": 6,
+      "description": "save image in AVIF format",
+      "nickname": "avifsave_target",
+      "parent": "VipsForeignSaveHeifTarget",
+      "source_file": "original/libvips/foreign/heifsave.c",
+      "type_name": "VipsForeignSaveAvifTarget"
+    },
     "VipsForeignSaveCsv": {
       "abstract": true,
       "depth": 4,
@@ -33077,6 +36195,42 @@
       "parent": "VipsForeignSaveCsv",
       "source_file": "original/libvips/foreign/csvsave.c",
       "type_name": "VipsForeignSaveCsvTarget"
+    },
+    "VipsForeignSaveHeif": {
+      "abstract": true,
+      "depth": 4,
+      "description": "save image in HEIF format",
+      "nickname": "heifsave_base",
+      "parent": "VipsForeignSave",
+      "source_file": "original/libvips/foreign/heifsave.c",
+      "type_name": "VipsForeignSaveHeif"
+    },
+    "VipsForeignSaveHeifBuffer": {
+      "abstract": false,
+      "depth": 5,
+      "description": "save heif to buffer",
+      "nickname": "heifsave_buffer",
+      "parent": "VipsForeignSaveHeif",
+      "source_file": "original/libvips/foreign/heifsave.c",
+      "type_name": "VipsForeignSaveHeifBuffer"
+    },
+    "VipsForeignSaveHeifFile": {
+      "abstract": false,
+      "depth": 5,
+      "description": "save heif to file",
+      "nickname": "heifsave",
+      "parent": "VipsForeignSaveHeif",
+      "source_file": "original/libvips/foreign/heifsave.c",
+      "type_name": "VipsForeignSaveHeifFile"
+    },
+    "VipsForeignSaveHeifTarget": {
+      "abstract": false,
+      "depth": 5,
+      "description": "save heif to target",
+      "nickname": "heifsave_target",
+      "parent": "VipsForeignSaveHeif",
+      "source_file": "original/libvips/foreign/heifsave.c",
+      "type_name": "VipsForeignSaveHeifTarget"
     },
     "VipsForeignSaveJpeg": {
       "abstract": true,
@@ -33122,6 +36276,105 @@
       "parent": "VipsForeignSaveJpeg",
       "source_file": "original/libvips/foreign/jpegsave.c",
       "type_name": "VipsForeignSaveJpegTarget"
+    },
+    "VipsForeignSaveJxl": {
+      "abstract": true,
+      "depth": 4,
+      "description": "save image in JPEG-XL format",
+      "nickname": "jxlsave_base",
+      "parent": "VipsForeignSave",
+      "source_file": "original/libvips/foreign/jxlsave.c",
+      "type_name": "VipsForeignSaveJxl"
+    },
+    "VipsForeignSaveJxlBuffer": {
+      "abstract": false,
+      "depth": 5,
+      "description": "save jxl to buffer",
+      "nickname": "jxlsave_buffer",
+      "parent": "VipsForeignSaveJxl",
+      "source_file": "original/libvips/foreign/jxlsave.c",
+      "type_name": "VipsForeignSaveJxlBuffer"
+    },
+    "VipsForeignSaveJxlFile": {
+      "abstract": false,
+      "depth": 5,
+      "description": "save jxl to file",
+      "nickname": "jxlsave",
+      "parent": "VipsForeignSaveJxl",
+      "source_file": "original/libvips/foreign/jxlsave.c",
+      "type_name": "VipsForeignSaveJxlFile"
+    },
+    "VipsForeignSaveJxlTarget": {
+      "abstract": false,
+      "depth": 5,
+      "description": "save jxl to target",
+      "nickname": "jxlsave_target",
+      "parent": "VipsForeignSaveJxl",
+      "source_file": "original/libvips/foreign/jxlsave.c",
+      "type_name": "VipsForeignSaveJxlTarget"
+    },
+    "VipsForeignSaveMagick": {
+      "abstract": true,
+      "depth": 4,
+      "description": "save with ImageMagick",
+      "nickname": "magicksave_base",
+      "parent": "VipsForeignSave",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "type_name": "VipsForeignSaveMagick"
+    },
+    "VipsForeignSaveMagickBmpBuffer": {
+      "abstract": false,
+      "depth": 6,
+      "description": "save bmp image to magick buffer",
+      "nickname": "magicksave_bmp_buffer",
+      "parent": "VipsForeignSaveMagickBuffer",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "type_name": "VipsForeignSaveMagickBmpBuffer"
+    },
+    "VipsForeignSaveMagickBmpFile": {
+      "abstract": false,
+      "depth": 6,
+      "description": "save bmp image with ImageMagick",
+      "nickname": "magicksave_bmp",
+      "parent": "VipsForeignSaveMagickFile",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "type_name": "VipsForeignSaveMagickBmpFile"
+    },
+    "VipsForeignSaveMagickBuffer": {
+      "abstract": false,
+      "depth": 5,
+      "description": "save image to magick buffer",
+      "nickname": "magicksave_buffer",
+      "parent": "VipsForeignSaveMagick",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "type_name": "VipsForeignSaveMagickBuffer"
+    },
+    "VipsForeignSaveMagickFile": {
+      "abstract": false,
+      "depth": 5,
+      "description": "save file with ImageMagick",
+      "nickname": "magicksave",
+      "parent": "VipsForeignSaveMagick",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "type_name": "VipsForeignSaveMagickFile"
+    },
+    "VipsForeignSaveMagickGifBuffer": {
+      "abstract": false,
+      "depth": 6,
+      "description": "save gif image to magick buffer",
+      "nickname": "magicksave_gif_buffer",
+      "parent": "VipsForeignSaveMagickBuffer",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "type_name": "VipsForeignSaveMagickGifBuffer"
+    },
+    "VipsForeignSaveMagickGifFile": {
+      "abstract": false,
+      "depth": 6,
+      "description": "save gif image with ImageMagick",
+      "nickname": "magicksave_gif",
+      "parent": "VipsForeignSaveMagickFile",
+      "source_file": "original/libvips/foreign/vips2magick.c",
+      "type_name": "VipsForeignSaveMagickGifFile"
     },
     "VipsForeignSaveMatrix": {
       "abstract": true,
@@ -33925,7 +37178,7 @@
       "type_name": "VipsMask"
     },
     "VipsMaskButterworth": {
-      "abstract": true,
+      "abstract": false,
       "depth": 5,
       "description": "make a butterworth filter",
       "nickname": "mask_butterworth",
@@ -34546,7 +37799,7 @@
       "type_name": "VipsSobel"
     },
     "VipsSource": {
-      "abstract": true,
+      "abstract": false,
       "depth": 2,
       "description": "input source",
       "nickname": "source",
@@ -34654,7 +37907,7 @@
       "type_name": "VipsSystem"
     },
     "VipsTarget": {
-      "abstract": true,
+      "abstract": false,
       "depth": 2,
       "description": "Target",
       "nickname": "target",
@@ -34681,7 +37934,7 @@
       "type_name": "VipsText"
     },
     "VipsThreadState": {
-      "abstract": true,
+      "abstract": false,
       "depth": 1,
       "description": "per-thread state for vipsthreadpool",
       "nickname": "threadstate",
@@ -34808,10 +38061,10 @@
     },
     "VipsXYZ2CMYK": {
       "abstract": false,
-      "depth": 4,
+      "depth": 2,
       "description": "transform XYZ to CMYK",
       "nickname": "XYZ2CMYK",
-      "parent": "VipsColourCode",
+      "parent": "VipsOperation",
       "source_file": "original/libvips/colour/XYZ2CMYK.c",
       "type_name": "VipsXYZ2CMYK"
     },
@@ -35053,10 +38306,24 @@
     "VipsForeignLoadCsv",
     "VipsForeignLoadCsvFile",
     "VipsForeignLoadCsvSource",
+    "VipsForeignLoadHeif",
+    "VipsForeignLoadHeifBuffer",
+    "VipsForeignLoadHeifFile",
+    "VipsForeignLoadHeifSource",
     "VipsForeignLoadJpeg",
     "VipsForeignLoadJpegBuffer",
     "VipsForeignLoadJpegFile",
     "VipsForeignLoadJpegSource",
+    "VipsForeignLoadJxl",
+    "VipsForeignLoadJxlBuffer",
+    "VipsForeignLoadJxlFile",
+    "VipsForeignLoadJxlSource",
+    "VipsForeignLoadMagick",
+    "VipsForeignLoadMagick7",
+    "VipsForeignLoadMagick7Buffer",
+    "VipsForeignLoadMagick7File",
+    "VipsForeignLoadMagickBuffer",
+    "VipsForeignLoadMagickFile",
     "VipsForeignLoadMatrix",
     "VipsForeignLoadMatrixFile",
     "VipsForeignLoadMatrixSource",
@@ -35064,6 +38331,13 @@
     "VipsForeignLoadNsgifBuffer",
     "VipsForeignLoadNsgifFile",
     "VipsForeignLoadNsgifSource",
+    "VipsForeignLoadOpenslide",
+    "VipsForeignLoadOpenslideFile",
+    "VipsForeignLoadOpenslideSource",
+    "VipsForeignLoadPdf",
+    "VipsForeignLoadPdfBuffer",
+    "VipsForeignLoadPdfFile",
+    "VipsForeignLoadPdfSource",
     "VipsForeignLoadPng",
     "VipsForeignLoadPngBuffer",
     "VipsForeignLoadPngFile",
@@ -35089,14 +38363,31 @@
     "VipsForeignLoadWebpSource",
     "VipsForeignPrintMatrix",
     "VipsForeignSave",
+    "VipsForeignSaveAvifFile",
+    "VipsForeignSaveAvifTarget",
     "VipsForeignSaveCsv",
     "VipsForeignSaveCsvFile",
     "VipsForeignSaveCsvTarget",
+    "VipsForeignSaveHeif",
+    "VipsForeignSaveHeifBuffer",
+    "VipsForeignSaveHeifFile",
+    "VipsForeignSaveHeifTarget",
     "VipsForeignSaveJpeg",
     "VipsForeignSaveJpegBuffer",
     "VipsForeignSaveJpegFile",
     "VipsForeignSaveJpegMime",
     "VipsForeignSaveJpegTarget",
+    "VipsForeignSaveJxl",
+    "VipsForeignSaveJxlBuffer",
+    "VipsForeignSaveJxlFile",
+    "VipsForeignSaveJxlTarget",
+    "VipsForeignSaveMagick",
+    "VipsForeignSaveMagickBmpBuffer",
+    "VipsForeignSaveMagickBmpFile",
+    "VipsForeignSaveMagickBuffer",
+    "VipsForeignSaveMagickFile",
+    "VipsForeignSaveMagickGifBuffer",
+    "VipsForeignSaveMagickGifFile",
     "VipsForeignSaveMatrix",
     "VipsForeignSaveMatrixFile",
     "VipsForeignSaveMatrixTarget",
@@ -35288,7 +38579,7 @@
     "crop"
   ],
   "types": {
-    "count": 335,
+    "count": 373,
     "entries": [
       {
         "depth": 0,
@@ -37153,17 +40444,17 @@
         "type_name": "VipsHSV2sRGB"
       },
       {
-        "depth": 4,
+        "depth": 2,
         "description": "transform CMYK to XYZ",
         "nickname": "CMYK2XYZ",
-        "parent": "VipsColourCode",
+        "parent": "VipsOperation",
         "type_name": "VipsCMYK2XYZ"
       },
       {
-        "depth": 4,
+        "depth": 2,
         "description": "transform XYZ to CMYK",
         "nickname": "XYZ2CMYK",
-        "parent": "VipsColourCode",
+        "parent": "VipsOperation",
         "type_name": "VipsXYZ2CMYK"
       },
       {
@@ -37634,6 +40925,272 @@
         "nickname": "globalbalance",
         "parent": "VipsOperation",
         "type_name": "VipsGlobalbalance"
+      },
+      {
+        "depth": 4,
+        "description": "load a HEIF image",
+        "nickname": "heifload_base",
+        "parent": "VipsForeignLoad",
+        "type_name": "VipsForeignLoadHeif"
+      },
+      {
+        "depth": 5,
+        "description": "load heif from buffer",
+        "nickname": "heifload_buffer",
+        "parent": "VipsForeignLoadHeif",
+        "type_name": "VipsForeignLoadHeifBuffer"
+      },
+      {
+        "depth": 5,
+        "description": "load heif from file",
+        "nickname": "heifload",
+        "parent": "VipsForeignLoadHeif",
+        "type_name": "VipsForeignLoadHeifFile"
+      },
+      {
+        "depth": 5,
+        "description": "load heif from source",
+        "nickname": "heifload_source",
+        "parent": "VipsForeignLoadHeif",
+        "type_name": "VipsForeignLoadHeifSource"
+      },
+      {
+        "depth": 4,
+        "description": "load JPEG-XL image",
+        "nickname": "jxlload_base",
+        "parent": "VipsForeignLoad",
+        "type_name": "VipsForeignLoadJxl"
+      },
+      {
+        "depth": 5,
+        "description": "load jxl from buffer",
+        "nickname": "jxlload_buffer",
+        "parent": "VipsForeignLoadJxl",
+        "type_name": "VipsForeignLoadJxlBuffer"
+      },
+      {
+        "depth": 5,
+        "description": "load jxl from file",
+        "nickname": "jxlload",
+        "parent": "VipsForeignLoadJxl",
+        "type_name": "VipsForeignLoadJxlFile"
+      },
+      {
+        "depth": 5,
+        "description": "load jxl from source",
+        "nickname": "jxlload_source",
+        "parent": "VipsForeignLoadJxl",
+        "type_name": "VipsForeignLoadJxlSource"
+      },
+      {
+        "depth": 4,
+        "description": "load with ImageMagick",
+        "nickname": "magickload_base",
+        "parent": "VipsForeignLoad",
+        "type_name": "VipsForeignLoadMagick"
+      },
+      {
+        "depth": 4,
+        "description": "load with ImageMagick7",
+        "nickname": "magickload_base",
+        "parent": "VipsForeignLoad",
+        "type_name": "VipsForeignLoadMagick7"
+      },
+      {
+        "depth": 5,
+        "description": "load buffer with ImageMagick7",
+        "nickname": "magickload_buffer",
+        "parent": "VipsForeignLoadMagick7",
+        "type_name": "VipsForeignLoadMagick7Buffer"
+      },
+      {
+        "depth": 5,
+        "description": "load file with ImageMagick7",
+        "nickname": "magickload",
+        "parent": "VipsForeignLoadMagick7",
+        "type_name": "VipsForeignLoadMagick7File"
+      },
+      {
+        "depth": 5,
+        "description": "load buffer with ImageMagick",
+        "nickname": "magickload_buffer",
+        "parent": "VipsForeignLoadMagick",
+        "type_name": "VipsForeignLoadMagickBuffer"
+      },
+      {
+        "depth": 5,
+        "description": "load file with ImageMagick",
+        "nickname": "magickload",
+        "parent": "VipsForeignLoadMagick",
+        "type_name": "VipsForeignLoadMagickFile"
+      },
+      {
+        "depth": 4,
+        "description": "load OpenSlide base class",
+        "nickname": "openslideload_base",
+        "parent": "VipsForeignLoad",
+        "type_name": "VipsForeignLoadOpenslide"
+      },
+      {
+        "depth": 5,
+        "description": "load file with OpenSlide",
+        "nickname": "openslideload",
+        "parent": "VipsForeignLoadOpenslide",
+        "type_name": "VipsForeignLoadOpenslideFile"
+      },
+      {
+        "depth": 5,
+        "description": "load source with OpenSlide",
+        "nickname": "openslideload_source",
+        "parent": "VipsForeignLoadOpenslide",
+        "type_name": "VipsForeignLoadOpenslideSource"
+      },
+      {
+        "depth": 4,
+        "description": "load PDF with PDFium",
+        "nickname": "pdfload_base",
+        "parent": "VipsForeignLoad",
+        "type_name": "VipsForeignLoadPdf"
+      },
+      {
+        "depth": 5,
+        "description": "load PDF from buffer",
+        "nickname": "pdfload_buffer",
+        "parent": "VipsForeignLoadPdf",
+        "type_name": "VipsForeignLoadPdfBuffer"
+      },
+      {
+        "depth": 5,
+        "description": "load PDF from file",
+        "nickname": "pdfload",
+        "parent": "VipsForeignLoadPdf",
+        "type_name": "VipsForeignLoadPdfFile"
+      },
+      {
+        "depth": 5,
+        "description": "load PDF from source",
+        "nickname": "pdfload_source",
+        "parent": "VipsForeignLoadPdf",
+        "type_name": "VipsForeignLoadPdfSource"
+      },
+      {
+        "depth": 5,
+        "description": "save avif to file",
+        "nickname": "avifsave",
+        "parent": "VipsForeignSaveHeif",
+        "type_name": "VipsForeignSaveAvifFile"
+      },
+      {
+        "depth": 6,
+        "description": "save image in AVIF format",
+        "nickname": "avifsave_target",
+        "parent": "VipsForeignSaveHeifTarget",
+        "type_name": "VipsForeignSaveAvifTarget"
+      },
+      {
+        "depth": 4,
+        "description": "save image in HEIF format",
+        "nickname": "heifsave_base",
+        "parent": "VipsForeignSave",
+        "type_name": "VipsForeignSaveHeif"
+      },
+      {
+        "depth": 5,
+        "description": "save heif to buffer",
+        "nickname": "heifsave_buffer",
+        "parent": "VipsForeignSaveHeif",
+        "type_name": "VipsForeignSaveHeifBuffer"
+      },
+      {
+        "depth": 5,
+        "description": "save heif to file",
+        "nickname": "heifsave",
+        "parent": "VipsForeignSaveHeif",
+        "type_name": "VipsForeignSaveHeifFile"
+      },
+      {
+        "depth": 5,
+        "description": "save heif to target",
+        "nickname": "heifsave_target",
+        "parent": "VipsForeignSaveHeif",
+        "type_name": "VipsForeignSaveHeifTarget"
+      },
+      {
+        "depth": 4,
+        "description": "save image in JPEG-XL format",
+        "nickname": "jxlsave_base",
+        "parent": "VipsForeignSave",
+        "type_name": "VipsForeignSaveJxl"
+      },
+      {
+        "depth": 5,
+        "description": "save jxl to buffer",
+        "nickname": "jxlsave_buffer",
+        "parent": "VipsForeignSaveJxl",
+        "type_name": "VipsForeignSaveJxlBuffer"
+      },
+      {
+        "depth": 5,
+        "description": "save jxl to file",
+        "nickname": "jxlsave",
+        "parent": "VipsForeignSaveJxl",
+        "type_name": "VipsForeignSaveJxlFile"
+      },
+      {
+        "depth": 5,
+        "description": "save jxl to target",
+        "nickname": "jxlsave_target",
+        "parent": "VipsForeignSaveJxl",
+        "type_name": "VipsForeignSaveJxlTarget"
+      },
+      {
+        "depth": 4,
+        "description": "save with ImageMagick",
+        "nickname": "magicksave_base",
+        "parent": "VipsForeignSave",
+        "type_name": "VipsForeignSaveMagick"
+      },
+      {
+        "depth": 6,
+        "description": "save bmp image to magick buffer",
+        "nickname": "magicksave_bmp_buffer",
+        "parent": "VipsForeignSaveMagickBuffer",
+        "type_name": "VipsForeignSaveMagickBmpBuffer"
+      },
+      {
+        "depth": 6,
+        "description": "save bmp image with ImageMagick",
+        "nickname": "magicksave_bmp",
+        "parent": "VipsForeignSaveMagickFile",
+        "type_name": "VipsForeignSaveMagickBmpFile"
+      },
+      {
+        "depth": 5,
+        "description": "save image to magick buffer",
+        "nickname": "magicksave_buffer",
+        "parent": "VipsForeignSaveMagick",
+        "type_name": "VipsForeignSaveMagickBuffer"
+      },
+      {
+        "depth": 5,
+        "description": "save file with ImageMagick",
+        "nickname": "magicksave",
+        "parent": "VipsForeignSaveMagick",
+        "type_name": "VipsForeignSaveMagickFile"
+      },
+      {
+        "depth": 6,
+        "description": "save gif image to magick buffer",
+        "nickname": "magicksave_gif_buffer",
+        "parent": "VipsForeignSaveMagickBuffer",
+        "type_name": "VipsForeignSaveMagickGifBuffer"
+      },
+      {
+        "depth": 6,
+        "description": "save gif image with ImageMagick",
+        "nickname": "magicksave_gif",
+        "parent": "VipsForeignSaveMagickFile",
+        "type_name": "VipsForeignSaveMagickGifFile"
       }
     ],
     "nicknames": [
@@ -37664,6 +41221,8 @@
       "arrayjoin",
       "autorot",
       "avg",
+      "avifsave",
+      "avifsave_target",
       "bandary",
       "bandbool",
       "bandfold",
@@ -37759,6 +41318,14 @@
       "gravity",
       "grey",
       "grid",
+      "heifload",
+      "heifload_base",
+      "heifload_buffer",
+      "heifload_source",
+      "heifsave",
+      "heifsave_base",
+      "heifsave_buffer",
+      "heifsave_target",
       "hist_cum",
       "hist_entropy",
       "hist_equal",
@@ -37792,12 +41359,30 @@
       "jpegsave_buffer",
       "jpegsave_mime",
       "jpegsave_target",
+      "jxlload",
+      "jxlload_base",
+      "jxlload_buffer",
+      "jxlload_source",
+      "jxlsave",
+      "jxlsave_base",
+      "jxlsave_buffer",
+      "jxlsave_target",
       "labelregions",
       "lbb",
       "linear",
       "linecache",
       "load",
       "logmat",
+      "magickload",
+      "magickload_base",
+      "magickload_buffer",
+      "magicksave",
+      "magicksave_base",
+      "magicksave_bmp",
+      "magicksave_bmp_buffer",
+      "magicksave_buffer",
+      "magicksave_gif",
+      "magicksave_gif_buffer",
       "mapim",
       "maplut",
       "mask",
@@ -37837,7 +41422,14 @@
       "nearest",
       "nohalo",
       "object",
+      "openslideload",
+      "openslideload_base",
+      "openslideload_source",
       "operation",
+      "pdfload",
+      "pdfload_base",
+      "pdfload_buffer",
+      "pdfload_source",
       "percent",
       "perlin",
       "phasecor",
@@ -38058,10 +41650,24 @@
       "VipsForeignLoadCsv",
       "VipsForeignLoadCsvFile",
       "VipsForeignLoadCsvSource",
+      "VipsForeignLoadHeif",
+      "VipsForeignLoadHeifBuffer",
+      "VipsForeignLoadHeifFile",
+      "VipsForeignLoadHeifSource",
       "VipsForeignLoadJpeg",
       "VipsForeignLoadJpegBuffer",
       "VipsForeignLoadJpegFile",
       "VipsForeignLoadJpegSource",
+      "VipsForeignLoadJxl",
+      "VipsForeignLoadJxlBuffer",
+      "VipsForeignLoadJxlFile",
+      "VipsForeignLoadJxlSource",
+      "VipsForeignLoadMagick",
+      "VipsForeignLoadMagick7",
+      "VipsForeignLoadMagick7Buffer",
+      "VipsForeignLoadMagick7File",
+      "VipsForeignLoadMagickBuffer",
+      "VipsForeignLoadMagickFile",
       "VipsForeignLoadMatrix",
       "VipsForeignLoadMatrixFile",
       "VipsForeignLoadMatrixSource",
@@ -38069,6 +41675,13 @@
       "VipsForeignLoadNsgifBuffer",
       "VipsForeignLoadNsgifFile",
       "VipsForeignLoadNsgifSource",
+      "VipsForeignLoadOpenslide",
+      "VipsForeignLoadOpenslideFile",
+      "VipsForeignLoadOpenslideSource",
+      "VipsForeignLoadPdf",
+      "VipsForeignLoadPdfBuffer",
+      "VipsForeignLoadPdfFile",
+      "VipsForeignLoadPdfSource",
       "VipsForeignLoadPng",
       "VipsForeignLoadPngBuffer",
       "VipsForeignLoadPngFile",
@@ -38094,14 +41707,31 @@
       "VipsForeignLoadWebpSource",
       "VipsForeignPrintMatrix",
       "VipsForeignSave",
+      "VipsForeignSaveAvifFile",
+      "VipsForeignSaveAvifTarget",
       "VipsForeignSaveCsv",
       "VipsForeignSaveCsvFile",
       "VipsForeignSaveCsvTarget",
+      "VipsForeignSaveHeif",
+      "VipsForeignSaveHeifBuffer",
+      "VipsForeignSaveHeifFile",
+      "VipsForeignSaveHeifTarget",
       "VipsForeignSaveJpeg",
       "VipsForeignSaveJpegBuffer",
       "VipsForeignSaveJpegFile",
       "VipsForeignSaveJpegMime",
       "VipsForeignSaveJpegTarget",
+      "VipsForeignSaveJxl",
+      "VipsForeignSaveJxlBuffer",
+      "VipsForeignSaveJxlFile",
+      "VipsForeignSaveJxlTarget",
+      "VipsForeignSaveMagick",
+      "VipsForeignSaveMagickBmpBuffer",
+      "VipsForeignSaveMagickBmpFile",
+      "VipsForeignSaveMagickBuffer",
+      "VipsForeignSaveMagickFile",
+      "VipsForeignSaveMagickGifBuffer",
+      "VipsForeignSaveMagickGifFile",
       "VipsForeignSaveMatrix",
       "VipsForeignSaveMatrixFile",
       "VipsForeignSaveMatrixTarget",
@@ -41385,6 +45015,168 @@
       "signature": "VIPS_API int vips_grid(VipsImage *in, VipsImage **out, int tile_height, int across, int down, ...) G_GNUC_NULL_TERMINATED;",
       "variadic": true
     },
+    "vips_heifload": {
+      "function": "vips_heifload",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "filename",
+          "text": "const char *filename",
+          "type": "const char",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_heifload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_heifload_buffer": {
+      "function": "vips_heifload_buffer",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "buf",
+          "text": "void *buf",
+          "type": "void",
+          "variadic": false
+        },
+        {
+          "name": "len",
+          "text": "size_t len",
+          "type": "size_t",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_heifload_buffer(void *buf, size_t len, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_heifload_source": {
+      "function": "vips_heifload_source",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "source",
+          "text": "VipsSource *source",
+          "type": "VipsSource",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_heifload_source(VipsSource *source, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_heifsave": {
+      "function": "vips_heifsave",
+      "header": "foreign.h",
+      "last_fixed_name": "filename",
+      "parameters": [
+        {
+          "name": "in",
+          "text": "VipsImage *in",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "name": "filename",
+          "text": "const char *filename",
+          "type": "const char",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_heifsave(VipsImage *in, const char *filename, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_heifsave_buffer": {
+      "function": "vips_heifsave_buffer",
+      "header": "foreign.h",
+      "last_fixed_name": "len",
+      "parameters": [
+        {
+          "name": "in",
+          "text": "VipsImage *in",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "name": "buf",
+          "text": "void **buf",
+          "type": "void",
+          "variadic": false
+        },
+        {
+          "name": "len",
+          "text": "size_t *len",
+          "type": "size_t",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_heifsave_buffer(VipsImage *in, void **buf, size_t *len, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_heifsave_target": {
+      "function": "vips_heifsave_target",
+      "header": "foreign.h",
+      "last_fixed_name": "target",
+      "parameters": [
+        {
+          "name": "in",
+          "text": "VipsImage *in",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "name": "target",
+          "text": "VipsTarget *target",
+          "type": "VipsTarget",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_heifsave_target(VipsImage *in, VipsTarget *target, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
     "vips_hist_cum": {
       "function": "vips_hist_cum",
       "header": "histogram.h",
@@ -42101,6 +45893,168 @@
       "signature": "VIPS_API int vips_jpegsave_target(VipsImage *in, VipsTarget *target, ...) G_GNUC_NULL_TERMINATED;",
       "variadic": true
     },
+    "vips_jxlload": {
+      "function": "vips_jxlload",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "filename",
+          "text": "const char *filename",
+          "type": "const char",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_jxlload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_jxlload_buffer": {
+      "function": "vips_jxlload_buffer",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "buf",
+          "text": "void *buf",
+          "type": "void",
+          "variadic": false
+        },
+        {
+          "name": "len",
+          "text": "size_t len",
+          "type": "size_t",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_jxlload_buffer(void *buf, size_t len, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_jxlload_source": {
+      "function": "vips_jxlload_source",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "source",
+          "text": "VipsSource *source",
+          "type": "VipsSource",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_jxlload_source(VipsSource *source, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_jxlsave": {
+      "function": "vips_jxlsave",
+      "header": "foreign.h",
+      "last_fixed_name": "filename",
+      "parameters": [
+        {
+          "name": "in",
+          "text": "VipsImage *in",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "name": "filename",
+          "text": "const char *filename",
+          "type": "const char",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_jxlsave(VipsImage *in, const char *filename, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_jxlsave_buffer": {
+      "function": "vips_jxlsave_buffer",
+      "header": "foreign.h",
+      "last_fixed_name": "len",
+      "parameters": [
+        {
+          "name": "in",
+          "text": "VipsImage *in",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "name": "buf",
+          "text": "void **buf",
+          "type": "void",
+          "variadic": false
+        },
+        {
+          "name": "len",
+          "text": "size_t *len",
+          "type": "size_t",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_jxlsave_buffer(VipsImage *in, void **buf, size_t *len, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_jxlsave_target": {
+      "function": "vips_jxlsave_target",
+      "header": "foreign.h",
+      "last_fixed_name": "target",
+      "parameters": [
+        {
+          "name": "in",
+          "text": "VipsImage *in",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "name": "target",
+          "text": "VipsTarget *target",
+          "type": "VipsTarget",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_jxlsave_target(VipsImage *in, VipsTarget *target, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
     "vips_labelregions": {
       "function": "vips_labelregions",
       "header": "morphology.h",
@@ -42223,6 +46177,118 @@
         }
       ],
       "signature": "VIPS_API int vips_logmat(VipsImage **out, double sigma, double min_ampl, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_magickload": {
+      "function": "vips_magickload",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "filename",
+          "text": "const char *filename",
+          "type": "const char",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_magickload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_magickload_buffer": {
+      "function": "vips_magickload_buffer",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "buf",
+          "text": "void *buf",
+          "type": "void",
+          "variadic": false
+        },
+        {
+          "name": "len",
+          "text": "size_t len",
+          "type": "size_t",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_magickload_buffer(void *buf, size_t len, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_magicksave": {
+      "function": "vips_magicksave",
+      "header": "foreign.h",
+      "last_fixed_name": "filename",
+      "parameters": [
+        {
+          "name": "in",
+          "text": "VipsImage *in",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "name": "filename",
+          "text": "const char *filename",
+          "type": "const char",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_magicksave(VipsImage *in, const char *filename, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_magicksave_buffer": {
+      "function": "vips_magicksave_buffer",
+      "header": "foreign.h",
+      "last_fixed_name": "len",
+      "parameters": [
+        {
+          "name": "in",
+          "text": "VipsImage *in",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "name": "buf",
+          "text": "void **buf",
+          "type": "void",
+          "variadic": false
+        },
+        {
+          "name": "len",
+          "text": "size_t *len",
+          "type": "size_t",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_magicksave_buffer(VipsImage *in, void **buf, size_t *len, ...) G_GNUC_NULL_TERMINATED;",
       "variadic": true
     },
     "vips_mapim": {
@@ -43392,6 +47458,137 @@
         }
       ],
       "signature": "VIPS_API int vips_multiply(VipsImage *left, VipsImage *right, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_openslideload": {
+      "function": "vips_openslideload",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "filename",
+          "text": "const char *filename",
+          "type": "const char",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_openslideload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_openslideload_source": {
+      "function": "vips_openslideload_source",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "source",
+          "text": "VipsSource *source",
+          "type": "VipsSource",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_openslideload_source(VipsSource *source, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_pdfload": {
+      "function": "vips_pdfload",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "filename",
+          "text": "const char *filename",
+          "type": "const char",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_pdfload(const char *filename, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_pdfload_buffer": {
+      "function": "vips_pdfload_buffer",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "buf",
+          "text": "void *buf",
+          "type": "void",
+          "variadic": false
+        },
+        {
+          "name": "len",
+          "text": "size_t len",
+          "type": "size_t",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_pdfload_buffer(void *buf, size_t len, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
+      "variadic": true
+    },
+    "vips_pdfload_source": {
+      "function": "vips_pdfload_source",
+      "header": "foreign.h",
+      "last_fixed_name": "out",
+      "parameters": [
+        {
+          "name": "source",
+          "text": "VipsSource *source",
+          "type": "VipsSource",
+          "variadic": false
+        },
+        {
+          "name": "out",
+          "text": "VipsImage **out",
+          "type": "VipsImage",
+          "variadic": false
+        },
+        {
+          "text": "...",
+          "variadic": true
+        }
+      ],
+      "signature": "VIPS_API int vips_pdfload_source(VipsSource *source, VipsImage **out, ...) G_GNUC_NULL_TERMINATED;",
       "variadic": true
     },
     "vips_percent": {

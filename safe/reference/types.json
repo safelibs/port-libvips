@@ -1,5 +1,5 @@
 {
-  "count": 335,
+  "count": 373,
   "entries": [
     {
       "depth": 0,
@@ -1864,17 +1864,17 @@
       "type_name": "VipsHSV2sRGB"
     },
     {
-      "depth": 4,
+      "depth": 2,
       "description": "transform CMYK to XYZ",
       "nickname": "CMYK2XYZ",
-      "parent": "VipsColourCode",
+      "parent": "VipsOperation",
       "type_name": "VipsCMYK2XYZ"
     },
     {
-      "depth": 4,
+      "depth": 2,
       "description": "transform XYZ to CMYK",
       "nickname": "XYZ2CMYK",
-      "parent": "VipsColourCode",
+      "parent": "VipsOperation",
       "type_name": "VipsXYZ2CMYK"
     },
     {
@@ -2345,6 +2345,272 @@
       "nickname": "globalbalance",
       "parent": "VipsOperation",
       "type_name": "VipsGlobalbalance"
+    },
+    {
+      "depth": 4,
+      "description": "load a HEIF image",
+      "nickname": "heifload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadHeif"
+    },
+    {
+      "depth": 5,
+      "description": "load heif from buffer",
+      "nickname": "heifload_buffer",
+      "parent": "VipsForeignLoadHeif",
+      "type_name": "VipsForeignLoadHeifBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load heif from file",
+      "nickname": "heifload",
+      "parent": "VipsForeignLoadHeif",
+      "type_name": "VipsForeignLoadHeifFile"
+    },
+    {
+      "depth": 5,
+      "description": "load heif from source",
+      "nickname": "heifload_source",
+      "parent": "VipsForeignLoadHeif",
+      "type_name": "VipsForeignLoadHeifSource"
+    },
+    {
+      "depth": 4,
+      "description": "load JPEG-XL image",
+      "nickname": "jxlload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadJxl"
+    },
+    {
+      "depth": 5,
+      "description": "load jxl from buffer",
+      "nickname": "jxlload_buffer",
+      "parent": "VipsForeignLoadJxl",
+      "type_name": "VipsForeignLoadJxlBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load jxl from file",
+      "nickname": "jxlload",
+      "parent": "VipsForeignLoadJxl",
+      "type_name": "VipsForeignLoadJxlFile"
+    },
+    {
+      "depth": 5,
+      "description": "load jxl from source",
+      "nickname": "jxlload_source",
+      "parent": "VipsForeignLoadJxl",
+      "type_name": "VipsForeignLoadJxlSource"
+    },
+    {
+      "depth": 4,
+      "description": "load with ImageMagick",
+      "nickname": "magickload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadMagick"
+    },
+    {
+      "depth": 4,
+      "description": "load with ImageMagick7",
+      "nickname": "magickload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadMagick7"
+    },
+    {
+      "depth": 5,
+      "description": "load buffer with ImageMagick7",
+      "nickname": "magickload_buffer",
+      "parent": "VipsForeignLoadMagick7",
+      "type_name": "VipsForeignLoadMagick7Buffer"
+    },
+    {
+      "depth": 5,
+      "description": "load file with ImageMagick7",
+      "nickname": "magickload",
+      "parent": "VipsForeignLoadMagick7",
+      "type_name": "VipsForeignLoadMagick7File"
+    },
+    {
+      "depth": 5,
+      "description": "load buffer with ImageMagick",
+      "nickname": "magickload_buffer",
+      "parent": "VipsForeignLoadMagick",
+      "type_name": "VipsForeignLoadMagickBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load file with ImageMagick",
+      "nickname": "magickload",
+      "parent": "VipsForeignLoadMagick",
+      "type_name": "VipsForeignLoadMagickFile"
+    },
+    {
+      "depth": 4,
+      "description": "load OpenSlide base class",
+      "nickname": "openslideload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadOpenslide"
+    },
+    {
+      "depth": 5,
+      "description": "load file with OpenSlide",
+      "nickname": "openslideload",
+      "parent": "VipsForeignLoadOpenslide",
+      "type_name": "VipsForeignLoadOpenslideFile"
+    },
+    {
+      "depth": 5,
+      "description": "load source with OpenSlide",
+      "nickname": "openslideload_source",
+      "parent": "VipsForeignLoadOpenslide",
+      "type_name": "VipsForeignLoadOpenslideSource"
+    },
+    {
+      "depth": 4,
+      "description": "load PDF with PDFium",
+      "nickname": "pdfload_base",
+      "parent": "VipsForeignLoad",
+      "type_name": "VipsForeignLoadPdf"
+    },
+    {
+      "depth": 5,
+      "description": "load PDF from buffer",
+      "nickname": "pdfload_buffer",
+      "parent": "VipsForeignLoadPdf",
+      "type_name": "VipsForeignLoadPdfBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "load PDF from file",
+      "nickname": "pdfload",
+      "parent": "VipsForeignLoadPdf",
+      "type_name": "VipsForeignLoadPdfFile"
+    },
+    {
+      "depth": 5,
+      "description": "load PDF from source",
+      "nickname": "pdfload_source",
+      "parent": "VipsForeignLoadPdf",
+      "type_name": "VipsForeignLoadPdfSource"
+    },
+    {
+      "depth": 5,
+      "description": "save avif to file",
+      "nickname": "avifsave",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveAvifFile"
+    },
+    {
+      "depth": 6,
+      "description": "save image in AVIF format",
+      "nickname": "avifsave_target",
+      "parent": "VipsForeignSaveHeifTarget",
+      "type_name": "VipsForeignSaveAvifTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save image in HEIF format",
+      "nickname": "heifsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveHeif"
+    },
+    {
+      "depth": 5,
+      "description": "save heif to buffer",
+      "nickname": "heifsave_buffer",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveHeifBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save heif to file",
+      "nickname": "heifsave",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveHeifFile"
+    },
+    {
+      "depth": 5,
+      "description": "save heif to target",
+      "nickname": "heifsave_target",
+      "parent": "VipsForeignSaveHeif",
+      "type_name": "VipsForeignSaveHeifTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save image in JPEG-XL format",
+      "nickname": "jxlsave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveJxl"
+    },
+    {
+      "depth": 5,
+      "description": "save jxl to buffer",
+      "nickname": "jxlsave_buffer",
+      "parent": "VipsForeignSaveJxl",
+      "type_name": "VipsForeignSaveJxlBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save jxl to file",
+      "nickname": "jxlsave",
+      "parent": "VipsForeignSaveJxl",
+      "type_name": "VipsForeignSaveJxlFile"
+    },
+    {
+      "depth": 5,
+      "description": "save jxl to target",
+      "nickname": "jxlsave_target",
+      "parent": "VipsForeignSaveJxl",
+      "type_name": "VipsForeignSaveJxlTarget"
+    },
+    {
+      "depth": 4,
+      "description": "save with ImageMagick",
+      "nickname": "magicksave_base",
+      "parent": "VipsForeignSave",
+      "type_name": "VipsForeignSaveMagick"
+    },
+    {
+      "depth": 6,
+      "description": "save bmp image to magick buffer",
+      "nickname": "magicksave_bmp_buffer",
+      "parent": "VipsForeignSaveMagickBuffer",
+      "type_name": "VipsForeignSaveMagickBmpBuffer"
+    },
+    {
+      "depth": 6,
+      "description": "save bmp image with ImageMagick",
+      "nickname": "magicksave_bmp",
+      "parent": "VipsForeignSaveMagickFile",
+      "type_name": "VipsForeignSaveMagickBmpFile"
+    },
+    {
+      "depth": 5,
+      "description": "save image to magick buffer",
+      "nickname": "magicksave_buffer",
+      "parent": "VipsForeignSaveMagick",
+      "type_name": "VipsForeignSaveMagickBuffer"
+    },
+    {
+      "depth": 5,
+      "description": "save file with ImageMagick",
+      "nickname": "magicksave",
+      "parent": "VipsForeignSaveMagick",
+      "type_name": "VipsForeignSaveMagickFile"
+    },
+    {
+      "depth": 6,
+      "description": "save gif image to magick buffer",
+      "nickname": "magicksave_gif_buffer",
+      "parent": "VipsForeignSaveMagickBuffer",
+      "type_name": "VipsForeignSaveMagickGifBuffer"
+    },
+    {
+      "depth": 6,
+      "description": "save gif image with ImageMagick",
+      "nickname": "magicksave_gif",
+      "parent": "VipsForeignSaveMagickFile",
+      "type_name": "VipsForeignSaveMagickGifFile"
     }
   ],
   "nicknames": [
@@ -2375,6 +2641,8 @@
     "arrayjoin",
     "autorot",
     "avg",
+    "avifsave",
+    "avifsave_target",
     "bandary",
     "bandbool",
     "bandfold",
@@ -2470,6 +2738,14 @@
     "gravity",
     "grey",
     "grid",
+    "heifload",
+    "heifload_base",
+    "heifload_buffer",
+    "heifload_source",
+    "heifsave",
+    "heifsave_base",
+    "heifsave_buffer",
+    "heifsave_target",
     "hist_cum",
     "hist_entropy",
     "hist_equal",
@@ -2503,12 +2779,30 @@
     "jpegsave_buffer",
     "jpegsave_mime",
     "jpegsave_target",
+    "jxlload",
+    "jxlload_base",
+    "jxlload_buffer",
+    "jxlload_source",
+    "jxlsave",
+    "jxlsave_base",
+    "jxlsave_buffer",
+    "jxlsave_target",
     "labelregions",
     "lbb",
     "linear",
     "linecache",
     "load",
     "logmat",
+    "magickload",
+    "magickload_base",
+    "magickload_buffer",
+    "magicksave",
+    "magicksave_base",
+    "magicksave_bmp",
+    "magicksave_bmp_buffer",
+    "magicksave_buffer",
+    "magicksave_gif",
+    "magicksave_gif_buffer",
     "mapim",
     "maplut",
     "mask",
@@ -2548,7 +2842,14 @@
     "nearest",
     "nohalo",
     "object",
+    "openslideload",
+    "openslideload_base",
+    "openslideload_source",
     "operation",
+    "pdfload",
+    "pdfload_base",
+    "pdfload_buffer",
+    "pdfload_source",
     "percent",
     "perlin",
     "phasecor",
@@ -2769,10 +3070,24 @@
     "VipsForeignLoadCsv",
     "VipsForeignLoadCsvFile",
     "VipsForeignLoadCsvSource",
+    "VipsForeignLoadHeif",
+    "VipsForeignLoadHeifBuffer",
+    "VipsForeignLoadHeifFile",
+    "VipsForeignLoadHeifSource",
     "VipsForeignLoadJpeg",
     "VipsForeignLoadJpegBuffer",
     "VipsForeignLoadJpegFile",
     "VipsForeignLoadJpegSource",
+    "VipsForeignLoadJxl",
+    "VipsForeignLoadJxlBuffer",
+    "VipsForeignLoadJxlFile",
+    "VipsForeignLoadJxlSource",
+    "VipsForeignLoadMagick",
+    "VipsForeignLoadMagick7",
+    "VipsForeignLoadMagick7Buffer",
+    "VipsForeignLoadMagick7File",
+    "VipsForeignLoadMagickBuffer",
+    "VipsForeignLoadMagickFile",
     "VipsForeignLoadMatrix",
     "VipsForeignLoadMatrixFile",
     "VipsForeignLoadMatrixSource",
@@ -2780,6 +3095,13 @@
     "VipsForeignLoadNsgifBuffer",
     "VipsForeignLoadNsgifFile",
     "VipsForeignLoadNsgifSource",
+    "VipsForeignLoadOpenslide",
+    "VipsForeignLoadOpenslideFile",
+    "VipsForeignLoadOpenslideSource",
+    "VipsForeignLoadPdf",
+    "VipsForeignLoadPdfBuffer",
+    "VipsForeignLoadPdfFile",
+    "VipsForeignLoadPdfSource",
     "VipsForeignLoadPng",
     "VipsForeignLoadPngBuffer",
     "VipsForeignLoadPngFile",
@@ -2805,14 +3127,31 @@
     "VipsForeignLoadWebpSource",
     "VipsForeignPrintMatrix",
     "VipsForeignSave",
+    "VipsForeignSaveAvifFile",
+    "VipsForeignSaveAvifTarget",
     "VipsForeignSaveCsv",
     "VipsForeignSaveCsvFile",
     "VipsForeignSaveCsvTarget",
+    "VipsForeignSaveHeif",
+    "VipsForeignSaveHeifBuffer",
+    "VipsForeignSaveHeifFile",
+    "VipsForeignSaveHeifTarget",
     "VipsForeignSaveJpeg",
     "VipsForeignSaveJpegBuffer",
     "VipsForeignSaveJpegFile",
     "VipsForeignSaveJpegMime",
     "VipsForeignSaveJpegTarget",
+    "VipsForeignSaveJxl",
+    "VipsForeignSaveJxlBuffer",
+    "VipsForeignSaveJxlFile",
+    "VipsForeignSaveJxlTarget",
+    "VipsForeignSaveMagick",
+    "VipsForeignSaveMagickBmpBuffer",
+    "VipsForeignSaveMagickBmpFile",
+    "VipsForeignSaveMagickBuffer",
+    "VipsForeignSaveMagickFile",
+    "VipsForeignSaveMagickGifBuffer",
+    "VipsForeignSaveMagickGifFile",
     "VipsForeignSaveMatrix",
     "VipsForeignSaveMatrixFile",
     "VipsForeignSaveMatrixTarget",

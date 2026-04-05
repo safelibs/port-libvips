@@ -10,6 +10,14 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from extract_introspection import (
+    ASSIGNMENT_RE,
+    TypeDefinition,
+    parse_define_macros,
+    strip_translation,
+    type_name_from_parent_expr,
+)
+
 
 BLOCK_COMMENT_RE = re.compile(r"(?s)/\*.*?\*/")
 LINE_COMMENT_RE = re.compile(r"//.*")
@@ -39,6 +47,18 @@ MODULE_SOURCE_LISTS = {
     "vips-openslide": "openslide_module_sources",
     "vips-poppler": "poppler_module_sources",
 }
+MODULE_TYPE_RE = re.compile(
+    r'module_type!\(\s*'
+    r'[^,]+,\s*'
+    r'(?P<parent_expr>[^,]+),\s*'
+    r'[^,]+,\s*'
+    r'[^,]+,\s*'
+    r'"(?P<type_name>[^"]+)"\s*,\s*'
+    r'"(?P<nickname>[^"]+)"\s*,\s*'
+    r'"(?P<description>[^"]+)"\s*'
+    r'\);',
+    re.S,
+)
 
 
 def normalize_space(value: str) -> str:
@@ -139,19 +159,23 @@ def extract_declared_symbols(text: str) -> set[str]:
 def parse_vips_tree(output: str, source: str) -> dict[str, object]:
     entries: list[dict[str, object]] = []
     stack: list[dict[str, object]] = []
+    base_depth: int | None = None
 
     for raw_line in output.splitlines():
         if not raw_line.strip():
             continue
         indent = len(raw_line) - len(raw_line.lstrip(" "))
         depth = indent // 2
+        if base_depth is None:
+            base_depth = depth
+        logical_depth = depth - base_depth
         line = raw_line.strip()
         match = re.match(r"^(.*?) \((.*?)\), (.*)$", line)
         if not match:
             raise ValueError(f"unable to parse vips tree line: {raw_line!r}")
 
         type_name, nickname, description = match.groups()
-        while len(stack) > depth:
+        while len(stack) > logical_depth:
             stack.pop()
 
         parent = stack[-1]["type_name"] if stack else None
@@ -170,6 +194,120 @@ def parse_vips_tree(output: str, source: str) -> dict[str, object]:
         "count": len(entries),
         "nicknames": sorted({entry["nickname"] for entry in entries}),
         "type_names": sorted({entry["type_name"] for entry in entries}),
+        "entries": entries,
+    }
+
+
+def load_type_definitions(original_root: Path) -> dict[str, TypeDefinition]:
+    definitions: dict[str, TypeDefinition] = {}
+    for source_path in sorted(original_root.rglob("*.c")):
+        source_text = source_path.read_text(errors="replace")
+        for definition in parse_define_macros(source_text, str(source_path.relative_to(original_root.parent))):
+            definitions.setdefault(definition.type_name, definition)
+    return definitions
+
+
+def definition_fields(definition: TypeDefinition) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for match in ASSIGNMENT_RE.finditer(definition.body):
+        fields[match.group(1)] = strip_translation(match.group(2))
+    return fields
+
+
+def load_module_type_metadata(safe_root: Path) -> dict[str, dict[str, str]]:
+    text = (safe_root / "src" / "foreign" / "modules.rs").read_text()
+    metadata: dict[str, dict[str, str | None]] = {}
+    for match in MODULE_TYPE_RE.finditer(text):
+        parent_expr = match.group("parent_expr").strip().split("::")[-1]
+        metadata[match.group("type_name")] = {
+            "nickname": match.group("nickname"),
+            "description": match.group("description"),
+            "parent_type_name": type_name_from_parent_expr(f"{parent_expr}()"),
+        }
+    return metadata
+
+
+def repair_tree_manifest(
+    manifest: dict[str, object],
+    *,
+    definitions: dict[str, TypeDefinition],
+    extra_type_names: set[str],
+    module_type_metadata: dict[str, dict[str, str | None]],
+) -> dict[str, object]:
+    base_entries = {
+        str(entry["type_name"]): dict(entry)
+        for entry in manifest["entries"]  # type: ignore[index]
+    }
+
+    wanted_type_names = set(base_entries)
+    pending = set(extra_type_names)
+    while pending:
+        type_name = pending.pop()
+        if type_name in wanted_type_names:
+            continue
+        wanted_type_names.add(type_name)
+        definition = definitions.get(type_name)
+        if definition and definition.parent_type_name and definition.parent_type_name not in wanted_type_names:
+            pending.add(definition.parent_type_name)
+
+    field_cache: dict[str, dict[str, str]] = {}
+    built: dict[str, dict[str, object]] = {}
+
+    def build_entry(type_name: str) -> dict[str, object]:
+        cached = built.get(type_name)
+        if cached is not None:
+            return cached
+
+        base_entry = dict(base_entries.get(type_name, {}))
+        definition = definitions.get(type_name)
+        fields = field_cache.setdefault(type_name, definition_fields(definition)) if definition else {}
+        module_fields = module_type_metadata.get(type_name, {})
+
+        parent = base_entry.get("parent")
+        if definition and definition.parent_type_name:
+            parent = definition.parent_type_name
+        elif module_fields.get("parent_type_name"):
+            parent = module_fields["parent_type_name"]
+
+        if isinstance(parent, str) and parent in wanted_type_names:
+            parent_entry = build_entry(parent)
+            depth = int(parent_entry["depth"]) + 1
+        else:
+            parent = None if parent is None else parent
+            depth = int(base_entry.get("depth", 0))
+
+        nickname = base_entry.get("nickname") or fields.get("nickname") or module_fields.get("nickname")
+        description = (
+            base_entry.get("description")
+            or fields.get("description")
+            or module_fields.get("description")
+        )
+        if nickname is None or description is None:
+            raise ValueError(f"missing nickname/description for {type_name}")
+
+        entry = {
+            "depth": depth,
+            "type_name": type_name,
+            "nickname": nickname,
+            "description": description,
+            "parent": parent,
+        }
+        built[type_name] = entry
+        return entry
+
+    ordered_type_names = [
+        str(entry["type_name"]) for entry in manifest["entries"]  # type: ignore[index]
+    ]
+    for type_name in sorted(wanted_type_names):
+        if type_name not in ordered_type_names:
+            ordered_type_names.append(type_name)
+
+    entries = [build_entry(type_name) for type_name in ordered_type_names if type_name in wanted_type_names]
+    return {
+        "source": manifest["source"],
+        "count": len(entries),
+        "nicknames": sorted({str(entry["nickname"]) for entry in entries}),
+        "type_names": sorted({str(entry["type_name"]) for entry in entries}),
         "entries": entries,
     }
 
@@ -691,15 +829,41 @@ def main() -> int:
     tests = extract_tests(args.original_root, args.meson_test_log, args.pytest_log)
     module_dir, installed_modules = module_contract(args.original_root)
     module_registry = build_module_registry(args.original_root)
+    definitions = load_type_definitions(args.original_root)
+    module_type_metadata = load_module_type_metadata(safe_root)
+    module_type_names = {
+        type_name
+        for entry in module_registry.values()
+        for type_name in entry["types"]  # type: ignore[index]
+    }
+    module_type_names.update(module_type_metadata)
 
     env = dict(os.environ, LD_LIBRARY_PATH=str((args.reference_install / "lib").resolve()))
-    operations_output = run_command(
+    operations_output = parse_vips_tree(
+        run_command(
         [str(args.reference_install / "bin" / "vips"), "-l", "VipsOperation"],
         env=env,
+        ),
+        f"LD_LIBRARY_PATH={args.reference_install / 'lib'} {(args.reference_install / 'bin' / 'vips')} -l VipsOperation",
     )
-    types_output = run_command(
+    operations_output = repair_tree_manifest(
+        operations_output,
+        definitions=definitions,
+        extra_type_names=module_type_names,
+        module_type_metadata=module_type_metadata,
+    )
+    types_output = parse_vips_tree(
+        run_command(
         [str(args.reference_install / "bin" / "vips"), "-l", "VipsObject"],
         env=env,
+        ),
+        f"LD_LIBRARY_PATH={args.reference_install / 'lib'} {(args.reference_install / 'bin' / 'vips')} -l VipsObject",
+    )
+    types_output = repair_tree_manifest(
+        types_output,
+        definitions=definitions,
+        extra_type_names=module_type_names,
+        module_type_metadata=module_type_metadata,
     )
 
     write_lines(
@@ -768,17 +932,11 @@ def main() -> int:
     )
     write_json(
         safe_root / "reference" / "operations.json",
-        parse_vips_tree(
-            operations_output,
-            f"LD_LIBRARY_PATH={args.reference_install / 'lib'} {(args.reference_install / 'bin' / 'vips')} -l VipsOperation",
-        ),
+        operations_output,
     )
     write_json(
         safe_root / "reference" / "types.json",
-        parse_vips_tree(
-            types_output,
-            f"LD_LIBRARY_PATH={args.reference_install / 'lib'} {(args.reference_install / 'bin' / 'vips')} -l VipsObject",
-        ),
+        types_output,
     )
     write_json(
         safe_root / "reference" / "objects" / "link-compat-manifest.json",

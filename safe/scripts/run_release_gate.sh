@@ -4,21 +4,55 @@ set -euo pipefail
 readonly SAFE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly PROJECT_ROOT="$(cd -- "${SAFE_ROOT}/.." && pwd)"
 readonly REFERENCE_LIBVIPS="${PROJECT_ROOT}/build-check-install/lib/libvips.so.42.17.1"
+readonly REFERENCE_LIBVIPS_CPP="${PROJECT_ROOT}/build-check-install/lib/libvips-cpp.so.42.17.1"
+readonly REFERENCE_VIPS_PC="${PROJECT_ROOT}/build-check-install/lib/pkgconfig/vips.pc"
 
 cleanup_paths=()
 cleanup() {
   for path in "${cleanup_paths[@]}"; do
-    if [[ -e "${path}" ]]; then
+    if [[ -n "${path}" && -e "${path}" ]]; then
       rm -rf "${path}"
     fi
   done
 }
 trap cleanup EXIT
 
+assert_manifest_subset() {
+  local subset="$1"
+  local superset="$2"
+  python3 - "${subset}" "${superset}" <<'PY'
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+subset = {
+    line.strip()
+    for line in Path(sys.argv[1]).read_text().splitlines()
+    if line.strip() and not line.startswith("#")
+}
+superset = {
+    line.strip()
+    for line in Path(sys.argv[2]).read_text().splitlines()
+    if line.strip() and not line.startswith("#")
+}
+
+missing = sorted(subset - superset)
+if missing:
+    print("subset manifest contains symbols missing from superset:", file=sys.stderr)
+    for symbol in missing:
+        print(f"  {symbol}", file=sys.stderr)
+    raise SystemExit(1)
+
+print(f"validated manifest subset with {len(subset)} symbols")
+PY
+}
+
 assert_not_reference_binary() {
-  local candidate="$1"
+  local reference="$1"
+  local candidate="$2"
   python3 scripts/assert_not_reference_binary.py \
-    "${REFERENCE_LIBVIPS}" \
+    "${reference}" \
     "${candidate}"
 }
 
@@ -77,8 +111,135 @@ assert_libvips_soname_chain() {
   test "$(readlink "${libdir}/libvips.so")" = 'libvips.so.42'
 }
 
+pkg_config_cflags() {
+  local pcdir="$1"
+  env PKG_CONFIG_PATH="${pcdir}" pkg-config --cflags vips
+}
+
+pkg_config_libs() {
+  local pcdir="$1"
+  local sysroot="${2:-}"
+
+  if [[ -n "${sysroot}" ]]; then
+    env PKG_CONFIG_PATH="${pcdir}" PKG_CONFIG_SYSROOT_DIR="${sysroot}" pkg-config --libs vips
+    return
+  fi
+
+  env PKG_CONFIG_PATH="${pcdir}" pkg-config --libs vips
+}
+
+assert_operation_listing_matches_manifest() {
+  local manifest="$1"
+  local listing_file="$2"
+  python3 - "${manifest}" "${listing_file}" <<'PY'
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+manifest = json.loads(Path(sys.argv[1]).read_text())
+listing = Path(sys.argv[2]).read_text()
+
+missing = []
+for module_name, entry in sorted(manifest.items()):
+    probe = str(entry["probe_operation"])
+    if probe not in listing:
+        missing.append(f"{module_name}: {probe}")
+
+if missing:
+    print("missing module probe operations from `vips -l operation`:", file=sys.stderr)
+    for item in missing:
+        print(f"  {item}", file=sys.stderr)
+    raise SystemExit(1)
+
+print(f"matched {len(manifest)} module probe operations in CLI operation listing")
+PY
+}
+
+assert_probe_operations_execute() {
+  local manifest="$1"
+  local vips_bin="$2"
+  local libdir="$3"
+  local prefix="$4"
+  local probe
+  local probe_output
+
+  while IFS= read -r probe; do
+    if [[ -z "${probe}" ]]; then
+      continue
+    fi
+
+    probe_output="$(
+      LD_LIBRARY_PATH="${libdir}" \
+      VIPSHOME="${prefix}" \
+        "${vips_bin}" "${probe}" 2>&1
+    )"
+    grep -F "usage: ${probe}" <<<"${probe_output}" >/dev/null
+  done < <(
+    python3 - "${manifest}" <<'PY'
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+manifest = json.loads(Path(sys.argv[1]).read_text())
+for module_name in sorted(manifest):
+    print(manifest[module_name]["probe_operation"])
+PY
+  )
+}
+
+compile_deprecated_c_api_object() {
+  local obj="$1"
+  local reference_pc_dir
+
+  reference_pc_dir="$(dirname "${REFERENCE_VIPS_PC}")"
+  test -f "${REFERENCE_VIPS_PC}"
+
+  env PKG_CONFIG_PATH="${reference_pc_dir}" \
+    cc -c tests/link_compat/deprecated_c_api_smoke.c \
+      -o "${obj}" \
+      $(pkg_config_cflags "${reference_pc_dir}")
+}
+
+link_deprecated_c_api_smoke_binary() {
+  local obj="$1"
+  local bin="$2"
+  local pcdir="$3"
+  local sysroot="${4:-}"
+
+  if [[ -n "${sysroot}" ]]; then
+    env PKG_CONFIG_PATH="${pcdir}" PKG_CONFIG_SYSROOT_DIR="${sysroot}" \
+      cc -o "${bin}" "${obj}" \
+        $(pkg_config_libs "${pcdir}" "${sysroot}")
+    return
+  fi
+
+  env PKG_CONFIG_PATH="${pcdir}" \
+    cc -o "${bin}" "${obj}" \
+      $(pkg_config_libs "${pcdir}")
+}
+
+run_deprecated_c_api_smoke_binary() {
+  local bin="$1"
+  local libdir="$2"
+  local prefix="$3"
+
+  LD_LIBRARY_PATH="${libdir}" \
+  VIPSHOME="${prefix}" \
+    "${bin}"
+}
+
 cd "${SAFE_ROOT}"
 export VIPS_SAFE_EXPORT_SURFACE=full
+export PYTHONDONTWRITEBYTECODE=1
+
+echo "[release-gate] manifest sanity"
+assert_manifest_subset \
+  reference/abi/core-bootstrap.symbols \
+  reference/abi/libvips.symbols
 
 echo "[release-gate] cargo"
 cargo build --release
@@ -98,7 +259,7 @@ SAFE_STAGED_LIBVIPS="${SAFE_STAGED_LIBDIR}/libvips.so.42.17.1"
 
 echo "[release-gate] staged-surface checks"
 assert_libvips_soname_chain "${SAFE_STAGED_LIBDIR}"
-assert_not_reference_binary "${SAFE_STAGED_LIBVIPS}"
+assert_not_reference_binary "${REFERENCE_LIBVIPS}" "${SAFE_STAGED_LIBVIPS}"
 assert_expected_symbols_present \
   reference/abi/core-bootstrap.symbols \
   "${SAFE_STAGED_LIBVIPS}"
@@ -120,7 +281,8 @@ test -n "${SAFE_TYPELIB}"
 
 echo "[release-gate] install-surface checks"
 assert_libvips_soname_chain "$(dirname "${SAFE_LIBVIPS}")"
-assert_not_reference_binary "${SAFE_LIBVIPS}"
+assert_not_reference_binary "${REFERENCE_LIBVIPS}" "${SAFE_LIBVIPS}"
+assert_not_reference_binary "${REFERENCE_LIBVIPS_CPP}" "${SAFE_LIBVIPS_CPP}"
 python3 scripts/compare_symbols.py \
   reference/abi/libvips.symbols \
   "${SAFE_LIBVIPS}"
@@ -147,31 +309,37 @@ python3 scripts/compare_test_port.py \
   reference/tests \
   tests/upstream
 
-export SAFE_PKGCONFIG="$(dirname "${SAFE_VIPS_PC}")"
-export SAFE_LIBDIR="$(dirname "${SAFE_LIBVIPS}")"
-export SAFE_GIRDIR="$(dirname "${SAFE_TYPELIB}")"
-export LD_LIBRARY_PATH="${SAFE_LIBDIR}:${LD_LIBRARY_PATH:-}"
-export PKG_CONFIG_PATH="${SAFE_PKGCONFIG}:${PKG_CONFIG_PATH:-}"
-export GI_TYPELIB_PATH="${SAFE_GIRDIR}:${GI_TYPELIB_PATH:-}"
-export PYTHONNOUSERSITE=1
-export PIP_NO_INDEX=1
-
 echo "[release-gate] introspection and upstream wrappers"
-scripts/check_introspection.sh \
-  --lib-dir "${SAFE_LIBDIR}" \
-  --typelib-dir "${SAFE_GIRDIR}" \
-  --expect-version 8.15.1
-g-ir-inspect --print-shlibs --print-typelibs Vips >/dev/null
-scripts/check_introspection.sh \
-  --lib-dir "${SAFE_LIBDIR}" \
-  --gir "${SAFE_GIR}" \
-  --expect-version 8.15.1
+SAFE_PKGCONFIG="$(dirname "${SAFE_VIPS_PC}")"
+SAFE_LIBDIR="$(dirname "${SAFE_LIBVIPS}")"
+SAFE_GIRDIR="$(dirname "${SAFE_TYPELIB}")"
+(
+  export SAFE_PKGCONFIG
+  export SAFE_LIBDIR
+  export SAFE_GIRDIR
+  export LD_LIBRARY_PATH="${SAFE_LIBDIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+  export PKG_CONFIG_PATH="${SAFE_PKGCONFIG}${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
+  export GI_TYPELIB_PATH="${SAFE_GIRDIR}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}"
+  export PYTHONNOUSERSITE=1
+  export PIP_NO_INDEX=1
+  export VIPS_SAFE_BUILD_DIR="${SAFE_ROOT}/build-release"
 
-tests/upstream/run-meson-suite.sh build-release
-tests/upstream/run-shell-suite.sh --list | rg 'test_thumbnail\.sh'
-tests/upstream/run-shell-suite.sh build-release
-VIPS_SAFE_BUILD_DIR="${SAFE_ROOT}/build-release" tests/upstream/run-pytest-suite.sh
-tests/upstream/run-fuzz-suite.sh build-release
+  scripts/check_introspection.sh \
+    --lib-dir "${SAFE_LIBDIR}" \
+    --typelib-dir "${SAFE_GIRDIR}" \
+    --expect-version 8.15.1
+  g-ir-inspect --print-shlibs --print-typelibs --version=8.0 Vips >/dev/null
+  scripts/check_introspection.sh \
+    --lib-dir "${SAFE_LIBDIR}" \
+    --gir "${SAFE_GIR}" \
+    --expect-version 8.15.1
+
+  tests/upstream/run-meson-suite.sh build-release
+  tests/upstream/run-shell-suite.sh --list | rg 'test_thumbnail\.sh'
+  tests/upstream/run-shell-suite.sh build-release
+  tests/upstream/run-pytest-suite.sh
+  tests/upstream/run-fuzz-suite.sh build-release
+)
 
 echo "[release-gate] link compatibility"
 scripts/link_compat.sh \
@@ -187,54 +355,159 @@ touch "${build_stamp}"
 
 echo "[release-gate] debian packages"
 dpkg-buildpackage -b -uc -us
-find .. -maxdepth 1 -type f -newer "${build_stamp}" -name '*.deb' | sort
+find "${PROJECT_ROOT}" -maxdepth 1 -type f -newer "${build_stamp}" -name '*.deb' | sort
 
 version="$(dpkg-parsechangelog -SVersion)"
 arch="$(dpkg-architecture -qDEB_HOST_ARCH)"
-runtime_deb="../libvips42t64_${version}_${arch}.deb"
-dev_deb="../libvips-dev_${version}_${arch}.deb"
-tools_deb="../libvips-tools_${version}_${arch}.deb"
-doc_deb="../libvips-doc_${version}_all.deb"
-gir_deb="../gir1.2-vips-8.0_${version}_${arch}.deb"
+runtime_deb="${PROJECT_ROOT}/libvips42t64_${version}_${arch}.deb"
+dev_deb="${PROJECT_ROOT}/libvips-dev_${version}_${arch}.deb"
+tools_deb="${PROJECT_ROOT}/libvips-tools_${version}_${arch}.deb"
+doc_deb="${PROJECT_ROOT}/libvips-doc_${version}_all.deb"
+gir_deb="${PROJECT_ROOT}/gir1.2-vips-8.0_${version}_${arch}.deb"
 test -f "${runtime_deb}"
 test -f "${dev_deb}"
 test -f "${tools_deb}"
 test -f "${doc_deb}"
 test -f "${gir_deb}"
+for deb in "${runtime_deb}" "${dev_deb}" "${tools_deb}" "${doc_deb}" "${gir_deb}"; do
+  test "${deb}" -nt "${build_stamp}"
+done
 
-runtime_root="$(mktemp -d /tmp/libvips-safe-runtime-deb.XXXXXX)"
-dev_root="$(mktemp -d /tmp/libvips-safe-dev-deb.XXXXXX)"
-gir_root="$(mktemp -d /tmp/libvips-safe-gir-deb.XXXXXX)"
-cleanup_paths+=("${runtime_root}" "${dev_root}" "${gir_root}")
+cleanup_paths+=(
+  "${runtime_deb}"
+  "${dev_deb}"
+  "${tools_deb}"
+  "${doc_deb}"
+  "${gir_deb}"
+  "${PROJECT_ROOT}/libvips42t64-dbgsym_${version}_${arch}.ddeb"
+  "${PROJECT_ROOT}/libvips-tools-dbgsym_${version}_${arch}.ddeb"
+  "${PROJECT_ROOT}/vips_${version}_${arch}.buildinfo"
+  "${PROJECT_ROOT}/vips_${version}_${arch}.changes"
+  "${SAFE_ROOT}/debian/.debhelper"
+  "${SAFE_ROOT}/debian/debhelper-build-stamp"
+  "${SAFE_ROOT}/debian/files"
+  "${SAFE_ROOT}/debian/gir1.2-vips-8.0.debhelper.log"
+  "${SAFE_ROOT}/debian/gir1.2-vips-8.0.substvars"
+  "${SAFE_ROOT}/debian/gir1.2-vips-8.0"
+  "${SAFE_ROOT}/debian/libvips-dev.debhelper.log"
+  "${SAFE_ROOT}/debian/libvips-dev.substvars"
+  "${SAFE_ROOT}/debian/libvips-dev"
+  "${SAFE_ROOT}/debian/libvips-doc.debhelper.log"
+  "${SAFE_ROOT}/debian/libvips-doc.postinst.debhelper"
+  "${SAFE_ROOT}/debian/libvips-doc.postrm.debhelper"
+  "${SAFE_ROOT}/debian/libvips-doc.preinst.debhelper"
+  "${SAFE_ROOT}/debian/libvips-doc.prerm.debhelper"
+  "${SAFE_ROOT}/debian/libvips-doc.substvars"
+  "${SAFE_ROOT}/debian/libvips-doc"
+  "${SAFE_ROOT}/debian/libvips-tools.debhelper.log"
+  "${SAFE_ROOT}/debian/libvips-tools.substvars"
+  "${SAFE_ROOT}/debian/libvips-tools"
+  "${SAFE_ROOT}/debian/libvips42t64.debhelper.log"
+  "${SAFE_ROOT}/debian/libvips42t64.substvars"
+  "${SAFE_ROOT}/debian/libvips42t64"
+  "${SAFE_ROOT}/debian/tmp"
+)
 
-dpkg-deb -x "${runtime_deb}" "${runtime_root}"
-dpkg-deb -x "${dev_deb}" "${dev_root}"
-dpkg-deb -x "${gir_deb}" "${gir_root}"
+extracted_root="$(mktemp -d /tmp/libvips-safe-extracted-deb.XXXXXX)"
+cleanup_paths+=("${extracted_root}")
+for deb in "${runtime_deb}" "${dev_deb}" "${tools_deb}" "${gir_deb}"; do
+  dpkg-deb -x "${deb}" "${extracted_root}"
+done
 
-packaged_libvips="$(find "${runtime_root}" -type f -name 'libvips.so.42.17.1' | sort | sed -n '1p')"
+extracted_prefix="${extracted_root}/usr"
+packaged_libvips="$(find "${extracted_prefix}" -type f -name 'libvips.so.42.17.1' | sort | sed -n '1p')"
+packaged_libvips_cpp="$(find "${extracted_prefix}" -type f -name 'libvips-cpp.so.42.17.1' | sort | sed -n '1p')"
 packaged_libdir="$(dirname "${packaged_libvips}")"
-packaged_typelib_dir="$(find "${gir_root}" -type d -path '*/girepository-1.0' | sort | sed -n '1p')"
-packaged_gir="$(find "${dev_root}" -type f -name 'Vips-8.0.gir' | sort | sed -n '1p')"
+packaged_pkgconfig_dir="$(dirname "$(find "${extracted_prefix}" -type f -path '*/pkgconfig/vips.pc' | sort | sed -n '1p')")"
+packaged_typelib_dir="$(find "${extracted_prefix}" -type d -path '*/girepository-1.0' | sort | sed -n '1p')"
+packaged_gir="$(find "${extracted_prefix}" -type f -name 'Vips-8.0.gir' | sort | sed -n '1p')"
+packaged_vips_bin="${extracted_prefix}/bin/vips"
 test -n "${packaged_libvips}"
+test -n "${packaged_libvips_cpp}"
 test -n "${packaged_typelib_dir}"
 test -n "${packaged_gir}"
+test -n "${packaged_pkgconfig_dir}"
+test -x "${packaged_vips_bin}"
 
-assert_not_reference_binary "${packaged_libvips}"
+echo "[release-gate] packaged-prefix checks"
+assert_not_reference_binary "${REFERENCE_LIBVIPS}" "${packaged_libvips}"
+assert_not_reference_binary "${REFERENCE_LIBVIPS_CPP}" "${packaged_libvips_cpp}"
+python3 scripts/compare_symbols.py \
+  reference/abi/libvips.symbols \
+  "${packaged_libvips}"
+python3 scripts/compare_symbols.py \
+  reference/abi/deprecated-im.symbols \
+  "${packaged_libvips}"
+python3 scripts/compare_symbols.py \
+  reference/abi/libvips-cpp.symbols \
+  "${packaged_libvips_cpp}"
+python3 scripts/compare_headers.py \
+  --files reference/headers/public-files.txt \
+  --decls reference/headers/public-api-decls.txt \
+  "${extracted_prefix}"
+python3 scripts/compare_pkgconfig.py \
+  reference/pkgconfig/vips.pc \
+  "${packaged_pkgconfig_dir}/vips.pc"
+python3 scripts/compare_pkgconfig.py \
+  reference/pkgconfig/vips-cpp.pc \
+  "${packaged_pkgconfig_dir}/vips-cpp.pc"
 python3 scripts/compare_modules.py \
   reference/modules \
-  "${runtime_root}"
+  "${extracted_prefix}"
+
+operation_listing_file="$(mktemp /tmp/libvips-safe-operations.XXXXXX)"
+cleanup_paths+=("${operation_listing_file}")
+LD_LIBRARY_PATH="${packaged_libdir}" \
+VIPSHOME="${extracted_prefix}" \
+  "${packaged_vips_bin}" -l operation >"${operation_listing_file}"
+assert_operation_listing_matches_manifest \
+  reference/modules/module-registry.json \
+  "${operation_listing_file}"
+assert_probe_operations_execute \
+  reference/modules/module-registry.json \
+  "${packaged_vips_bin}" \
+  "${packaged_libdir}" \
+  "${extracted_prefix}"
+python3 scripts/compare_module_registry.py \
+  reference/modules/module-registry.json \
+  "${extracted_prefix}"
 
 scripts/check_introspection.sh \
   --lib-dir "${packaged_libdir}" \
   --typelib-dir "${packaged_typelib_dir}" \
   --expect-version 8.15.1
-GI_TYPELIB_PATH="${packaged_typelib_dir}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}" \
-LD_LIBRARY_PATH="${packaged_libdir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
-  g-ir-inspect --print-shlibs --print-typelibs Vips >/dev/null
+GI_TYPELIB_PATH="${packaged_typelib_dir}" \
+LD_LIBRARY_PATH="${packaged_libdir}" \
+  g-ir-inspect --print-shlibs --print-typelibs --version=8.0 Vips >/dev/null
 scripts/check_introspection.sh \
   --lib-dir "${packaged_libdir}" \
   --gir "${packaged_gir}" \
   --expect-version 8.15.1
+
+echo "[release-gate] deprecated C API smoke"
+deprecated_smoke_workdir="$(mktemp -d /tmp/libvips-safe-deprecated-smoke.XXXXXX)"
+cleanup_paths+=("${deprecated_smoke_workdir}")
+deprecated_smoke_obj="${deprecated_smoke_workdir}/deprecated_c_api_smoke.o"
+deprecated_smoke_safe_bin="${deprecated_smoke_workdir}/deprecated_c_api_smoke.safe-install"
+deprecated_smoke_packaged_bin="${deprecated_smoke_workdir}/deprecated_c_api_smoke.packaged"
+compile_deprecated_c_api_object "${deprecated_smoke_obj}"
+link_deprecated_c_api_smoke_binary \
+  "${deprecated_smoke_obj}" \
+  "${deprecated_smoke_safe_bin}" \
+  "${SAFE_PKGCONFIG}"
+link_deprecated_c_api_smoke_binary \
+  "${deprecated_smoke_obj}" \
+  "${deprecated_smoke_packaged_bin}" \
+  "${packaged_pkgconfig_dir}" \
+  "${extracted_root}"
+run_deprecated_c_api_smoke_binary \
+  "${deprecated_smoke_safe_bin}" \
+  "${SAFE_LIBDIR}" \
+  "${SAFE_INSTALL_ROOT}"
+run_deprecated_c_api_smoke_binary \
+  "${deprecated_smoke_packaged_bin}" \
+  "${packaged_libdir}" \
+  "${extracted_prefix}"
 
 for runtime_lib in \
   'usr/lib/.*/libvips\.so\.42' \
@@ -292,4 +565,4 @@ dpkg-deb -c "${gir_deb}" | rg 'usr/lib/girepository-1\.0/Vips-8\.0\.typelib'
 
 echo "[release-gate] dependent harness"
 cd "${PROJECT_ROOT}"
-./test-original.sh
+LIBVIPS_USE_EXISTING_DEBS=1 ./test-original.sh

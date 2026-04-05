@@ -550,6 +550,47 @@ fn apply_load_result(
     image
 }
 
+fn load_vips_file_into_image(
+    image: *mut VipsImage,
+    filename: &CStr,
+    bytes: &[u8],
+    options: LoadOptions,
+) -> *mut VipsImage {
+    if loaders::container::is_container(bytes) {
+        match loaders::container::parse_container(bytes, options) {
+            Ok(result) => apply_load_result(image, result, Some(filename)),
+            Err(()) => ptr::null_mut(),
+        }
+    } else {
+        loaders::legacy_vips::load_file_into_image(filename, image)
+    }
+}
+
+fn load_vips_source_into_image(
+    image: *mut VipsImage,
+    source: *mut VipsSource,
+    filename_hint: Option<&str>,
+    bytes: &[u8],
+    options: LoadOptions,
+) -> *mut VipsImage {
+    if !loaders::container::is_container(bytes) {
+        if let Some(filename) = filename_hint.and_then(|value| CString::new(value).ok()) {
+            return loaders::legacy_vips::load_file_into_image(&filename, image);
+        }
+    }
+
+    match load_from_bytes_for_kind(bytes, ForeignKind::Vips, InputKind::Source, options) {
+        Ok(result) => {
+            if let Some(state) = unsafe { image_state(image) } {
+                state.source = Some(unsafe { object::object_ref(source) });
+            }
+            let filename_cstr = filename_hint.and_then(|value| CString::new(value).ok());
+            apply_load_result(image, result, filename_cstr.as_deref())
+        }
+        Err(()) => ptr::null_mut(),
+    }
+}
+
 pub fn decode_pending(pending: &base::PendingDecode) -> Result<Vec<u8>, ()> {
     if loaders::container::is_container(&pending.bytes) {
         return loaders::container::extract_pixel_payload(&pending.bytes);
@@ -615,8 +656,8 @@ pub fn save_to_bytes(
         | ForeignKind::Tiff
         | ForeignKind::Webp
         | ForeignKind::Heif
-        | ForeignKind::Radiance
-        | ForeignKind::Vips => savers::container::write_container(image, kind, options),
+        | ForeignKind::Radiance => savers::container::write_container(image, kind, options),
+        ForeignKind::Vips => loaders::legacy_vips::save_bytes(image),
         _ => {
             append_message_str("foreignsave", "unsupported saver");
             Err(())
@@ -858,11 +899,22 @@ pub fn new_image_from_source(
         return ptr::null_mut();
     };
     let filename_hint = filename_hint_from_source(source);
+    let options = options_from_cstr(option_string);
+    let kind = kind_from_source_bytes(&bytes, filename_hint.as_deref());
+    if kind == ForeignKind::Vips {
+        return load_vips_source_into_image(
+            image,
+            source,
+            filename_hint.as_deref(),
+            &bytes,
+            options,
+        );
+    }
     let result = load_from_bytes_inner(
         &bytes,
         filename_hint.as_deref(),
         InputKind::Source,
-        options_from_cstr(option_string),
+        options,
     );
     match result {
         Ok(result) => {
@@ -886,12 +938,11 @@ pub fn load_image_from_file(
     let Ok(bytes) = read_all_from_path(filename) else {
         return ptr::null_mut();
     };
-    match load_from_bytes_inner(
-        &bytes,
-        filename.to_str().ok(),
-        InputKind::File,
-        options_from_cstr(option_string),
-    ) {
+    let options = options_from_cstr(option_string);
+    if kind_from_source_bytes(&bytes, filename.to_str().ok()) == ForeignKind::Vips {
+        return load_vips_file_into_image(image, filename, &bytes, options);
+    }
+    match load_from_bytes_inner(&bytes, filename.to_str().ok(), InputKind::File, options) {
         Ok(result) => apply_load_result(image, result, Some(filename)),
         Err(()) => ptr::null_mut(),
     }
@@ -945,6 +996,15 @@ fn new_image_from_source_with_kind(
         return ptr::null_mut();
     };
     let filename_hint = filename_hint_from_source(source);
+    if kind == ForeignKind::Vips {
+        return load_vips_source_into_image(
+            image,
+            source,
+            filename_hint.as_deref(),
+            &bytes,
+            options,
+        );
+    }
     match load_from_bytes_for_kind(&bytes, kind, InputKind::Source, options) {
         Ok(result) => {
             if let Some(state) = unsafe { image_state(image) } {
@@ -1050,22 +1110,27 @@ pub fn dispatch_operation(
                 return Ok(false);
             };
             let options = load_options_from_object(object)?;
-            let cache_key = file_load_cache_key(kind, &filename, &options);
-            if options.revalidate {
-                remove_cached_file_load(&cache_key);
-            }
-            let cfilename = CString::new(filename).map_err(|_| ())?;
-            let result = if let Some(cached) = lookup_cached_file_load(&cache_key) {
-                cached
-            } else {
-                let bytes = read_all_from_path(&cfilename).map_err(|_| ())?;
-                let result =
-                    load_from_bytes_for_kind(&bytes, kind, InputKind::File, options.clone())?;
-                store_cached_file_load(cache_key, result.clone());
-                result
-            };
+            let cfilename = CString::new(filename.as_str()).map_err(|_| ())?;
             let image = crate::runtime::image::vips_image_new();
-            let out = apply_load_result(image, result, Some(&cfilename));
+            let out = if kind == ForeignKind::Vips {
+                let bytes = read_all_from_path(&cfilename).map_err(|_| ())?;
+                load_vips_file_into_image(image, &cfilename, &bytes, options)
+            } else {
+                let cache_key = file_load_cache_key(kind, &filename, &options);
+                if options.revalidate {
+                    remove_cached_file_load(&cache_key);
+                }
+                let result = if let Some(cached) = lookup_cached_file_load(&cache_key) {
+                    cached
+                } else {
+                    let bytes = read_all_from_path(&cfilename).map_err(|_| ())?;
+                    let result =
+                        load_from_bytes_for_kind(&bytes, kind, InputKind::File, options.clone())?;
+                    store_cached_file_load(cache_key, result.clone());
+                    result
+                };
+                apply_load_result(image, result, Some(&cfilename))
+            };
             if out.is_null() {
                 unsafe {
                     object::object_unref(image);

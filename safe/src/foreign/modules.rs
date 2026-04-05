@@ -36,6 +36,13 @@ macro_rules! module_type {
         pub extern "C" fn $fn_name() -> glib_sys::GType {
             static ONCE: OnceLock<glib_sys::GType> = OnceLock::new();
             *ONCE.get_or_init(|| {
+                let type_name = concat!($name, "\0");
+                let existing =
+                    unsafe { gobject_sys::g_type_from_name(type_name.as_ptr().cast()) };
+                if existing != 0 {
+                    return existing;
+                }
+
                 unsafe extern "C" fn class_init(
                     klass: glib_sys::gpointer,
                     _data: glib_sys::gpointer,
@@ -50,7 +57,7 @@ macro_rules! module_type {
                 }
                 object::register_type(
                     $parent(),
-                    concat!($name, "\0").as_ptr().cast(),
+                    type_name.as_ptr().cast(),
                     size_of::<$class_ty>(),
                     Some(class_init),
                     size_of::<$instance_ty>(),

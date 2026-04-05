@@ -1,10 +1,11 @@
-use std::ffi::{c_void, CStr};
+use std::ffi::{c_void, CStr, CString};
 use std::mem::size_of;
 use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::ptr;
 use std::slice;
 use std::sync::{Mutex, Once, OnceLock};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use gobject_sys::{g_signal_connect_data, GObject};
 use vips::*;
@@ -33,6 +34,45 @@ fn sample_png() -> PathBuf {
         .join("test-suite")
         .join("images")
         .join("sample.png")
+}
+
+fn sample_jpg() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("original")
+        .join("test")
+        .join("test-suite")
+        .join("images")
+        .join("sample.jpg")
+}
+
+fn temp_vips_path() -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time")
+        .as_nanos();
+    std::env::temp_dir().join(format!("safe-runtime-io-{unique}.v"))
+}
+
+unsafe extern "C" {
+    fn vips_image_new_from_file(name: *const c_char, ...) -> *mut VipsImage;
+    fn vips_image_write_to_file(image: *mut VipsImage, name: *const c_char, ...) -> libc::c_int;
+    fn vips__seek(fd: libc::c_int, pos: i64, whence: libc::c_int) -> i64;
+    fn vips__write(fd: libc::c_int, buf: *const c_void, count: usize) -> libc::c_int;
+    fn vips__read_header_bytes(im: *mut VipsImage, from: *mut u8) -> libc::c_int;
+    fn vips__write_header_bytes(im: *mut VipsImage, to: *mut u8) -> libc::c_int;
+}
+
+fn copy_blob(image: *mut VipsImage, name: &CStr) -> Option<Vec<u8>> {
+    let mut data = std::ptr::null();
+    let mut len = 0usize;
+    if vips_image_get_blob(image, name.as_ptr(), &mut data, &mut len) != 0 {
+        return None;
+    }
+    if data.is_null() && len == 0 {
+        return Some(Vec::new());
+    }
+    Some(unsafe { slice::from_raw_parts(data.cast::<u8>(), len) }.to_vec())
 }
 
 fn cache_probe_operation_type() -> glib_sys::GType {
@@ -188,6 +228,106 @@ fn metadata_get_fields_and_zeroed_region_buffers_work() {
         gobject_sys::g_object_unref(region.cast());
         gobject_sys::g_object_unref(image.cast());
     }
+}
+
+#[test]
+fn legacy_vips_files_preserve_fd_and_header_edit_compat() {
+    let _guard = guard();
+    init_vips();
+
+    let input_path = sample_png();
+    let output_path = temp_vips_path();
+    let _ = std::fs::remove_file(&output_path);
+
+    let input_c = CString::new(input_path.to_string_lossy().into_owned()).expect("input path");
+    let output_c = CString::new(output_path.to_string_lossy().into_owned()).expect("output path");
+
+    let input = unsafe { vips_image_new_from_file(input_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!input.is_null());
+    assert_eq!(
+        unsafe { vips_image_write_to_file(input, output_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    unsafe {
+        gobject_sys::g_object_unref(input.cast());
+    }
+
+    let saved = std::fs::read(&output_path).expect("saved .v file");
+    assert!(
+        saved.starts_with(&[0x08, 0xf2, 0xa6, 0xb6])
+            || saved.starts_with(&[0xb6, 0xa6, 0xf2, 0x08])
+    );
+
+    let image = unsafe { vips_image_new_from_file(output_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!image.is_null());
+    let fd = unsafe { (*image).fd };
+    assert!(fd >= 0, "expected legacy .v load to retain an open fd");
+    assert_eq!(unsafe { vips__seek(fd, 0, libc::SEEK_SET) }, 0);
+
+    let mut header = [0u8; 64];
+    let read = unsafe { libc::read(fd, header.as_mut_ptr().cast::<c_void>(), header.len()) };
+    assert_eq!(read, header.len() as isize);
+    assert_eq!(unsafe { vips__read_header_bytes(image, header.as_mut_ptr()) }, 0);
+
+    unsafe {
+        (*image).Xsize = 123;
+    }
+    let mut edited_header = [0u8; 64];
+    assert_eq!(
+        unsafe { vips__write_header_bytes(image, edited_header.as_mut_ptr()) },
+        0
+    );
+    assert_eq!(unsafe { vips__seek(fd, 0, libc::SEEK_SET) }, 0);
+    assert_eq!(
+        unsafe { vips__write(fd, edited_header.as_ptr().cast::<c_void>(), edited_header.len()) },
+        0
+    );
+    unsafe {
+        gobject_sys::g_object_unref(image.cast());
+    }
+
+    let reopened = unsafe { vips_image_new_from_file(output_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!reopened.is_null());
+    assert_eq!(unsafe { (*reopened).Xsize }, 123);
+    unsafe {
+        gobject_sys::g_object_unref(reopened.cast());
+    }
+
+    std::fs::remove_file(&output_path).expect("remove temp .v file");
+}
+
+#[test]
+fn legacy_vips_files_round_trip_exif_metadata() {
+    let _guard = guard();
+    init_vips();
+
+    let input_path = sample_jpg();
+    let output_path = temp_vips_path();
+    let _ = std::fs::remove_file(&output_path);
+
+    let input_c = CString::new(input_path.to_string_lossy().into_owned()).expect("input path");
+    let output_c = CString::new(output_path.to_string_lossy().into_owned()).expect("output path");
+
+    let input = unsafe { vips_image_new_from_file(input_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!input.is_null());
+    let before_exif = copy_blob(input, c"exif-data").expect("input exif-data");
+    assert_eq!(
+        unsafe { vips_image_write_to_file(input, output_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    unsafe {
+        gobject_sys::g_object_unref(input.cast());
+    }
+
+    let reopened = unsafe { vips_image_new_from_file(output_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!reopened.is_null());
+    let after_exif = copy_blob(reopened, c"exif-data").expect("round-tripped exif-data");
+    assert_eq!(before_exif, after_exif);
+    unsafe {
+        gobject_sys::g_object_unref(reopened.cast());
+    }
+
+    std::fs::remove_file(&output_path).expect("remove temp .v file");
 }
 
 struct SourceCustomState {

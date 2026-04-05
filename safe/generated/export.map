@@ -5,11 +5,9 @@ VIPS_42 {
     vips__filename_split8;
     vips__has_extension_block;
     vips__open;
-    vips__open_read;
     vips__read_extension_block;
     vips__read_header_bytes;
     vips__seek;
-    vips__seek_no_error;
     vips__substitute;
     vips__temp_name;
     vips__write;
@@ -47,7 +45,6 @@ VIPS_42 {
     vips_buf_appendgv;
     vips_buf_appendns;
     vips_buf_appends;
-    vips_buf_appendsc;
     vips_buf_change;
     vips_buf_destroy;
     vips_buf_firstline;

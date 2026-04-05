@@ -379,6 +379,77 @@ pub(crate) fn snapshot_metadata_entries(image: *mut VipsImage) -> Vec<(CString, 
         .collect()
 }
 
+pub(crate) fn snapshot_save_string_metadata(image: *mut VipsImage) -> Vec<(String, String, String)> {
+    let mut serialized = Vec::new();
+    for (name, value) in snapshot_metadata_entries(image) {
+        if name.as_c_str().to_bytes() == b"vips-loader" {
+            continue;
+        }
+        let field_name = name.to_string_lossy().into_owned();
+        match &value {
+            MetaValue::Int(value) => {
+                serialized.push((field_name, "int".to_owned(), value.to_string()));
+            }
+            MetaValue::String(value) => {
+                serialized.push((
+                    field_name,
+                    "string".to_owned(),
+                    value.to_string_lossy().into_owned(),
+                ));
+            }
+            MetaValue::Blob(blob) => {
+                let area = unsafe { &(**blob).area };
+                let encoded = if area.data.is_null() || area.length == 0 {
+                    String::new()
+                } else {
+                    let encoded = unsafe { glib_sys::g_base64_encode(area.data.cast::<u8>(), area.length) };
+                    let text = unsafe { CStr::from_ptr(encoded) }
+                        .to_string_lossy()
+                        .into_owned();
+                    unsafe {
+                        glib_sys::g_free(encoded.cast());
+                    }
+                    text
+                };
+                serialized.push((field_name, "blob".to_owned(), encoded));
+            }
+            _ => {}
+        }
+    }
+
+    serialized
+}
+
+pub(crate) fn install_save_string_metadata(
+    image: *mut VipsImage,
+    name: &str,
+    type_name: &str,
+    save_string: &str,
+) -> Result<(), ()> {
+    let name = CString::new(name).map_err(|_| ())?;
+    match type_name {
+        "int" => {
+            let value = save_string.parse::<i32>().map_err(|_| ())?;
+            vips_image_set_int(image, name.as_ptr(), value);
+        }
+        "string" => {
+            let value = CString::new(save_string).map_err(|_| ())?;
+            vips_image_set_string(image, name.as_ptr(), value.as_ptr());
+        }
+        "blob" => {
+            let save_string = CString::new(save_string).map_err(|_| ())?;
+            let mut length = 0usize;
+            let data = unsafe { glib_sys::g_base64_decode(save_string.as_ptr(), &mut length) };
+            vips_image_set_blob_copy(image, name.as_ptr(), data.cast::<c_void>(), length);
+            unsafe {
+                glib_sys::g_free(data.cast());
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 #[no_mangle]
 pub extern "C" fn vips_format_sizeof(format: VipsBandFormat) -> u64 {
     format_sizeof(format) as u64

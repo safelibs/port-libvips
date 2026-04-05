@@ -85,7 +85,7 @@ ASSIGNMENT_RE = re.compile(
 )
 FLAGS_RE = re.compile(r"operation_class\s*->\s*flags\s*([|]?=)\s*(.+?);", re.S)
 CLASS_INIT_RE_TEMPLATE = r"(?:static\s+)?void\s+{name}_class_init\s*\([^)]*\)\s*\{{"
-DEFINE_MACRO_RE = re.compile(r"\bG_DEFINE_[A-Z_]+\s*\(")
+DEFINE_MACRO_RE = re.compile(r"\b(?P<macro>G_DEFINE_[A-Z_]+)\s*\(")
 ARG_MACRO_RE = re.compile(r"\bVIPS_ARG_([A-Z0-9_]+)\s*\(")
 
 
@@ -93,6 +93,8 @@ ARG_MACRO_RE = re.compile(r"\bVIPS_ARG_([A-Z0-9_]+)\s*\(")
 class TypeDefinition:
     type_name: str
     symbol_name: str
+    parent_type_name: str | None
+    abstract: bool
     body: str
     source_path: str
 
@@ -185,6 +187,7 @@ def read_balanced(text: str, open_index: int, open_char: str, close_char: str) -
 def parse_define_macros(source_text: str, source_path: str) -> list[TypeDefinition]:
     definitions: list[TypeDefinition] = []
     for match in DEFINE_MACRO_RE.finditer(source_text):
+        macro_name = match.group("macro")
         _, end = match.span()
         args_text, _ = read_balanced(source_text, source_text.find("(", match.start()), "(", ")")
         args = split_top_level(args_text)
@@ -202,6 +205,10 @@ def parse_define_macros(source_text: str, source_path: str) -> list[TypeDefiniti
             TypeDefinition(
                 type_name=type_name,
                 symbol_name=symbol_name,
+                parent_type_name=(
+                    type_name_from_parent_expr(args[2]) if len(args) >= 3 else None
+                ),
+                abstract="ABSTRACT" in macro_name,
                 body=body,
                 source_path=source_path,
             )
@@ -242,6 +249,22 @@ def type_name_from_macro(type_macro: str) -> str | None:
                 converted.append(piece)
         return "Vips" + "".join(converted)
     return None
+
+
+def type_name_from_parent_expr(expr: str) -> str | None:
+    expr = expr.strip()
+    macro_name = type_name_from_macro(expr)
+    if macro_name is not None:
+        return macro_name
+
+    match = re.fullmatch(r"([a-z0-9_]+)_get_type\s*\(\s*\)", expr)
+    if not match:
+        return None
+
+    pieces = [piece for piece in match.group(1).split("_") if piece]
+    if not pieces:
+        return None
+    return "".join(piece.lower().capitalize() for piece in pieces)
 
 
 def arg_type_info(kind: str, args: list[str]) -> dict[str, object]:
@@ -395,6 +418,7 @@ def merge_metadata(
     definitions: Iterable[TypeDefinition],
     wrappers: dict[str, dict[str, object]],
 ) -> dict[str, object]:
+    definition_by_name = {definition.type_name: definition for definition in definitions}
     type_entries = {
         entry["type_name"]: dict(entry)
         for entry in reference_types["entries"]  # type: ignore[index]
@@ -409,11 +433,17 @@ def merge_metadata(
         if entry.get("parent")
     }
 
+    def is_abstract(type_name: str) -> bool:
+        definition = definition_by_name.get(type_name)
+        if definition is not None:
+            return definition.abstract
+        return False
+
     type_metadata: dict[str, dict[str, object]] = {
         name: {
             **entry,
             "source_file": None,
-            "abstract": name in parent_names,
+            "abstract": is_abstract(name),
         }
         for name, entry in type_entries.items()
     }
@@ -447,7 +477,7 @@ def merge_metadata(
             operation_entry = {
                 **operation_entries[definition.type_name],
                 "source_file": definition.source_path,
-                "abstract": definition.type_name in parent_names,
+                "abstract": definition.abstract,
                 "flags": flags,
                 "arguments": parse_arguments(definition.body),
                 "wrapper": wrappers.get(operation_entries[definition.type_name]["nickname"]),
@@ -459,7 +489,7 @@ def merge_metadata(
             operation_metadata[type_name] = {
                 **entry,
                 "source_file": None,
-                "abstract": type_name in parent_names,
+                "abstract": is_abstract(type_name),
                 "flags": [],
                 "arguments": [],
                 "wrapper": wrappers.get(entry["nickname"]),

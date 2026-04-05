@@ -251,11 +251,9 @@ vips__open
 vips__filename_split8
 vips__file_read
 vips__has_extension_block
-vips__open_read
 vips__read_header_bytes
 vips__read_extension_block
 vips__seek
-vips__seek_no_error
 vips__substitute
 vips__temp_name
 vips__write
@@ -290,7 +288,6 @@ vips_foreign_find_save
 vips_foreign_find_save_buffer
 vips_foreign_find_save_target
 vips_buf_appends
-vips_buf_appendsc
 vips_buf_change
 vips_buf_destroy
 vips_buf_firstline
