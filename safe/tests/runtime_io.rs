@@ -75,6 +75,28 @@ fn copy_blob(image: *mut VipsImage, name: &CStr) -> Option<Vec<u8>> {
     Some(unsafe { slice::from_raw_parts(data.cast::<u8>(), len) }.to_vec())
 }
 
+fn save_sample_jpg_as_vips_file() -> (PathBuf, Vec<u8>) {
+    let input_path = sample_jpg();
+    let output_path = temp_vips_path();
+    let _ = std::fs::remove_file(&output_path);
+
+    let input_c = CString::new(input_path.to_string_lossy().into_owned()).expect("input path");
+    let output_c = CString::new(output_path.to_string_lossy().into_owned()).expect("output path");
+
+    let input = unsafe { vips_image_new_from_file(input_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!input.is_null());
+    assert_eq!(
+        unsafe { vips_image_write_to_file(input, output_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    unsafe {
+        gobject_sys::g_object_unref(input.cast());
+    }
+
+    let bytes = std::fs::read(&output_path).expect("saved .v file");
+    (output_path, bytes)
+}
+
 fn cache_probe_operation_type() -> glib_sys::GType {
     static TYPE: OnceLock<glib_sys::GType> = OnceLock::new();
     *TYPE.get_or_init(|| unsafe {
@@ -327,6 +349,36 @@ fn legacy_vips_files_round_trip_exif_metadata() {
         gobject_sys::g_object_unref(reopened.cast());
     }
 
+    std::fs::remove_file(&output_path).expect("remove temp .v file");
+}
+
+#[test]
+fn legacy_vips_memory_source_round_trips_exif_metadata() {
+    let _guard = guard();
+    init_vips();
+
+    let input_path = sample_jpg();
+    let input_c = CString::new(input_path.to_string_lossy().into_owned()).expect("input path");
+    let input = unsafe { vips_image_new_from_file(input_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!input.is_null());
+    let before_exif = copy_blob(input, c"exif-data").expect("input exif-data");
+    unsafe {
+        gobject_sys::g_object_unref(input.cast());
+    }
+
+    let (output_path, bytes) = save_sample_jpg_as_vips_file();
+    let source = vips_source_new_from_memory(bytes.as_ptr().cast::<c_void>(), bytes.len());
+    assert!(!source.is_null());
+
+    let reopened = safe_vips_image_new_from_source_internal(source, c"".as_ptr(), VIPS_ACCESS_RANDOM);
+    assert!(!reopened.is_null());
+    let after_exif = copy_blob(reopened, c"exif-data").expect("round-tripped exif-data");
+    assert_eq!(before_exif, after_exif);
+
+    unsafe {
+        gobject_sys::g_object_unref(reopened.cast());
+        gobject_sys::g_object_unref(source.cast());
+    }
     std::fs::remove_file(&output_path).expect("remove temp .v file");
 }
 

@@ -6,7 +6,7 @@ use crate::abi::image::{
 };
 use crate::foreign::base::{build_load_result, ForeignLoadResult, ForeignMetadata};
 use crate::runtime::error::append_message_str;
-use crate::runtime::header::{install_save_string_metadata, snapshot_save_string_metadata};
+use crate::runtime::header::snapshot_save_string_metadata;
 use crate::runtime::image::{
     ensure_pixels, format_sizeof, image_state, set_filename, set_mode, sync_pixels,
 };
@@ -88,9 +88,10 @@ fn encode_extension_block(image: *mut VipsImage) -> Result<Vec<u8>, ()> {
     Ok(out)
 }
 
-fn decode_extension_block(image: *mut VipsImage, bytes: &[u8]) -> Result<(), ()> {
+fn decode_extension_metadata(bytes: &[u8]) -> Result<ForeignMetadata, ()> {
+    let mut metadata = ForeignMetadata::default();
     if bytes.is_empty() || !bytes.starts_with(METADATA_MAGIC) {
-        return Ok(());
+        return Ok(metadata);
     }
 
     let mut offset = METADATA_MAGIC.len();
@@ -111,13 +112,37 @@ fn decode_extension_block(image: *mut VipsImage, bytes: &[u8]) -> Result<(), ()>
         let value = String::from_utf8_lossy(&bytes[offset..offset + value_len]).into_owned();
         offset += value_len;
 
-        if install_save_string_metadata(image, &name, &type_name, &value).is_err() {
-            append_message_str("vipsload", "invalid vips metadata extension");
-            return Err(());
+        match type_name.as_str() {
+            "int" => {
+                let value = value.parse::<i32>().map_err(|_| {
+                    append_message_str("vipsload", "invalid vips metadata extension");
+                })?;
+                metadata.ints.insert(name, value);
+            }
+            "string" => {
+                metadata.strings.insert(name, value);
+            }
+            "blob" => {
+                let value = std::ffi::CString::new(value).map_err(|_| {
+                    append_message_str("vipsload", "invalid vips metadata extension");
+                })?;
+                let mut length = 0usize;
+                let data = unsafe { glib_sys::g_base64_decode(value.as_ptr(), &mut length) };
+                let blob = if data.is_null() || length == 0 {
+                    Vec::new()
+                } else {
+                    unsafe { std::slice::from_raw_parts(data.cast::<u8>(), length) }.to_vec()
+                };
+                unsafe {
+                    glib_sys::g_free(data.cast());
+                }
+                metadata.blobs.insert(name, blob);
+            }
+            _ => {}
         }
     }
 
-    Ok(())
+    Ok(metadata)
 }
 
 fn open_image_fd(filename: &CStr) -> Result<c_int, ()> {
@@ -151,7 +176,12 @@ pub fn extract_pixel_payload(bytes: &[u8]) -> Result<Vec<u8>, ()> {
 
 pub fn parse_bytes(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
     let header = parse_header(bytes)?;
-    let payload = extract_pixel_payload(bytes)?;
+    let payload_len = pixel_length(&header)?;
+    if bytes.len() < HEADER_SIZE + payload_len {
+        append_message_str("vipsload", "truncated vips pixel payload");
+        return Err(());
+    }
+    let metadata = decode_extension_metadata(&bytes[HEADER_SIZE + payload_len..])?;
     let mut result = build_load_result(
         header.Xsize,
         header.Ysize,
@@ -159,8 +189,8 @@ pub fn parse_bytes(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
         header.BandFmt,
         header.Type,
         "vipsload",
-        Some(payload),
-        ForeignMetadata::default(),
+        Some(bytes[HEADER_SIZE..HEADER_SIZE + payload_len].to_vec()),
+        metadata,
         None,
     );
     result.coding = header.Coding;
@@ -199,9 +229,9 @@ pub fn load_file_into_image(filename: &CStr, image: *mut VipsImage) -> *mut Vips
         append_message_str("vipsload", "truncated vips pixel payload");
         return std::ptr::null_mut();
     }
-    if decode_extension_block(image, &bytes[HEADER_SIZE + payload_len..]).is_err() {
+    let Ok(metadata) = decode_extension_metadata(&bytes[HEADER_SIZE + payload_len..]) else {
         return std::ptr::null_mut();
-    }
+    };
 
     let Ok(fd) = open_image_fd(filename) else {
         return std::ptr::null_mut();
@@ -223,6 +253,7 @@ pub fn load_file_into_image(filename: &CStr, image: *mut VipsImage) -> *mut Vips
     image_ref.file_length = bytes.len() as i64;
     image_ref.sizeof_header = HEADER_SIZE as i64;
     sync_pixels(image);
+    crate::foreign::metadata::install_metadata(image, "vipsload", &metadata);
 
     image
 }

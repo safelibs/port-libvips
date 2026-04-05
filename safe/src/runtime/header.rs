@@ -420,36 +420,6 @@ pub(crate) fn snapshot_save_string_metadata(image: *mut VipsImage) -> Vec<(Strin
     serialized
 }
 
-pub(crate) fn install_save_string_metadata(
-    image: *mut VipsImage,
-    name: &str,
-    type_name: &str,
-    save_string: &str,
-) -> Result<(), ()> {
-    let name = CString::new(name).map_err(|_| ())?;
-    match type_name {
-        "int" => {
-            let value = save_string.parse::<i32>().map_err(|_| ())?;
-            vips_image_set_int(image, name.as_ptr(), value);
-        }
-        "string" => {
-            let value = CString::new(save_string).map_err(|_| ())?;
-            vips_image_set_string(image, name.as_ptr(), value.as_ptr());
-        }
-        "blob" => {
-            let save_string = CString::new(save_string).map_err(|_| ())?;
-            let mut length = 0usize;
-            let data = unsafe { glib_sys::g_base64_decode(save_string.as_ptr(), &mut length) };
-            vips_image_set_blob_copy(image, name.as_ptr(), data.cast::<c_void>(), length);
-            unsafe {
-                glib_sys::g_free(data.cast());
-            }
-        }
-        _ => {}
-    }
-    Ok(())
-}
-
 #[no_mangle]
 pub extern "C" fn vips_format_sizeof(format: VipsBandFormat) -> u64 {
     format_sizeof(format) as u64
