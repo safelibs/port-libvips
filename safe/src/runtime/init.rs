@@ -41,7 +41,11 @@ fn basename(argv0: &CStr) -> CString {
 fn ensure_bootstrap_types() -> bool {
     runtime::object::ensure_types();
     runtime::r#type::ensure_types();
-    runtime::operation::ensure_generated_types()
+    if !runtime::operation::ensure_generated_types() {
+        return false;
+    }
+    crate::foreign::modules::register_all();
+    true
 }
 
 #[no_mangle]

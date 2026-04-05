@@ -397,6 +397,13 @@ verify_packaged_prefix() {
     "${SAFE_ROOT}/reference/pkgconfig/vips-cpp.pc" \
     "${EXTRACT_PC_DIR}/vips-cpp.pc"
 
+  probe_output="$(
+    LD_LIBRARY_PATH="${EXTRACT_LIBDIR}" \
+    VIPSHOME="${EXTRACT_PREFIX}" \
+      "${EXTRACT_VIPS_BIN}" -l operation
+  )"
+  grep -Eq 'heifload|jxlload|magickload|openslideload|pdfload' <<<"${probe_output}" >/dev/null
+
   while IFS= read -r probe; do
     if [[ -z "${probe}" ]]; then
       continue

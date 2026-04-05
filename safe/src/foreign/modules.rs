@@ -462,6 +462,14 @@ fn register_pdf() {
     let _ = vips_foreign_load_pdf_source_get_type();
 }
 
+pub fn register_all() {
+    register_heif();
+    register_jxl();
+    register_magick();
+    register_openslide();
+    register_pdf();
+}
+
 pub fn try_load_for_operation(name: &str) {
     match name {
         "heifload" | "heifload_base" | "heifload_buffer" | "heifload_source" | "heifsave"
