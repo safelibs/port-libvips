@@ -1,4 +1,4 @@
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::os::raw::c_int;
 
 use crate::abi::image::{
@@ -6,15 +6,28 @@ use crate::abi::image::{
 };
 use crate::foreign::base::{build_load_result, ForeignLoadResult, ForeignMetadata};
 use crate::runtime::error::append_message_str;
-use crate::runtime::header::snapshot_save_string_metadata;
+use crate::runtime::header::{snapshot_metadata_entries, vips_image_get_history, MetaValue};
 use crate::runtime::image::{
-    ensure_pixels, format_sizeof, image_state, set_filename, set_mode, sync_pixels,
+    ensure_pixels, format_sizeof, image_state, set_filename, set_history, set_mode, sync_pixels,
 };
 
 const HEADER_SIZE: usize = 64;
-const METADATA_MAGIC: &[u8; 8] = b"SVIPSMD1";
+const LEGACY_METADATA_MAGIC: &[u8; 8] = b"SVIPSMD1";
+const NAMESPACE_URI: &str = "http://www.vips.ecs.soton.ac.uk/";
 const VIPS_MAGIC_INTEL: u32 = 0xb6a6f208;
 const VIPS_MAGIC_SPARC: u32 = 0x08f2a6b6;
+
+#[derive(Default)]
+struct DecodedExtension {
+    metadata: ForeignMetadata,
+    history: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ExtensionSection {
+    Header,
+    Meta,
+}
 
 unsafe extern "C" {
     fn vips__read_header_bytes(im: *mut VipsImage, from: *mut u8) -> c_int;
@@ -50,6 +63,10 @@ fn pixel_length(image: &VipsImage) -> Result<usize, ()> {
     }
 }
 
+fn extension_error(message: &str) {
+    append_message_str("vipsload", message);
+}
+
 fn take_u32(bytes: &[u8], offset: &mut usize) -> Result<u32, ()> {
     if *offset + 4 > bytes.len() {
         return Err(());
@@ -68,40 +85,389 @@ fn take_u64(bytes: &[u8], offset: &mut usize) -> Result<u64, ()> {
     Ok(value)
 }
 
-fn encode_extension_block(image: *mut VipsImage) -> Result<Vec<u8>, ()> {
-    let entries = snapshot_save_string_metadata(image);
-    if entries.is_empty() {
-        return Ok(Vec::new());
+fn xml_escape_text(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+fn xml_escape_attr(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for ch in text.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+fn decode_xml_entity(entity: &str) -> Result<char, ()> {
+    match entity {
+        "amp" => Ok('&'),
+        "lt" => Ok('<'),
+        "gt" => Ok('>'),
+        "quot" => Ok('"'),
+        "apos" => Ok('\''),
+        _ if entity.starts_with("#x") => u32::from_str_radix(&entity[2..], 16)
+            .ok()
+            .and_then(char::from_u32)
+            .ok_or_else(|| {
+                extension_error("invalid vips metadata extension");
+            }),
+        _ if entity.starts_with('#') => entity[1..]
+            .parse::<u32>()
+            .ok()
+            .and_then(char::from_u32)
+            .ok_or_else(|| {
+                extension_error("invalid vips metadata extension");
+            }),
+        _ => {
+            extension_error("invalid vips metadata extension");
+            Err(())
+        }
+    }
+}
+
+fn xml_unescape(text: &str) -> Result<String, ()> {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars();
+    while let Some(ch) = chars.next() {
+        if ch != '&' {
+            out.push(ch);
+            continue;
+        }
+
+        let mut entity = String::new();
+        let mut terminated = false;
+        for next in chars.by_ref() {
+            if next == ';' {
+                terminated = true;
+                break;
+            }
+            entity.push(next);
+        }
+
+        if !terminated {
+            extension_error("invalid vips metadata extension");
+            return Err(());
+        }
+
+        out.push(decode_xml_entity(&entity)?);
     }
 
-    let mut out = Vec::new();
-    out.extend_from_slice(METADATA_MAGIC);
-    out.extend_from_slice(&(entries.len() as u32).to_le_bytes());
-    for (name, type_name, value) in entries {
-        out.extend_from_slice(&(name.len() as u32).to_le_bytes());
-        out.extend_from_slice(&(type_name.len() as u32).to_le_bytes());
-        out.extend_from_slice(&(value.len() as u64).to_le_bytes());
-        out.extend_from_slice(name.as_bytes());
-        out.extend_from_slice(type_name.as_bytes());
-        out.extend_from_slice(value.as_bytes());
-    }
     Ok(out)
 }
 
-fn decode_extension_metadata(bytes: &[u8]) -> Result<ForeignMetadata, ()> {
-    let mut metadata = ForeignMetadata::default();
-    if bytes.is_empty() || !bytes.starts_with(METADATA_MAGIC) {
-        return Ok(metadata);
+fn encode_blob_value(blob: *mut crate::abi::r#type::VipsBlob) -> String {
+    let area = unsafe { &(*blob).area };
+    if area.data.is_null() || area.length == 0 {
+        return String::new();
     }
 
-    let mut offset = METADATA_MAGIC.len();
+    let encoded = unsafe { glib_sys::g_base64_encode(area.data.cast::<u8>(), area.length) };
+    let text = unsafe { CStr::from_ptr(encoded) }
+        .to_string_lossy()
+        .into_owned();
+    unsafe {
+        glib_sys::g_free(encoded.cast());
+    }
+    text
+}
+
+fn encode_metadata_value(value: &MetaValue) -> Option<(&'static str, String)> {
+    match value {
+        MetaValue::Int(value) => Some(("gint", value.to_string())),
+        MetaValue::Double(value) => Some(("gdouble", value.to_string())),
+        MetaValue::String(value) => Some(("VipsRefString", value.to_string_lossy().into_owned())),
+        MetaValue::Blob(blob) => Some(("VipsBlob", encode_blob_value(*blob))),
+        _ => None,
+    }
+}
+
+fn encode_extension_block(image: *mut VipsImage) -> Result<Vec<u8>, ()> {
+    let mut xml = String::new();
+    xml.push_str("<?xml version=\"1.0\"?>\n");
+    xml.push_str(&format!(
+        "<root xmlns=\"{}vips/{}\">\n",
+        NAMESPACE_URI,
+        env!("CARGO_PKG_VERSION")
+    ));
+    xml.push_str("  <header>\n");
+    let history = vips_image_get_history(image);
+    if !history.is_null() {
+        let history = unsafe { CStr::from_ptr(history) }.to_string_lossy();
+        xml.push_str("    <field type=\"VipsRefString\" name=\"Hist\">");
+        xml.push_str(&xml_escape_text(&history));
+        xml.push_str("</field>\n");
+    }
+    xml.push_str("  </header>\n");
+    xml.push_str("  <meta>\n");
+    for (name, value) in snapshot_metadata_entries(image) {
+        if name.as_c_str().to_bytes() == b"vips-loader" {
+            continue;
+        }
+        let Some((type_name, value)) = encode_metadata_value(&value) else {
+            continue;
+        };
+        let field_name = name.to_string_lossy();
+        xml.push_str("    <field type=\"");
+        xml.push_str(&xml_escape_attr(type_name));
+        xml.push_str("\" name=\"");
+        xml.push_str(&xml_escape_attr(&field_name));
+        xml.push_str("\">");
+        xml.push_str(&xml_escape_text(&value));
+        xml.push_str("</field>\n");
+    }
+    xml.push_str("  </meta>\n");
+    xml.push_str("</root>\n");
+    Ok(xml.into_bytes())
+}
+
+fn decode_blob_value(text: &str) -> Result<Vec<u8>, ()> {
+    let encoded = CString::new(text.trim()).map_err(|_| {
+        extension_error("invalid vips metadata extension");
+    })?;
+    let mut length = 0usize;
+    let data = unsafe { glib_sys::g_base64_decode(encoded.as_ptr(), &mut length) };
+    let bytes = if data.is_null() || length == 0 {
+        Vec::new()
+    } else {
+        unsafe { std::slice::from_raw_parts(data.cast::<u8>(), length) }.to_vec()
+    };
+    unsafe {
+        glib_sys::g_free(data.cast());
+    }
+    Ok(bytes)
+}
+
+fn finalize_xml_field(
+    decoded: &mut DecodedExtension,
+    section: ExtensionSection,
+    name: String,
+    type_name: String,
+    raw_value: String,
+) -> Result<(), ()> {
+    let value = xml_unescape(&raw_value)?;
+    match section {
+        ExtensionSection::Header => {
+            if name == "Hist" {
+                decoded.history = Some(value);
+            }
+        }
+        ExtensionSection::Meta => match type_name.as_str() {
+            "gint" | "gint32" | "guint" | "guint32" | "gboolean" | "int" => {
+                let value = value.trim().parse::<i32>().map_err(|_| {
+                    extension_error("invalid vips metadata extension");
+                })?;
+                decoded.metadata.ints.insert(name, value);
+            }
+            "gdouble" | "gfloat" => {
+                let value = value.trim().parse::<f64>().map_err(|_| {
+                    extension_error("invalid vips metadata extension");
+                })?;
+                decoded.metadata.doubles.insert(name, value);
+            }
+            "VipsRefString" | "gchararray" | "string" => {
+                decoded.metadata.strings.insert(name, value);
+            }
+            "VipsBlob" | "blob" => {
+                decoded.metadata.blobs.insert(name, decode_blob_value(&value)?);
+            }
+            _ => {}
+        },
+    }
+    Ok(())
+}
+
+fn parse_attributes(text: &str) -> Result<Vec<(String, String)>, ()> {
+    let bytes = text.as_bytes();
+    let mut attrs = Vec::new();
+    let mut pos = 0usize;
+
+    while pos < bytes.len() {
+        while pos < bytes.len() && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        if pos >= bytes.len() {
+            break;
+        }
+
+        let name_start = pos;
+        while pos < bytes.len() && !bytes[pos].is_ascii_whitespace() && bytes[pos] != b'=' {
+            pos += 1;
+        }
+        let name = &text[name_start..pos];
+        while pos < bytes.len() && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        if pos >= bytes.len() || bytes[pos] != b'=' {
+            extension_error("invalid vips metadata extension");
+            return Err(());
+        }
+        pos += 1;
+        while pos < bytes.len() && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        if pos >= bytes.len() || !matches!(bytes[pos], b'"' | b'\'') {
+            extension_error("invalid vips metadata extension");
+            return Err(());
+        }
+
+        let quote = bytes[pos];
+        pos += 1;
+        let value_start = pos;
+        while pos < bytes.len() && bytes[pos] != quote {
+            pos += 1;
+        }
+        if pos >= bytes.len() {
+            extension_error("invalid vips metadata extension");
+            return Err(());
+        }
+        let value = xml_unescape(&text[value_start..pos])?;
+        pos += 1;
+
+        attrs.push((name.to_owned(), value));
+    }
+
+    Ok(attrs)
+}
+
+fn find_tag_end(xml: &str, start: usize) -> Result<usize, ()> {
+    let bytes = xml.as_bytes();
+    let mut pos = start;
+    let mut quote = None;
+
+    while pos < bytes.len() {
+        match bytes[pos] {
+            b'"' | b'\'' if quote.is_none() => quote = Some(bytes[pos]),
+            b'"' | b'\'' if quote == Some(bytes[pos]) => quote = None,
+            b'>' if quote.is_none() => return Ok(pos),
+            _ => {}
+        }
+        pos += 1;
+    }
+
+    extension_error("invalid vips metadata extension");
+    Err(())
+}
+
+fn parse_xml_extension(bytes: &[u8]) -> Result<DecodedExtension, ()> {
+    let xml = std::str::from_utf8(bytes).map_err(|_| {
+        extension_error("invalid vips metadata extension");
+    })?;
+    let mut decoded = DecodedExtension::default();
+    let mut section = None;
+    let mut current_field: Option<(ExtensionSection, String, String, String)> = None;
+    let mut pos = 0usize;
+
+    while let Some(relative) = xml[pos..].find('<') {
+        let tag_start = pos + relative;
+        if let Some((_, _, _, content)) = current_field.as_mut() {
+            content.push_str(&xml[pos..tag_start]);
+        }
+
+        if xml[tag_start..].starts_with("<!--") {
+            let comment_end = xml[tag_start + 4..]
+                .find("-->")
+                .map(|offset| tag_start + 4 + offset + 3)
+                .ok_or_else(|| {
+                    extension_error("invalid vips metadata extension");
+                })?;
+            pos = comment_end;
+            continue;
+        }
+
+        let tag_end = find_tag_end(xml, tag_start + 1)?;
+        let mut tag = xml[tag_start + 1..tag_end].trim();
+        pos = tag_end + 1;
+
+        if tag.is_empty() || tag.starts_with('?') || tag.starts_with('!') {
+            continue;
+        }
+
+        let is_end = tag.starts_with('/');
+        if is_end {
+            tag = tag[1..].trim_start();
+        }
+
+        let self_closing = !is_end && tag.ends_with('/');
+        if self_closing {
+            tag = tag[..tag.len() - 1].trim_end();
+        }
+
+        let (name, attrs_text) = if let Some(index) = tag.find(char::is_whitespace) {
+            (&tag[..index], tag[index + 1..].trim_start())
+        } else {
+            (tag, "")
+        };
+
+        match (is_end, name) {
+            (false, "header") => section = Some(ExtensionSection::Header),
+            (true, "header") => section = None,
+            (false, "meta") => section = Some(ExtensionSection::Meta),
+            (true, "meta") => section = None,
+            (false, "field") => {
+                let attrs = parse_attributes(attrs_text)?;
+                let field_name = attrs
+                    .iter()
+                    .find_map(|(attr, value)| (attr == "name").then_some(value.clone()))
+                    .unwrap_or_default();
+                let type_name = attrs
+                    .iter()
+                    .find_map(|(attr, value)| (attr == "type").then_some(value.clone()))
+                    .unwrap_or_default();
+                let field_section = section.unwrap_or(ExtensionSection::Meta);
+                current_field = Some((field_section, field_name, type_name, String::new()));
+                if self_closing {
+                    let field = current_field.take().expect("field");
+                    finalize_xml_field(&mut decoded, field.0, field.1, field.2, field.3)?;
+                }
+            }
+            (true, "field") => {
+                let Some(field) = current_field.take() else {
+                    extension_error("invalid vips metadata extension");
+                    return Err(());
+                };
+                finalize_xml_field(&mut decoded, field.0, field.1, field.2, field.3)?;
+            }
+            _ => {}
+        }
+    }
+
+    if let Some((_, _, _, content)) = current_field.as_mut() {
+        content.push_str(&xml[pos..]);
+    }
+    if let Some(field) = current_field.take() {
+        extension_error("invalid vips metadata extension");
+        let _ = field;
+        return Err(());
+    }
+
+    Ok(decoded)
+}
+
+fn decode_legacy_binary_extension(bytes: &[u8]) -> Result<DecodedExtension, ()> {
+    let mut decoded = DecodedExtension::default();
+    let mut offset = LEGACY_METADATA_MAGIC.len();
     let count = take_u32(bytes, &mut offset)? as usize;
     for _ in 0..count {
         let name_len = take_u32(bytes, &mut offset)? as usize;
         let type_len = take_u32(bytes, &mut offset)? as usize;
         let value_len = take_u64(bytes, &mut offset)? as usize;
         if offset + name_len + type_len + value_len > bytes.len() {
-            append_message_str("vipsload", "truncated vips metadata extension");
+            extension_error("truncated vips metadata extension");
             return Err(());
         }
 
@@ -115,34 +481,41 @@ fn decode_extension_metadata(bytes: &[u8]) -> Result<ForeignMetadata, ()> {
         match type_name.as_str() {
             "int" => {
                 let value = value.parse::<i32>().map_err(|_| {
-                    append_message_str("vipsload", "invalid vips metadata extension");
+                    extension_error("invalid vips metadata extension");
                 })?;
-                metadata.ints.insert(name, value);
+                decoded.metadata.ints.insert(name, value);
+            }
+            "double" => {
+                let value = value.parse::<f64>().map_err(|_| {
+                    extension_error("invalid vips metadata extension");
+                })?;
+                decoded.metadata.doubles.insert(name, value);
             }
             "string" => {
-                metadata.strings.insert(name, value);
+                decoded.metadata.strings.insert(name, value);
             }
             "blob" => {
-                let value = std::ffi::CString::new(value).map_err(|_| {
-                    append_message_str("vipsload", "invalid vips metadata extension");
-                })?;
-                let mut length = 0usize;
-                let data = unsafe { glib_sys::g_base64_decode(value.as_ptr(), &mut length) };
-                let blob = if data.is_null() || length == 0 {
-                    Vec::new()
-                } else {
-                    unsafe { std::slice::from_raw_parts(data.cast::<u8>(), length) }.to_vec()
-                };
-                unsafe {
-                    glib_sys::g_free(data.cast());
-                }
-                metadata.blobs.insert(name, blob);
+                decoded.metadata.blobs.insert(name, decode_blob_value(&value)?);
             }
             _ => {}
         }
     }
 
-    Ok(metadata)
+    Ok(decoded)
+}
+
+fn decode_extension(bytes: &[u8]) -> Result<DecodedExtension, ()> {
+    if bytes.is_empty() || bytes.iter().all(u8::is_ascii_whitespace) {
+        return Ok(DecodedExtension::default());
+    }
+    if bytes.starts_with(LEGACY_METADATA_MAGIC) {
+        return decode_legacy_binary_extension(bytes);
+    }
+    parse_xml_extension(bytes)
+}
+
+fn decode_extension_lossy(bytes: &[u8]) -> DecodedExtension {
+    decode_extension(bytes).unwrap_or_default()
 }
 
 fn open_image_fd(filename: &CStr) -> Result<c_int, ()> {
@@ -181,7 +554,7 @@ pub fn parse_bytes(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
         append_message_str("vipsload", "truncated vips pixel payload");
         return Err(());
     }
-    let metadata = decode_extension_metadata(&bytes[HEADER_SIZE + payload_len..])?;
+    let decoded = decode_extension_lossy(&bytes[HEADER_SIZE + payload_len..]);
     let mut result = build_load_result(
         header.Xsize,
         header.Ysize,
@@ -190,10 +563,11 @@ pub fn parse_bytes(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
         header.Type,
         "vipsload",
         Some(bytes[HEADER_SIZE..HEADER_SIZE + payload_len].to_vec()),
-        metadata,
+        decoded.metadata,
         None,
     );
     result.coding = header.Coding;
+    result.history = decoded.history;
     Ok(result)
 }
 
@@ -229,9 +603,7 @@ pub fn load_file_into_image(filename: &CStr, image: *mut VipsImage) -> *mut Vips
         append_message_str("vipsload", "truncated vips pixel payload");
         return std::ptr::null_mut();
     }
-    let Ok(metadata) = decode_extension_metadata(&bytes[HEADER_SIZE + payload_len..]) else {
-        return std::ptr::null_mut();
-    };
+    let decoded = decode_extension_lossy(&bytes[HEADER_SIZE + payload_len..]);
 
     let Ok(fd) = open_image_fd(filename) else {
         return std::ptr::null_mut();
@@ -253,7 +625,8 @@ pub fn load_file_into_image(filename: &CStr, image: *mut VipsImage) -> *mut Vips
     image_ref.file_length = bytes.len() as i64;
     image_ref.sizeof_header = HEADER_SIZE as i64;
     sync_pixels(image);
-    crate::foreign::metadata::install_metadata(image, "vipsload", &metadata);
+    set_history(image, decoded.history.as_deref());
+    crate::foreign::metadata::install_metadata(image, "vipsload", &decoded.metadata);
 
     image
 }
@@ -300,4 +673,40 @@ pub fn write_file(image: *mut VipsImage, filename: &str) -> Result<(), ()> {
     std::fs::write(filename, bytes).map_err(|err| {
         append_message_str("vipssave", &err.to_string());
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn manual_xml_extension_parses_common_types() {
+        let xml = concat!(
+            "<?xml version=\"1.0\"?>\n",
+            "<root xmlns=\"http://www.vips.ecs.soton.ac.uk/vips/8.15.1\">\n",
+            "  <header>\n",
+            "    <field type=\"VipsRefString\" name=\"Hist\">history line 1\nhistory line 2</field>\n",
+            "  </header>\n",
+            "  <meta>\n",
+            "    <field type=\"VipsBlob\" name=\"exif-data\">QUJD</field>\n",
+            "    <field type=\"VipsRefString\" name=\"comment\">edited-by-setext</field>\n",
+            "    <field type=\"gint\" name=\"page-height\">7</field>\n",
+            "    <field type=\"gdouble\" name=\"scale\">1.5</field>\n",
+            "  </meta>\n",
+            "</root>\n"
+        );
+
+        let decoded = parse_xml_extension(xml.as_bytes()).expect("decoded extension");
+        assert_eq!(decoded.history.as_deref(), Some("history line 1\nhistory line 2"));
+        assert_eq!(
+            decoded.metadata.strings.get("comment").map(String::as_str),
+            Some("edited-by-setext")
+        );
+        assert_eq!(decoded.metadata.ints.get("page-height").copied(), Some(7));
+        assert_eq!(decoded.metadata.doubles.get("scale").copied(), Some(1.5));
+        assert_eq!(
+            decoded.metadata.blobs.get("exif-data").map(Vec::as_slice),
+            Some(&b"ABC"[..])
+        );
+    }
 }

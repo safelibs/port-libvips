@@ -422,12 +422,16 @@ packaged_pkgconfig_dir="$(dirname "$(find "${extracted_prefix}" -type f -path '*
 packaged_typelib_dir="$(find "${extracted_prefix}" -type d -path '*/girepository-1.0' | sort | sed -n '1p')"
 packaged_gir="$(find "${extracted_prefix}" -type f -name 'Vips-8.0.gir' | sort | sed -n '1p')"
 packaged_vips_bin="${extracted_prefix}/bin/vips"
+packaged_vipsedit_bin="${extracted_prefix}/bin/vipsedit"
+packaged_vipsheader_bin="${extracted_prefix}/bin/vipsheader"
 test -n "${packaged_libvips}"
 test -n "${packaged_libvips_cpp}"
 test -n "${packaged_typelib_dir}"
 test -n "${packaged_gir}"
 test -n "${packaged_pkgconfig_dir}"
 test -x "${packaged_vips_bin}"
+test -x "${packaged_vipsedit_bin}"
+test -x "${packaged_vipsheader_bin}"
 
 echo "[release-gate] packaged-prefix checks"
 assert_not_reference_binary "${REFERENCE_LIBVIPS}" "${packaged_libvips}"
@@ -471,6 +475,59 @@ assert_probe_operations_execute \
 python3 scripts/compare_module_registry.py \
   reference/modules/module-registry.json \
   "${extracted_prefix}"
+
+echo "[release-gate] packaged tool xml contract"
+tool_contract_workdir="$(mktemp -d /tmp/libvips-safe-tool-contract.XXXXXX)"
+cleanup_paths+=("${tool_contract_workdir}")
+tool_contract_image="${tool_contract_workdir}/tool-contract.v"
+tool_contract_xml="${tool_contract_workdir}/setext.xml"
+tool_contract_getext_before="${tool_contract_workdir}/getext.before.xml"
+tool_contract_getext_after="${tool_contract_workdir}/getext.after.xml"
+tool_contract_source="${PROJECT_ROOT}/original/test/test-suite/images/sample.jpg"
+test -f "${tool_contract_source}"
+LD_LIBRARY_PATH="${packaged_libdir}" \
+VIPSHOME="${extracted_prefix}" \
+  "${packaged_vips_bin}" copy "${tool_contract_source}" "${tool_contract_image}"
+LD_LIBRARY_PATH="${packaged_libdir}" \
+VIPSHOME="${extracted_prefix}" \
+  "${packaged_vipsheader_bin}" -f getext "${tool_contract_image}" >"${tool_contract_getext_before}"
+grep -F '<?xml version="1.0"?>' "${tool_contract_getext_before}" >/dev/null
+grep -F 'type="VipsBlob" name="exif-data"' "${tool_contract_getext_before}" >/dev/null
+cat >"${tool_contract_xml}" <<'EOF'
+<?xml version="1.0"?>
+<root xmlns="http://www.vips.ecs.soton.ac.uk/vips/8.15.1">
+  <header>
+  </header>
+  <meta>
+    <field type="VipsRefString" name="comment">edited-by-setext</field>
+    <field type="gint" name="page-height">7</field>
+  </meta>
+</root>
+EOF
+python3 - "${tool_contract_xml}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+path.write_text(path.read_text().rstrip())
+PY
+LD_LIBRARY_PATH="${packaged_libdir}" \
+VIPSHOME="${extracted_prefix}" \
+  "${packaged_vipsedit_bin}" --setext "${tool_contract_image}" <"${tool_contract_xml}"
+LD_LIBRARY_PATH="${packaged_libdir}" \
+VIPSHOME="${extracted_prefix}" \
+  "${packaged_vipsheader_bin}" -f getext "${tool_contract_image}" >"${tool_contract_getext_after}"
+cmp -s "${tool_contract_xml}" "${tool_contract_getext_after}"
+test "$(
+  LD_LIBRARY_PATH="${packaged_libdir}" \
+  VIPSHOME="${extracted_prefix}" \
+    "${packaged_vipsheader_bin}" -f comment "${tool_contract_image}"
+)" = 'edited-by-setext'
+test "$(
+  LD_LIBRARY_PATH="${packaged_libdir}" \
+  VIPSHOME="${extracted_prefix}" \
+    "${packaged_vipsheader_bin}" -f page-height "${tool_contract_image}"
+)" = '7'
 
 scripts/check_introspection.sh \
   --lib-dir "${packaged_libdir}" \

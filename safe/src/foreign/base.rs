@@ -59,6 +59,7 @@ pub struct SaveOptions {
 #[derive(Clone, Debug, Default)]
 pub struct ForeignMetadata {
     pub blobs: BTreeMap<String, Vec<u8>>,
+    pub doubles: BTreeMap<String, f64>,
     pub ints: BTreeMap<String, i32>,
     pub strings: BTreeMap<String, String>,
 }
@@ -80,11 +81,17 @@ pub struct ForeignLoadResult {
     pub interpretation: VipsInterpretation,
     pub pixels: Option<Vec<u8>>,
     pub metadata: ForeignMetadata,
+    pub history: Option<String>,
     pub pending: Option<PendingDecode>,
     pub loader_name: &'static str,
 }
 
 impl ForeignMetadata {
+    pub fn with_double(mut self, name: &str, value: f64) -> Self {
+        self.doubles.insert(name.to_owned(), value);
+        self
+    }
+
     pub fn with_string(mut self, name: &str, value: impl Into<String>) -> Self {
         self.strings.insert(name.to_owned(), value.into());
         self
@@ -136,6 +143,7 @@ pub fn build_load_result(
         interpretation,
         pixels,
         metadata,
+        history: None,
         pending,
         loader_name,
     }

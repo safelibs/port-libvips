@@ -57,6 +57,12 @@ fn temp_vips_path() -> PathBuf {
 unsafe extern "C" {
     fn vips_image_new_from_file(name: *const c_char, ...) -> *mut VipsImage;
     fn vips_image_write_to_file(image: *mut VipsImage, name: *const c_char, ...) -> libc::c_int;
+    fn vips_image_get_history(image: *mut VipsImage) -> *const c_char;
+    fn vips_image_get_as_string(
+        image: *mut VipsImage,
+        name: *const c_char,
+        out: *mut *mut c_char,
+    ) -> libc::c_int;
     fn vips__seek(fd: libc::c_int, pos: i64, whence: libc::c_int) -> i64;
     fn vips__write(fd: libc::c_int, buf: *const c_void, count: usize) -> libc::c_int;
     fn vips__has_extension_block(im: *mut VipsImage) -> libc::c_int;
@@ -80,6 +86,60 @@ fn copy_blob(image: *mut VipsImage, name: &CStr) -> Option<Vec<u8>> {
         return Some(Vec::new());
     }
     Some(unsafe { slice::from_raw_parts(data.cast::<u8>(), len) }.to_vec())
+}
+
+fn copy_string(image: *mut VipsImage, name: &CStr) -> Option<String> {
+    let mut text = ptr::null();
+    if vips_image_get_string(image, name.as_ptr(), &mut text) != 0 {
+        return None;
+    }
+    let value = unsafe { CStr::from_ptr(text) }
+        .to_string_lossy()
+        .into_owned();
+    unsafe {
+        glib_sys::g_free(text.cast_mut().cast::<c_void>());
+    }
+    Some(value)
+}
+
+fn copy_as_string(image: *mut VipsImage, name: &CStr) -> Option<String> {
+    let mut text = ptr::null_mut();
+    if unsafe { vips_image_get_as_string(image, name.as_ptr(), &mut text) } != 0 {
+        return None;
+    }
+    let value = unsafe { CStr::from_ptr(text) }
+        .to_string_lossy()
+        .into_owned();
+    unsafe {
+        glib_sys::g_free(text.cast::<c_void>());
+    }
+    Some(value)
+}
+
+fn encode_base64(bytes: &[u8]) -> String {
+    if bytes.is_empty() {
+        return String::new();
+    }
+    let encoded = unsafe { glib_sys::g_base64_encode(bytes.as_ptr(), bytes.len()) };
+    let value = unsafe { CStr::from_ptr(encoded) }
+        .to_string_lossy()
+        .into_owned();
+    unsafe {
+        glib_sys::g_free(encoded.cast::<c_void>());
+    }
+    value
+}
+
+fn read_extension_block_bytes(image: *mut VipsImage) -> Vec<u8> {
+    let mut size = 0;
+    let block = unsafe { vips__read_extension_block(image, &mut size) };
+    assert!(!block.is_null());
+    assert!(size > 0);
+    let bytes = unsafe { slice::from_raw_parts(block.cast::<u8>(), size as usize) }.to_vec();
+    unsafe {
+        glib_sys::g_free(block);
+    }
+    bytes
 }
 
 fn save_sample_jpg_as_vips_file() -> (PathBuf, Vec<u8>) {
@@ -299,7 +359,7 @@ fn legacy_vips_files_preserve_fd_and_header_edit_compat() {
     assert_eq!(unsafe { vips__read_header_bytes(image, header.as_mut_ptr()) }, 0);
 
     unsafe {
-        (*image).Xsize = 123;
+        (*image).Xoffset = 123;
     }
     let mut edited_header = [0u8; 64];
     assert_eq!(
@@ -315,9 +375,12 @@ fn legacy_vips_files_preserve_fd_and_header_edit_compat() {
         gobject_sys::g_object_unref(image.cast());
     }
 
-    let reopened = unsafe { vips_image_new_from_file(output_c.as_ptr(), ptr::null::<c_char>()) };
+    let revalidate_c = CString::new(format!("{}[revalidate]", output_path.to_string_lossy()))
+        .expect("revalidate path");
+    let reopened =
+        unsafe { vips_image_new_from_file(revalidate_c.as_ptr(), ptr::null::<c_char>()) };
     assert!(!reopened.is_null());
-    assert_eq!(unsafe { (*reopened).Xsize }, 123);
+    assert_eq!(unsafe { (*reopened).Xoffset }, 123);
     unsafe {
         gobject_sys::g_object_unref(reopened.cast());
     }
@@ -348,7 +411,10 @@ fn legacy_vips_files_round_trip_exif_metadata() {
         gobject_sys::g_object_unref(input.cast());
     }
 
-    let reopened = unsafe { vips_image_new_from_file(output_c.as_ptr(), ptr::null::<c_char>()) };
+    let revalidate_c = CString::new(format!("{}[revalidate]", output_path.to_string_lossy()))
+        .expect("revalidate path");
+    let reopened =
+        unsafe { vips_image_new_from_file(revalidate_c.as_ptr(), ptr::null::<c_char>()) };
     assert!(!reopened.is_null());
     let after_exif = copy_blob(reopened, c"exif-data").expect("round-tripped exif-data");
     assert_eq!(before_exif, after_exif);
@@ -390,6 +456,63 @@ fn legacy_vips_memory_source_round_trips_exif_metadata() {
 }
 
 #[test]
+fn legacy_vips_width_header_edits_remain_loadable() {
+    let _guard = guard();
+    init_vips();
+
+    let input_path = sample_jpg();
+    let output_path = temp_vips_path();
+    let _ = std::fs::remove_file(&output_path);
+
+    let input_c = CString::new(input_path.to_string_lossy().into_owned()).expect("input path");
+    let output_c = CString::new(output_path.to_string_lossy().into_owned()).expect("output path");
+
+    let input = unsafe { vips_image_new_from_file(input_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!input.is_null());
+    assert_eq!(
+        unsafe { vips_image_write_to_file(input, output_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    unsafe {
+        gobject_sys::g_object_unref(input.cast());
+    }
+
+    let image = unsafe { vips_image_new_from_file(output_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!image.is_null());
+    let fd = unsafe { (*image).fd };
+    assert!(fd >= 0, "expected legacy .v load to retain an open fd");
+
+    unsafe {
+        (*image).Xsize = 123;
+    }
+    let mut edited_header = [0u8; 64];
+    assert_eq!(
+        unsafe { vips__write_header_bytes(image, edited_header.as_mut_ptr()) },
+        0
+    );
+    assert_eq!(unsafe { vips__seek(fd, 0, libc::SEEK_SET) }, 0);
+    assert_eq!(
+        unsafe { vips__write(fd, edited_header.as_ptr().cast::<c_void>(), edited_header.len()) },
+        0
+    );
+    unsafe {
+        gobject_sys::g_object_unref(image.cast());
+    }
+
+    let revalidate_c = CString::new(format!("{}[revalidate]", output_path.to_string_lossy()))
+        .expect("revalidate path");
+    let reopened =
+        unsafe { vips_image_new_from_file(revalidate_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!reopened.is_null());
+    assert_eq!(unsafe { (*reopened).Xsize }, 123);
+    unsafe {
+        gobject_sys::g_object_unref(reopened.cast());
+    }
+
+    std::fs::remove_file(&output_path).expect("remove temp .v file");
+}
+
+#[test]
 fn legacy_vips_extension_block_apis_round_trip_saved_metadata() {
     let _guard = guard();
     init_vips();
@@ -409,28 +532,34 @@ fn legacy_vips_extension_block_apis_round_trip_saved_metadata() {
     assert!(!image.is_null());
     assert_eq!(unsafe { vips__has_extension_block(image) }, 1);
 
-    let mut size = 0;
-    let block = unsafe { vips__read_extension_block(image, &mut size) };
-    assert!(!block.is_null());
-    assert!(size > 0);
-
-    let block_bytes = unsafe { slice::from_raw_parts(block.cast::<u8>(), size as usize) }.to_vec();
-    assert!(block_bytes.starts_with(b"SVIPSMD1"));
+    let block_bytes = read_extension_block_bytes(image);
+    let block_xml = std::str::from_utf8(&block_bytes).expect("extension block xml");
+    assert!(block_xml.starts_with("<?xml version=\"1.0\"?>\n"));
+    assert!(block_xml.contains("<root xmlns=\"http://www.vips.ecs.soton.ac.uk/vips/8.15.1\">"));
+    assert!(block_xml.contains("type=\"VipsBlob\" name=\"exif-data\""));
     assert_eq!(block_bytes, saved_bytes[saved_bytes.len() - block_bytes.len()..]);
 
     assert_eq!(
-        unsafe { vips__write_extension_block(image, block, size) },
+        unsafe {
+            vips__write_extension_block(
+                image,
+                block_bytes.as_ptr().cast::<c_void>() as *mut c_void,
+                block_bytes.len() as libc::c_int,
+            )
+        },
         0
     );
     unsafe {
-        glib_sys::g_free(block);
         gobject_sys::g_object_unref(image.cast());
     }
 
     let rewritten_bytes = std::fs::read(&output_path).expect("rewritten .v file");
     assert_eq!(rewritten_bytes, saved_bytes);
 
-    let reopened = unsafe { vips_image_new_from_file(output_c.as_ptr(), ptr::null::<c_char>()) };
+    let revalidate_c = CString::new(format!("{}[revalidate]", output_path.to_string_lossy()))
+        .expect("revalidate path");
+    let reopened =
+        unsafe { vips_image_new_from_file(revalidate_c.as_ptr(), ptr::null::<c_char>()) };
     assert!(!reopened.is_null());
     let after_exif = copy_blob(reopened, c"exif-data").expect("round-tripped exif-data");
     assert_eq!(before_exif, after_exif);
@@ -438,6 +567,110 @@ fn legacy_vips_extension_block_apis_round_trip_saved_metadata() {
         gobject_sys::g_object_unref(reopened.cast());
     }
 
+    std::fs::remove_file(&output_path).expect("remove temp .v file");
+}
+
+#[test]
+fn legacy_vips_extension_block_apis_accept_upstream_xml_payload() {
+    let _guard = guard();
+    init_vips();
+
+    let input_path = sample_jpg();
+    let input_c = CString::new(input_path.to_string_lossy().into_owned()).expect("input path");
+    let input = unsafe { vips_image_new_from_file(input_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!input.is_null());
+    let before_exif = copy_blob(input, c"exif-data").expect("input exif-data");
+    unsafe {
+        gobject_sys::g_object_unref(input.cast());
+    }
+
+    let (output_path, saved_bytes) = save_sample_jpg_as_vips_file();
+    let output_c = CString::new(output_path.to_string_lossy().into_owned()).expect("output path");
+    let image = unsafe { vips_image_new_from_file(output_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!image.is_null());
+    let original_block = read_extension_block_bytes(image);
+
+    let replacement_xml = format!(
+        concat!(
+            "<?xml version=\"1.0\"?>\n",
+            "<root xmlns=\"http://www.vips.ecs.soton.ac.uk/vips/8.15.1\">\n",
+            "  <header>\n",
+            "    <field type=\"VipsRefString\" name=\"Hist\">history line 1\nhistory line 2</field>\n",
+            "  </header>\n",
+            "  <meta>\n",
+            "    <field type=\"VipsBlob\" name=\"exif-data\">{}</field>\n",
+            "    <field type=\"VipsRefString\" name=\"comment\">edited-by-setext</field>\n",
+            "    <field type=\"gint\" name=\"page-height\">7</field>\n",
+            "    <field type=\"gdouble\" name=\"scale\">1.5</field>\n",
+            "  </meta>\n",
+            "</root>\n"
+        ),
+        encode_base64(&before_exif)
+    );
+    assert_eq!(
+        unsafe {
+            vips__write_extension_block(
+                image,
+                replacement_xml.as_ptr().cast::<c_void>() as *mut c_void,
+                replacement_xml.len() as libc::c_int,
+            )
+        },
+        0
+    );
+    assert_eq!(read_extension_block_bytes(image), replacement_xml.as_bytes());
+    let disk_bytes = std::fs::read(&output_path).expect("rewritten file on disk");
+    assert_eq!(
+        disk_bytes.len(),
+        saved_bytes.len() - original_block.len() + replacement_xml.len()
+    );
+    assert_eq!(
+        &disk_bytes[disk_bytes.len() - replacement_xml.len()..],
+        replacement_xml.as_bytes()
+    );
+    unsafe {
+        gobject_sys::g_object_unref(image.cast());
+    }
+
+    let revalidate_c = CString::new(format!("{}[revalidate]", output_path.to_string_lossy()))
+        .expect("revalidate path");
+    let reopened =
+        unsafe { vips_image_new_from_file(revalidate_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!reopened.is_null());
+    assert_eq!(read_extension_block_bytes(reopened), replacement_xml.as_bytes());
+    assert_eq!(
+        copy_blob(reopened, c"exif-data").expect("round-tripped exif-data"),
+        before_exif
+    );
+    assert_eq!(
+        copy_string(reopened, c"comment").as_deref(),
+        Some("edited-by-setext")
+    );
+    assert_eq!(
+        copy_as_string(reopened, c"comment").as_deref(),
+        Some("edited-by-setext")
+    );
+
+    let mut page_height = 0;
+    assert_eq!(
+        vips_image_get_int(reopened, c"page-height".as_ptr(), &mut page_height),
+        0
+    );
+    assert_eq!(page_height, 7);
+
+    let mut scale = 0.0;
+    assert_eq!(vips_image_get_double(reopened, c"scale".as_ptr(), &mut scale), 0);
+    assert!((scale - 1.5).abs() < f64::EPSILON);
+
+    let history = unsafe { vips_image_get_history(reopened) };
+    assert!(!history.is_null());
+    assert_eq!(
+        unsafe { CStr::from_ptr(history) }.to_string_lossy(),
+        "history line 1\nhistory line 2"
+    );
+
+    unsafe {
+        gobject_sys::g_object_unref(reopened.cast());
+    }
     std::fs::remove_file(&output_path).expect("remove temp .v file");
 }
 

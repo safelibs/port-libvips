@@ -183,6 +183,22 @@ pub(crate) fn set_mode(image: *mut VipsImage, mode: &str) {
     }
 }
 
+pub(crate) fn set_history(image: *mut VipsImage, history: Option<&str>) {
+    if let (Some(state), Some(image_ref)) =
+        (unsafe { image_state(image) }, unsafe { image.as_mut() })
+    {
+        state.history = history.and_then(|history| {
+            CString::new(history)
+                .ok()
+                .or_else(|| CString::new(history.replace('\0', "")).ok())
+        });
+        image_ref.Hist = state
+            .history
+            .as_ref()
+            .map_or(ptr::null_mut(), |history| history.as_ptr().cast_mut());
+    }
+}
+
 pub(crate) fn sync_pixels(image: *mut VipsImage) {
     let Some(image_ref) = (unsafe { image.as_mut() }) else {
         return;

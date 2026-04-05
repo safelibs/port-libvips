@@ -379,47 +379,6 @@ pub(crate) fn snapshot_metadata_entries(image: *mut VipsImage) -> Vec<(CString, 
         .collect()
 }
 
-pub(crate) fn snapshot_save_string_metadata(image: *mut VipsImage) -> Vec<(String, String, String)> {
-    let mut serialized = Vec::new();
-    for (name, value) in snapshot_metadata_entries(image) {
-        if name.as_c_str().to_bytes() == b"vips-loader" {
-            continue;
-        }
-        let field_name = name.to_string_lossy().into_owned();
-        match &value {
-            MetaValue::Int(value) => {
-                serialized.push((field_name, "int".to_owned(), value.to_string()));
-            }
-            MetaValue::String(value) => {
-                serialized.push((
-                    field_name,
-                    "string".to_owned(),
-                    value.to_string_lossy().into_owned(),
-                ));
-            }
-            MetaValue::Blob(blob) => {
-                let area = unsafe { &(**blob).area };
-                let encoded = if area.data.is_null() || area.length == 0 {
-                    String::new()
-                } else {
-                    let encoded = unsafe { glib_sys::g_base64_encode(area.data.cast::<u8>(), area.length) };
-                    let text = unsafe { CStr::from_ptr(encoded) }
-                        .to_string_lossy()
-                        .into_owned();
-                    unsafe {
-                        glib_sys::g_free(encoded.cast());
-                    }
-                    text
-                };
-                serialized.push((field_name, "blob".to_owned(), encoded));
-            }
-            _ => {}
-        }
-    }
-
-    serialized
-}
-
 #[no_mangle]
 pub extern "C" fn vips_format_sizeof(format: VipsBandFormat) -> u64 {
     format_sizeof(format) as u64
@@ -694,7 +653,46 @@ pub extern "C" fn vips_image_get_as_string(
     if vips_image_get(image, name, &mut value) != 0 {
         return -1;
     }
-    let text = unsafe { gobject_sys::g_strdup_value_contents(&value) };
+    let text = if value.g_type == G_TYPE_STRING {
+        let value = unsafe { gobject_sys::g_value_get_string(&value) };
+        if value.is_null() {
+            unsafe { glib_sys::g_strdup(c"".as_ptr()) }
+        } else {
+            unsafe { glib_sys::g_strdup(value) }
+        }
+    } else if unsafe {
+        gobject_sys::g_value_type_transformable(
+            value.g_type,
+            crate::runtime::r#type::vips_save_string_get_type(),
+        )
+    } != 0
+    {
+        let mut save_value: gobject_sys::GValue = unsafe { std::mem::zeroed() };
+        unsafe {
+            gobject_sys::g_value_init(
+                &mut save_value,
+                crate::runtime::r#type::vips_save_string_get_type(),
+            );
+        }
+        if unsafe { gobject_sys::g_value_transform(&value, &mut save_value) } == 0 {
+            unsafe {
+                gobject_sys::g_value_unset(&mut save_value);
+                gobject_sys::g_value_unset(&mut value);
+            }
+            return -1;
+        }
+        let text = unsafe {
+            glib_sys::g_strdup(crate::runtime::r#type::vips_value_get_save_string(
+                &save_value,
+            ))
+        };
+        unsafe {
+            gobject_sys::g_value_unset(&mut save_value);
+        }
+        text
+    } else {
+        unsafe { gobject_sys::g_strdup_value_contents(&value) }
+    };
     unsafe {
         if !out.is_null() {
             *out = text;

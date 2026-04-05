@@ -1,8 +1,8 @@
 use crate::abi::image::VipsImage;
 use crate::foreign::base::{ForeignMetadata, SaveOptions};
 use crate::runtime::header::{
-    snapshot_metadata_entries, vips_image_get_blob, vips_image_set_blob_copy, vips_image_set_int,
-    vips_image_set_string, MetaValue,
+    snapshot_metadata_entries, vips_image_get_blob, vips_image_set_blob_copy,
+    vips_image_set_double, vips_image_set_int, vips_image_set_string, MetaValue,
 };
 
 fn copy_blob(image: *mut VipsImage, name: &[u8]) -> Option<Vec<u8>> {
@@ -31,6 +31,11 @@ pub fn install_metadata(image: *mut VipsImage, loader_name: &str, metadata: &For
     for (name, value) in &metadata.ints {
         if let Ok(name) = std::ffi::CString::new(name.as_str()) {
             vips_image_set_int(image, name.as_ptr(), *value);
+        }
+    }
+    for (name, value) in &metadata.doubles {
+        if let Ok(name) = std::ffi::CString::new(name.as_str()) {
+            vips_image_set_double(image, name.as_ptr(), *value);
         }
     }
     for (name, value) in &metadata.strings {
@@ -85,6 +90,9 @@ pub fn collect_metadata(image: *mut VipsImage, options: &SaveOptions) -> Foreign
         match &value {
             MetaValue::Int(value) => {
                 metadata.ints.insert(name, *value);
+            }
+            MetaValue::Double(value) => {
+                metadata.doubles.insert(name, *value);
             }
             MetaValue::String(value) => {
                 metadata

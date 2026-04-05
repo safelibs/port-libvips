@@ -19,7 +19,7 @@ use crate::foreign::base::{
     InputKind, LoadOptions, SaveOptions,
 };
 use crate::runtime::error::append_message_str;
-use crate::runtime::image::{ensure_pixels, image_state, set_filename, sync_pixels};
+use crate::runtime::image::{ensure_pixels, image_state, set_filename, set_history, sync_pixels};
 use crate::runtime::object;
 use crate::runtime::source::read_all_bytes;
 use crate::runtime::target::{vips_target_end, vips_target_write};
@@ -546,6 +546,7 @@ fn apply_load_result(
     if let Some(filename) = filename {
         set_filename(image, Some(filename));
     }
+    set_history(image, result.history.as_deref());
     metadata::install_metadata(image, result.loader_name, &result.metadata);
     image
 }
