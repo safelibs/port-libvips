@@ -32,7 +32,7 @@ dl_dep = cc.find_library('dl', required: false)
 surface_mode = run_command(
   sh,
   '-ec',
-  'printf %s "${VIPS_SAFE_EXPORT_SURFACE:-core-bootstrap}"',
+  'printf %s "${VIPS_SAFE_EXPORT_SURFACE:-full}"',
   check: true,
 ).stdout().strip()
 if surface_mode != 'core-bootstrap' and surface_mode != 'full'
@@ -139,6 +139,7 @@ cargo_env.set('VIPS_SAFE_MAGICK_PACKAGE', get_option('magick-package'))
 cargo_env.set('VIPS_SAFE_MAGICK_FEATURES', ','.join(get_option('magick-features')))
 cargo_env.set('VIPS_SAFE_NIFTI_PREFIX_DIR', get_option('nifti-prefix-dir'))
 cargo_env.set('VIPS_SAFE_MODULE_DIR_BASENAME', module_dir_basename)
+cargo_env.set('VIPS_SAFE_EXPORT_SURFACE', surface_mode)
 
 cargo_build_cmd = [
   cargo,

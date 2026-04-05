@@ -86,9 +86,10 @@ fn main() {
 fn export_surface() -> ExportSurface {
     match env::var("VIPS_SAFE_EXPORT_SURFACE") {
         Ok(value) if value == "full" => ExportSurface::Full,
-        Ok(value) if value == "core-bootstrap" || value.is_empty() => ExportSurface::CoreBootstrap,
+        Ok(value) if value == "core-bootstrap" => ExportSurface::CoreBootstrap,
+        Ok(value) if value.is_empty() => ExportSurface::Full,
         Ok(value) => panic!("unsupported VIPS_SAFE_EXPORT_SURFACE={value}"),
-        Err(_) => ExportSurface::CoreBootstrap,
+        Err(_) => ExportSurface::Full,
     }
 }
 
