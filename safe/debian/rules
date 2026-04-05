@@ -21,6 +21,7 @@ export CARGO ?= cargo
 export RUSTC ?= rustc
 export VIPS_SAFE_EXPORT_SURFACE ?= full
 REFERENCE_LIBVIPS = $(CURDIR)/../build-check-install/lib/libvips.so.42.17.1
+REFERENCE_LIBVIPS_CPP = $(CURDIR)/../build-check-install/lib/libvips-cpp.so.42.17.1
 
 override_dh_clean:
 	rm -rf $(CARGO_TARGET_DIR)
@@ -53,12 +54,19 @@ override_dh_install:
 		python3 "$(CURDIR)/scripts/assert_not_reference_binary.py" \
 			"$(REFERENCE_LIBVIPS)" \
 			"$$runtime_libdir/libvips.so.42.17.1"; \
+		python3 "$(CURDIR)/scripts/assert_not_reference_binary.py" \
+			"$(REFERENCE_LIBVIPS_CPP)" \
+			"$$runtime_libdir/libvips-cpp.so.42.17.1"; \
 		test -L "$$runtime_libdir/libvips.so.42"; \
 		test "$$(readlink "$$runtime_libdir/libvips.so.42")" = "libvips.so.42.17.1"; \
+		test -L "$$runtime_libdir/libvips-cpp.so.42"; \
+		test "$$(readlink "$$runtime_libdir/libvips-cpp.so.42")" = "libvips-cpp.so.42.17.1"; \
 	fi; \
 	if [ -d "$$dev_libdir" ]; then \
 		test -L "$$dev_libdir/libvips.so"; \
 		test "$$(readlink "$$dev_libdir/libvips.so")" = "libvips.so.42"; \
+		test -L "$$dev_libdir/libvips-cpp.so"; \
+		test "$$(readlink "$$dev_libdir/libvips-cpp.so")" = "libvips-cpp.so.42"; \
 	fi
 
 %:

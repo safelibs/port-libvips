@@ -1,0 +1,241 @@
+{
+  "applications": [
+    {
+      "package": "nip2",
+      "source_acquisition": {
+        "kind": "apt_source",
+        "uri": "https://archive.ubuntu.com/ubuntu/pool/universe/n/nip2/nip2_8.9.1.orig.tar.gz",
+        "ref": "8.9.1-1build3"
+      },
+      "build_prerequisites": [
+        "apt build-dep nip2",
+        "xauth",
+        "xvfb"
+      ],
+      "smoke_command": [
+        "xvfb-run",
+        "-a",
+        "./src/nip2",
+        "--version"
+      ],
+      "patch_hook": "prepare_vips_module_overlay"
+    },
+    {
+      "package": "photoqt",
+      "source_acquisition": {
+        "kind": "apt_source",
+        "uri": "https://archive.ubuntu.com/ubuntu/pool/universe/p/photoqt/photoqt_4.4+ds.orig.tar.xz",
+        "ref": "4.4+ds-1"
+      },
+      "build_prerequisites": [
+        "apt build-dep photoqt",
+        "cmake",
+        "ninja-build",
+        "xauth",
+        "xvfb"
+      ],
+      "smoke_command": [
+        "xvfb-run",
+        "-a",
+        "./build/photoqt_test",
+        "testLibVipsBackend"
+      ],
+      "patch_hook": "patch_photoqt_for_libvips_smoke_test"
+    },
+    {
+      "package": "ruby-vips",
+      "source_acquisition": {
+        "kind": "apt_source",
+        "uri": "https://archive.ubuntu.com/ubuntu/pool/universe/r/ruby-vips/ruby-vips_2.1.4.orig.tar.gz",
+        "ref": "2.1.4-1"
+      },
+      "build_prerequisites": [
+        "apt build-dep ruby-vips",
+        "ruby-full"
+      ],
+      "smoke_command": [
+        "ruby",
+        "/work/safe/tests/dependents/cases/ruby-vips-smoke.rb"
+      ],
+      "patch_hook": "patch_ruby_vips_for_reference_metadata_surface"
+    },
+    {
+      "package": "pyvips",
+      "source_acquisition": {
+        "kind": "workspace_path",
+        "path": "safe/vendor/pyvips-3.1.1"
+      },
+      "build_prerequisites": [
+        "python3",
+        "python3-cffi",
+        "python3-pip"
+      ],
+      "smoke_command": [
+        "python3",
+        "./safe-vips-smoke.py"
+      ],
+      "patch_hook": "write_pyvips_smoke_script"
+    },
+    {
+      "package": "php-vips",
+      "source_acquisition": {
+        "kind": "git_tag",
+        "uri": "https://github.com/libvips/php-vips.git",
+        "ref": "v2.6.1"
+      },
+      "build_prerequisites": [
+        "composer",
+        "git",
+        "php-cli",
+        "php-mbstring",
+        "php-xml"
+      ],
+      "smoke_command": [
+        "php",
+        "-d",
+        "ffi.enable=1",
+        "./safe-vips-smoke.php"
+      ],
+      "patch_hook": "write_php_vips_smoke_script"
+    },
+    {
+      "package": "govips",
+      "source_acquisition": {
+        "kind": "git_tag",
+        "uri": "https://github.com/davidbyttow/govips.git",
+        "ref": "v2.9.0"
+      },
+      "build_prerequisites": [
+        "build-essential",
+        "golang",
+        "pkg-config"
+      ],
+      "smoke_command": [
+        "go",
+        "run",
+        "./safe-vips-smoke.go"
+      ],
+      "patch_hook": "write_govips_smoke_script"
+    },
+    {
+      "package": "lua-vips",
+      "source_acquisition": {
+        "kind": "git_tag",
+        "uri": "https://github.com/libvips/lua-vips.git",
+        "ref": "v1.1-12"
+      },
+      "build_prerequisites": [
+        "git",
+        "luajit",
+        "luarocks"
+      ],
+      "smoke_command": [
+        "luajit",
+        "./safe-vips-smoke.lua"
+      ],
+      "patch_hook": "write_lua_vips_smoke_script"
+    },
+    {
+      "package": "sharp",
+      "source_acquisition": {
+        "kind": "npm_tarball",
+        "uri": "https://registry.npmjs.org/sharp/-/sharp-0.32.6.tgz",
+        "ref": "0.32.6"
+      },
+      "build_prerequisites": [
+        "g++",
+        "make",
+        "nodejs",
+        "npm",
+        "pkg-config",
+        "python3"
+      ],
+      "smoke_command": [
+        "node",
+        "./safe-vips-smoke.mjs"
+      ],
+      "patch_hook": "write_sharp_smoke_script"
+    },
+    {
+      "package": "bimg",
+      "source_acquisition": {
+        "kind": "git_tag",
+        "uri": "https://github.com/h2non/bimg.git",
+        "ref": "v1.1.9"
+      },
+      "build_prerequisites": [
+        "build-essential",
+        "golang",
+        "pkg-config"
+      ],
+      "smoke_command": [
+        "go",
+        "run",
+        "./safe-vips-smoke.go"
+      ],
+      "patch_hook": "write_bimg_smoke_script"
+    },
+    {
+      "package": "imgproxy",
+      "source_acquisition": {
+        "kind": "git_tag",
+        "uri": "https://github.com/imgproxy/imgproxy.git",
+        "ref": "v3.9.0"
+      },
+      "build_prerequisites": [
+        "build-essential",
+        "golang",
+        "pkg-config"
+      ],
+      "smoke_command": [
+        "go",
+        "test",
+        ".",
+        "-run",
+        "TestProcessingHandler/TestRequest",
+        "-count=1"
+      ],
+      "patch_hook": "no_patch"
+    },
+    {
+      "package": "carrierwave-vips",
+      "source_acquisition": {
+        "kind": "rubygem",
+        "uri": "https://rubygems.org/gems/carrierwave-vips-1.2.0.gem",
+        "ref": "1.2.0"
+      },
+      "build_prerequisites": [
+        "ruby-full",
+        "bundler"
+      ],
+      "smoke_command": [
+        "bundle",
+        "exec",
+        "ruby",
+        "./safe-vips-smoke.rb"
+      ],
+      "patch_hook": "write_carrierwave_vips_smoke_script"
+    },
+    {
+      "package": "sharp-for-go",
+      "source_acquisition": {
+        "kind": "git_commit",
+        "uri": "https://github.com/DAddYE/vips.git",
+        "ref": "87cfaf94f7a1b5dd0057a7dcea54d901f6ee5f62"
+      },
+      "build_prerequisites": [
+        "build-essential",
+        "golang",
+        "pkg-config"
+      ],
+      "smoke_command": [
+        "env",
+        "GO111MODULE=off",
+        "go",
+        "run",
+        "/work/safe/tests/dependents/cases/sharp-for-go-smoke.go"
+      ],
+      "patch_hook": "no_patch"
+    }
+  ]
+}

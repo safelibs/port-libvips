@@ -130,6 +130,80 @@
       ]
     }
   ],
+  "selected_applications": [
+    {
+      "package": "nip2",
+      "category": "desktop-ui",
+      "source_summary": "Ubuntu 24.04 source package nip2 8.9.1-1build3 via apt source and build-dep metadata.",
+      "immutable_ref": "8.9.1-1build3"
+    },
+    {
+      "package": "photoqt",
+      "category": "desktop-viewer",
+      "source_summary": "Ubuntu 24.04 source package photoqt 4.4+ds-1 via apt source and build-dep metadata.",
+      "immutable_ref": "4.4+ds-1"
+    },
+    {
+      "package": "ruby-vips",
+      "category": "ruby-binding",
+      "source_summary": "Ubuntu 24.04 source package ruby-vips 2.1.4-1 via apt source and upstream spec coverage.",
+      "immutable_ref": "2.1.4-1"
+    },
+    {
+      "package": "pyvips",
+      "category": "python-binding",
+      "source_summary": "Vendored workspace snapshot at safe/vendor/pyvips-3.1.1.",
+      "immutable_ref": "workspace:safe/vendor/pyvips-3.1.1"
+    },
+    {
+      "package": "php-vips",
+      "category": "php-binding",
+      "source_summary": "Upstream libvips/php-vips tag v2.6.1.",
+      "immutable_ref": "v2.6.1"
+    },
+    {
+      "package": "govips",
+      "category": "go-binding",
+      "source_summary": "Upstream davidbyttow/govips tag v2.9.0, selected to stay within the Ubuntu 24.04 Go toolchain floor.",
+      "immutable_ref": "v2.9.0"
+    },
+    {
+      "package": "lua-vips",
+      "category": "lua-binding",
+      "source_summary": "Upstream libvips/lua-vips tag v1.1-12.",
+      "immutable_ref": "v1.1-12"
+    },
+    {
+      "package": "sharp",
+      "category": "node-binding",
+      "source_summary": "npm sharp 0.32.6, pinned below the libvips >=8.15.3 floor introduced by newer sharp releases.",
+      "immutable_ref": "0.32.6"
+    },
+    {
+      "package": "bimg",
+      "category": "go-binding",
+      "source_summary": "Upstream h2non/bimg tag v1.1.9.",
+      "immutable_ref": "v1.1.9"
+    },
+    {
+      "package": "imgproxy",
+      "category": "service",
+      "source_summary": "Upstream imgproxy tag v3.9.0, pinned before newer releases raised the Go toolchain requirement above Ubuntu 24.04.",
+      "immutable_ref": "v3.9.0"
+    },
+    {
+      "package": "carrierwave-vips",
+      "category": "ruby-integration",
+      "source_summary": "RubyGems carrierwave-vips 1.2.0.",
+      "immutable_ref": "1.2.0"
+    },
+    {
+      "package": "sharp-for-go",
+      "category": "go-binding",
+      "source_summary": "Upstream DAddYE/vips repository pinned to commit 87cfaf94f7a1b5dd0057a7dcea54d901f6ee5f62.",
+      "immutable_ref": "87cfaf94f7a1b5dd0057a7dcea54d901f6ee5f62"
+    }
+  ],
   "considered_but_excluded": [
     {
       "package": "iipimage-server",

@@ -4,53 +4,6 @@ set -euo pipefail
 readonly SAFE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly SMOKE_SOURCE="${SAFE_ROOT}/tests/introspection/gir_smoke.c"
 
-ensure_gir_inspect_compat() {
-  local wrapper_dir="${HOME:-}/.local/bin"
-  local wrapper_path="${wrapper_dir}/g-ir-inspect"
-  local real_gi=""
-  local tmp_wrapper=""
-
-  if [[ -z "${HOME:-}" ]]; then
-    echo "HOME must be set to install the g-ir-inspect compatibility wrapper" >&2
-    exit 1
-  fi
-
-  mkdir -p "${wrapper_dir}"
-  real_gi="$(
-    which -a g-ir-inspect 2>/dev/null | awk -v wrapper="${wrapper_path}" '$0 != wrapper { print; exit }'
-  )"
-  if [[ -z "${real_gi}" ]]; then
-    echo "unable to locate the real g-ir-inspect binary" >&2
-    exit 1
-  fi
-
-  tmp_wrapper="$(mktemp "${wrapper_dir}/.g-ir-inspect.XXXXXX")"
-  cat > "${tmp_wrapper}" <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-
-readonly REAL_GI_INSPECT=${real_gi@Q}
-
-add_print_flags=true
-for arg in "\$@"; do
-  case "\$arg" in
-    -h|--help|--print-shlibs|--print-typelibs)
-      add_print_flags=false
-      break
-      ;;
-  esac
-done
-
-if [[ \$# -gt 0 && "\${add_print_flags}" == true ]]; then
-  exec "\${REAL_GI_INSPECT}" --print-shlibs --print-typelibs "\$@"
-fi
-
-exec "\${REAL_GI_INSPECT}" "\$@"
-EOF
-  chmod 0755 "${tmp_wrapper}"
-  mv "${tmp_wrapper}" "${wrapper_path}"
-}
-
 lib_dir=""
 typelib_dir=""
 gir_path=""
@@ -102,8 +55,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-ensure_gir_inspect_compat
-
 cc "${SMOKE_SOURCE}" -o "${tmp_dir}/gir-smoke" \
   $(pkg-config --cflags --libs gobject-introspection-1.0 glib-2.0 gio-2.0)
 
@@ -122,7 +73,7 @@ GI_TYPELIB_PATH="${typelib_dir}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}" \
 inspect_output="$(
   LD_LIBRARY_PATH="${lib_dir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
   GI_TYPELIB_PATH="${typelib_dir}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}" \
-    g-ir-inspect --version=8.0 Vips
+    g-ir-inspect --print-shlibs --print-typelibs --version=8.0 Vips
 )"
 if ! grep -Eq '(^|[[:space:]])libvips\.so\.42$' <<<"${inspect_output}"; then
   echo "g-ir-inspect did not resolve the safe libvips typelib payload" >&2

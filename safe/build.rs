@@ -532,6 +532,9 @@ fn implemented_full_surface_symbols(
     for symbol in deprecated_manual_symbols() {
         exports.insert(symbol.to_owned());
     }
+    for symbol in fallback_manual_symbols() {
+        exports.insert(symbol.to_owned());
+    }
     exports
 }
 
@@ -822,6 +825,8 @@ fn compatible_alias_target(
 fn deprecated_manual_symbols() -> BTreeSet<&'static str> {
     [
         "im_BandFmt2char",
+        "im_avg",
+        "im_black",
         "im_Coding2char",
         "im_Compression2char",
         "im_Type2char",
@@ -829,6 +834,8 @@ fn deprecated_manual_symbols() -> BTreeSet<&'static str> {
         "im_char2Coding",
         "im_char2Compression",
         "im_char2Type",
+        "im_close",
+        "im_copy",
         "im_char2dhint",
         "im_char2dtype",
         "im_dhint2char",
@@ -836,6 +843,7 @@ fn deprecated_manual_symbols() -> BTreeSet<&'static str> {
         "im_dtype2char",
         "im_errormsg",
         "im_errormsg_system",
+        "im_extract",
         "im_filename_split",
         "im_filename_suffix",
         "im_filename_suffix_match",
@@ -843,6 +851,9 @@ fn deprecated_manual_symbols() -> BTreeSet<&'static str> {
         "im_getsuboption",
         "im_init",
         "im_init_world",
+        "im_open",
+        "im_open_local",
+        "im_open_local_array",
         "im_skip_dir",
         "im_verrormsg",
         "im_warning",
@@ -857,6 +868,10 @@ fn deprecated_manual_symbols() -> BTreeSet<&'static str> {
     ]
     .into_iter()
     .collect()
+}
+
+fn fallback_manual_symbols() -> BTreeSet<&'static str> {
+    ["vips_image_new_mode"].into_iter().collect()
 }
 
 fn render_deprecated_manual_block() -> &'static str {
@@ -887,7 +902,7 @@ safe_vips_im_log(GLogLevelFlags level, const char *fmt, va_list ap)
     g_free(message);
 }
 
-int
+VIPS_PUBLIC int
 vips_amiMSBfirst(void)
 {
 #if G_BYTE_ORDER == G_BIG_ENDIAN
@@ -1304,6 +1319,74 @@ im_init_world(const char *argv0)
     return vips_init(argv0);
 }
 
+VIPS_PUBLIC VipsImage *
+im_open(const char *filename, const char *mode)
+{
+    if (!filename || !mode) {
+        vips_error("im_open", "%s", "filename and mode are required");
+        return NULL;
+    }
+
+    if (strcmp(mode, "r") == 0 ||
+        strcmp(mode, "rd") == 0)
+        return vips_image_new_from_file(filename, NULL);
+
+    if (strcmp(mode, "rs") == 0)
+        return vips_image_new_from_file(filename,
+            "access", VIPS_ACCESS_SEQUENTIAL,
+            NULL);
+
+    return vips_image_new_mode(filename, mode);
+}
+
+VIPS_PUBLIC VipsImage *
+im_open_local(VipsImage *parent,
+    const char *filename, const char *mode)
+{
+    VipsImage *image;
+
+    image = im_open(filename, mode);
+    if (!image)
+        return NULL;
+
+    if (parent)
+        g_signal_connect(parent, "close",
+            G_CALLBACK(vips_object_local_cb), image);
+
+    return image;
+}
+
+VIPS_PUBLIC int
+im_open_local_array(VipsImage *parent,
+    VipsImage **images, int n, const char *filename, const char *mode)
+{
+    int i;
+
+    if (!images || n < 0) {
+        vips_error("im_open_local_array", "%s", "images array is invalid");
+        return -1;
+    }
+
+    for (i = 0; i < n; i++)
+        if (!(images[i] = im_open_local(parent, filename, mode)))
+            return -1;
+
+    return 0;
+}
+
+VIPS_PUBLIC int
+im_close(VipsImage *im)
+{
+    if (!im) {
+        vips_error("im_close", "%s", "image is NULL");
+        return -1;
+    }
+
+    g_object_unref(im);
+
+    return 0;
+}
+
 VIPS_PUBLIC int
 vips_image_open_input(VipsImage *image)
 {
@@ -1337,6 +1420,75 @@ vips_remapfilerw(VipsImage *image)
 {
     (void) image;
     return 0;
+}
+
+VIPS_PUBLIC int
+im_avg(VipsImage *in, double *out)
+{
+    return vips_avg(in, out, NULL);
+}
+
+VIPS_PUBLIC int
+im_copy(VipsImage *in, VipsImage *out)
+{
+    return vips_image_write(in, out);
+}
+
+VIPS_PUBLIC int
+im_black(VipsImage *out, int x, int y, int bands)
+{
+    VipsImage *tmp;
+    int result;
+
+    tmp = NULL;
+    if (vips_black(&tmp, x, y,
+            "bands", bands,
+            NULL))
+        return -1;
+
+    result = vips_image_write(tmp, out);
+    g_object_unref(tmp);
+
+    return result;
+}
+
+VIPS_PUBLIC int
+im_extract(VipsImage *in, VipsImage *out, IMAGE_BOX *box)
+{
+    VipsImage *tmp;
+    VipsImage *area;
+    int result;
+
+    if (!box) {
+        vips_error("im_extract", "%s", "box is NULL");
+        return -1;
+    }
+
+    tmp = NULL;
+    area = NULL;
+    if (box->chsel == -1) {
+        if (vips_crop(in, &tmp,
+                box->xstart, box->ystart,
+                box->xsize, box->ysize,
+                NULL))
+            return -1;
+    }
+    else {
+        if (vips_crop(in, &area,
+                box->xstart, box->ystart,
+                box->xsize, box->ysize,
+                NULL) ||
+            vips_extract_band(area, &tmp, box->chsel, NULL)) {
+            g_clear_object(&area);
+            return -1;
+        }
+    }
+
+    result = vips_image_write(tmp, out);
+    g_clear_object(&area);
+    g_clear_object(&tmp);
+
+    return result;
 }
 "#
 }
@@ -1526,6 +1678,7 @@ fn render_fallback_shim(
     let mut source = String::from(
         "// @generated by build.rs from reference/abi/libvips.symbols and in-repo headers\n\
 #include <glib.h>\n\
+#include <string.h>\n\
 #include <vips/vips.h>\n\
 #include <vips/private.h>\n\
 #include <vips/internal.h>\n\
@@ -1546,6 +1699,39 @@ safe_vips_missing_symbol(const char *symbol)\n\
 \tvips_error(symbol, \"%s is not implemented in the safe compatibility layer\", symbol);\n\
 }\n\
 \n",
+    );
+    source.push_str(
+        r#"
+static VipsImage *
+safe_vips_image_new_mode_internal(const char *filename, const char *mode)
+{
+	if (!filename || !mode) {
+		vips_error("vips_image_new_mode", "%s",
+			"filename and mode are required");
+		return NULL;
+	}
+
+	VipsImage *image = strcmp(mode, "t") == 0
+		? vips_image_new_memory()
+		: vips_image_new();
+	if (!image)
+		return NULL;
+
+	g_object_set(image,
+		"filename", filename,
+		"mode", mode,
+		NULL);
+
+	return image;
+}
+
+VIPS_PUBLIC VipsImage *
+vips_image_new_mode(const char *filename, const char *mode)
+{
+	return safe_vips_image_new_mode_internal(filename, mode);
+}
+
+"#,
     );
 
     for symbol in missing_symbols {

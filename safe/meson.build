@@ -332,6 +332,9 @@ safe_vips_link_args = [
 cpp_wrapper_args = [
   '-D_VIPS_PUBLIC=__attribute__((visibility("default")))',
 ]
+cpp_visibility_contract_args = [
+  '-fno-lto',
+]
 libvips_cpp_symbol_contract = files('reference/abi/libvips-cpp.symbols')
 libvips_cpp_version_script = custom_target(
   'libvips-cpp-version-script',
@@ -375,8 +378,8 @@ libvips_cpp_lib = shared_library(
   build_by_default: true,
   include_directories: cpp_include,
   dependencies: [glib_dep, gobject_dep, gio_dep],
-  cpp_args: cpp_wrapper_args,
-  link_args: safe_vips_link_args + [
+  cpp_args: cpp_wrapper_args + cpp_visibility_contract_args,
+  link_args: safe_vips_link_args + cpp_visibility_contract_args + [
     '-Wl,--version-script=' + (meson.current_build_dir() / 'libvips-cpp.map'),
   ],
   link_depends: [libvips_stage, libvips_cpp_version_script],

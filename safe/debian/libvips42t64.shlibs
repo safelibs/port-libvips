@@ -1,2 +1,3 @@
+# Keep the rebuilt C and C++ runtimes in the same binary package.
 libvips 42 libvips42t64 (>> 8.0.2-1~)
 libvips-cpp 42 libvips42t64 (>> 8.0.2-1~)

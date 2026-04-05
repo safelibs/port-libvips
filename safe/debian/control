@@ -73,7 +73,7 @@ Description: image processing system good for very large ones (dev)
 Package: libvips-tools
 Section: graphics
 Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends}, python3
+Depends: ${misc:Depends}, libvips42t64 (= ${binary:Version}), ${shlibs:Depends}, python3
 Suggests: nip2, libvips-doc, libvips-dev
 Description: image processing system good for very large ones (tools)
  VIPS is an image processing system designed with efficiency in mind.
@@ -116,7 +116,7 @@ Description: image processing system good for very large ones (doc)
 Package: gir1.2-vips-8.0
 Section: introspection
 Architecture: any
-Depends: ${gir:Depends}, ${misc:Depends}
+Depends: ${gir:Depends}, libvips42t64 (= ${binary:Version}), ${misc:Depends}
 Description: GObject introspection data for VIPS
  VIPS is an image processing system designed with efficiency in mind.
  It is good with large images (ones that larger than the amount of RAM in

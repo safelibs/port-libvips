@@ -1,2 +1,11 @@
-debian/tmp/usr/bin
-debian/tmp/usr/share/man/man1
+debian/tmp/usr/bin/vips
+debian/tmp/usr/bin/vipsedit
+debian/tmp/usr/bin/vipsheader
+debian/tmp/usr/bin/vipsprofile
+debian/tmp/usr/bin/vipsthumbnail
+debian/tmp/usr/share/man/man1/vips.1
+debian/tmp/usr/share/man/man1/vips_missing.1
+debian/tmp/usr/share/man/man1/vipsedit.1
+debian/tmp/usr/share/man/man1/vipsheader.1
+debian/tmp/usr/share/man/man1/vipsprofile.1
+debian/tmp/usr/share/man/man1/vipsthumbnail.1

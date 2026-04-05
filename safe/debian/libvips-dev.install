@@ -1,5 +1,6 @@
-debian/tmp/usr/lib/*/lib*.so
-#debian/tmp/usr/lib/*/lib*.a
-debian/tmp/usr/lib/*/pkgconfig
+debian/tmp/usr/lib/*/libvips.so
+debian/tmp/usr/lib/*/libvips-cpp.so
+debian/tmp/usr/lib/*/pkgconfig/vips.pc
+debian/tmp/usr/lib/*/pkgconfig/vips-cpp.pc
 debian/tmp/usr/include
-debian/tmp/usr/share/gir-*/*.gir
+debian/tmp/usr/share/gir-1.0/Vips-8.0.gir
