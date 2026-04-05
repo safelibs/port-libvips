@@ -3,15 +3,16 @@ use crate::abi::basic::{
     VipsOperationBoolean, VIPS_ALIGN_CENTRE, VIPS_ALIGN_HIGH, VIPS_ALIGN_LOW, VIPS_ANGLE45_D0,
     VIPS_ANGLE45_D135, VIPS_ANGLE45_D180, VIPS_ANGLE45_D225, VIPS_ANGLE45_D270, VIPS_ANGLE45_D315,
     VIPS_ANGLE45_D45, VIPS_ANGLE45_D90, VIPS_ANGLE_D0, VIPS_ANGLE_D180, VIPS_ANGLE_D270,
-    VIPS_ANGLE_D90, VIPS_BLEND_MODE_OVER, VIPS_DIRECTION_HORIZONTAL, VIPS_DIRECTION_VERTICAL,
-    VIPS_EXTEND_BACKGROUND, VIPS_EXTEND_BLACK, VIPS_EXTEND_COPY, VIPS_EXTEND_MIRROR,
-    VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE, VIPS_INTERESTING_ALL, VIPS_INTERESTING_ATTENTION,
-    VIPS_INTERESTING_CENTRE, VIPS_INTERESTING_HIGH, VIPS_INTERESTING_LOW, VIPS_INTERESTING_NONE,
-    VIPS_KERNEL_LANCZOS3, VIPS_PRECISION_INTEGER,
+    VIPS_ANGLE_D90, VIPS_DIRECTION_HORIZONTAL, VIPS_DIRECTION_VERTICAL, VIPS_EXTEND_BACKGROUND,
+    VIPS_EXTEND_BLACK, VIPS_EXTEND_COPY, VIPS_EXTEND_MIRROR, VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE,
+    VIPS_INTERESTING_ALL, VIPS_INTERESTING_ATTENTION, VIPS_INTERESTING_CENTRE,
+    VIPS_INTERESTING_HIGH, VIPS_INTERESTING_LOW, VIPS_INTERESTING_NONE, VIPS_KERNEL_LANCZOS3,
+    VIPS_PRECISION_INTEGER,
 };
 use crate::abi::image::{
-    VipsBandFormat, VipsCoding, VipsInterpretation, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT,
-    VIPS_FORMAT_UCHAR, VIPS_INTERPRETATION_LAB, VIPS_INTERPRETATION_XYZ,
+    VipsBandFormat, VipsCoding, VipsInterpretation, VIPS_DEMAND_STYLE_THINSTRIP,
+    VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR, VIPS_INTERPRETATION_LAB,
+    VIPS_INTERPRETATION_XYZ,
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::format::{
@@ -418,9 +419,10 @@ fn extract_area_buffer(
         return Err(());
     }
 
-    let mut out = input.with_shape(width, height, input.spec.bands);
-    out.spec.xoffset = input.spec.xoffset.saturating_add(left as i32);
-    out.spec.yoffset = input.spec.yoffset.saturating_add(top as i32);
+    let mut out = input
+        .with_shape(width, height, input.spec.bands)
+        .with_origin(-(left as i32), -(top as i32))
+        .with_demand_style(VIPS_DEMAND_STYLE_THINSTRIP);
     for y in 0..height {
         for x in 0..width {
             for band in 0..input.spec.bands {
@@ -444,6 +446,7 @@ unsafe fn op_extract_area(
     let height = unsafe { get_int(object, "height")? };
 
     if left < 0 || top < 0 || width <= 0 || height <= 0 {
+        append_message_str("extract_area", "bad extract area");
         return Err(());
     }
 
@@ -452,7 +455,13 @@ unsafe fn op_extract_area(
     let width_u = usize::try_from(width).map_err(|_| ())?;
     let height_u = usize::try_from(height).map_err(|_| ())?;
 
-    let out = extract_area_buffer(&input, left_u, top_u, width_u, height_u)?;
+    let out = match extract_area_buffer(&input, left_u, top_u, width_u, height_u) {
+        Ok(out) => out,
+        Err(()) => {
+            append_message_str("extract_area", "bad extract area");
+            return Err(());
+        }
+    };
 
     let image = unsafe { get_image_ref(object, input_name)? };
     let result = unsafe { set_output_image_like(object, output_name, out, image) };

@@ -16,18 +16,19 @@ use crate::abi::basic::{
     VIPS_OPERATION_ROUND_FLOOR, VIPS_OPERATION_ROUND_RINT,
 };
 use crate::abi::image::{
-    VipsBandFormat, VipsImage, VIPS_CODING_NONE, VIPS_FORMAT_CHAR, VIPS_FORMAT_COMPLEX,
-    VIPS_FORMAT_DOUBLE, VIPS_FORMAT_DPCOMPLEX, VIPS_FORMAT_FLOAT, VIPS_FORMAT_INT,
-    VIPS_FORMAT_SHORT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT,
-    VIPS_INTERPRETATION_MATRIX,
+    VipsBandFormat, VIPS_CODING_NONE, VIPS_FORMAT_CHAR, VIPS_FORMAT_COMPLEX, VIPS_FORMAT_DOUBLE,
+    VIPS_FORMAT_DPCOMPLEX, VIPS_FORMAT_FLOAT, VIPS_FORMAT_INT, VIPS_FORMAT_SHORT,
+    VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_MATRIX,
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::format::{
-    clamp_for_format, common_format, format_bytes, format_components, format_kind, read_sample,
-    write_sample, NumericKind,
+    clamp_for_format, common_format, complex_component_format, complex_promoted_format,
+    format_bytes, format_components, format_kind, read_sample, NumericKind,
 };
-use crate::pixels::{ImageBuffer, ImageSpec};
-use crate::runtime::header::{copy_metadata, vips_image_init_fields};
+use crate::pixels::{
+    complex_from_buffer, complex_image_from_samples, read_complex_image, ComplexSample,
+    ImageBuffer, ImageSpec,
+};
 use crate::runtime::image::{ensure_pixels, image_state};
 
 use super::{
@@ -251,122 +252,12 @@ fn new_output_from_spec(spec: ImageSpec, format: VipsBandFormat) -> ImageBuffer 
     out
 }
 
-fn complex_component_format(format: VipsBandFormat) -> Option<VipsBandFormat> {
-    match format {
-        VIPS_FORMAT_COMPLEX => Some(VIPS_FORMAT_FLOAT),
-        VIPS_FORMAT_DPCOMPLEX => Some(VIPS_FORMAT_DOUBLE),
-        _ => None,
-    }
-}
-
-fn complex_output_format(format: VipsBandFormat) -> VipsBandFormat {
-    if matches!(format, VIPS_FORMAT_DOUBLE | VIPS_FORMAT_DPCOMPLEX) {
-        VIPS_FORMAT_DPCOMPLEX
-    } else {
-        VIPS_FORMAT_COMPLEX
-    }
-}
-
 fn complexget_output_format(format: VipsBandFormat) -> VipsBandFormat {
     match format {
         VIPS_FORMAT_COMPLEX => VIPS_FORMAT_FLOAT,
         VIPS_FORMAT_DPCOMPLEX => VIPS_FORMAT_DOUBLE,
         _ => format,
     }
-}
-
-unsafe fn read_complex_input(image: *mut VipsImage) -> Result<(ImageSpec, Vec<(f64, f64)>), ()> {
-    let image_ref = unsafe { image.as_ref() }.ok_or(())?;
-    if let Some(component_format) = complex_component_format(image_ref.BandFmt) {
-        ensure_pixels(image)?;
-        let state = unsafe { image_state(image) }.ok_or(())?;
-        let sample_size = format_bytes(image_ref.BandFmt);
-        let component_size = format_bytes(component_format);
-        let expected = image_ref.Xsize.max(0) as usize
-            * image_ref.Ysize.max(0) as usize
-            * image_ref.Bands.max(0) as usize;
-        let mut data = Vec::with_capacity(expected);
-        for chunk in state.pixels.chunks_exact(sample_size) {
-            let real = read_sample(&chunk[..component_size], component_format).ok_or(())?;
-            let imag =
-                read_sample(&chunk[component_size..sample_size], component_format).ok_or(())?;
-            data.push((real, imag));
-        }
-        if data.len() != expected {
-            return Err(());
-        }
-        return Ok((
-            ImageSpec {
-                width: image_ref.Xsize.max(0) as usize,
-                height: image_ref.Ysize.max(0) as usize,
-                bands: image_ref.Bands.max(0) as usize,
-                format: image_ref.BandFmt,
-                coding: image_ref.Coding,
-                interpretation: image_ref.Type,
-                xres: image_ref.Xres,
-                yres: image_ref.Yres,
-                xoffset: image_ref.Xoffset,
-                yoffset: image_ref.Yoffset,
-                dhint: image_ref.dhint,
-            },
-            data,
-        ));
-    }
-
-    let input = ImageBuffer::from_image(image)?;
-    let mut spec = input.spec;
-    spec.format = complex_output_format(spec.format);
-    Ok((
-        spec,
-        input.data.into_iter().map(|value| (value, 0.0)).collect(),
-    ))
-}
-
-unsafe fn image_from_complex_pairs(
-    spec: ImageSpec,
-    pairs: &[(f64, f64)],
-    like: *mut VipsImage,
-) -> Result<*mut VipsImage, ()> {
-    let component_format = complex_component_format(spec.format).ok_or(())?;
-    let sample_size = format_bytes(spec.format);
-    let component_size = format_bytes(component_format);
-    let mut pixels = vec![0; pairs.len().saturating_mul(sample_size)];
-    for (index, (real, imag)) in pairs.iter().copied().enumerate() {
-        let offset = index * sample_size;
-        let slot = &mut pixels[offset..offset + sample_size];
-        if !write_sample(&mut slot[..component_size], component_format, real)
-            || !write_sample(&mut slot[component_size..], component_format, imag)
-        {
-            return Err(());
-        }
-    }
-
-    let out = crate::runtime::image::vips_image_new_memory();
-    if out.is_null() {
-        return Err(());
-    }
-    vips_image_init_fields(
-        out,
-        spec.width as i32,
-        spec.height as i32,
-        spec.bands as i32,
-        spec.format,
-        spec.coding,
-        spec.interpretation,
-        spec.xres,
-        spec.yres,
-    );
-    if let Some(out_ref) = unsafe { out.as_mut() } {
-        out_ref.Xoffset = spec.xoffset;
-        out_ref.Yoffset = spec.yoffset;
-        out_ref.dhint = spec.dhint;
-        out_ref.hint_set = glib_sys::GTRUE;
-    }
-    let state = unsafe { image_state(out) }.ok_or(())?;
-    state.pixels = pixels;
-    crate::runtime::image::sync_pixels(out);
-    copy_metadata(out, like);
-    Ok(out)
 }
 
 fn int_binary_u8(left: f64, right: f64, op: VipsOperationBoolean) -> f64 {
@@ -831,28 +722,34 @@ unsafe fn op_complex(object: *mut VipsObject) -> Result<(), ()> {
     let cmplx = unsafe { get_enum(object, "cmplx")? } as VipsOperationComplex;
     let image = unsafe { get_image_ref(object, "in")? };
     let result = (|| {
-        let (spec, mut pairs) = unsafe { read_complex_input(image)? };
+        let (spec, mut pairs) = unsafe { read_complex_image(image)? };
         for pair in &mut pairs {
             match cmplx {
                 VIPS_OPERATION_COMPLEX_POLAR => {
-                    let amplitude = pair.0.hypot(pair.1);
-                    let mut phase = pair.1.atan2(pair.0).to_degrees();
+                    let amplitude = pair.real.hypot(pair.imag);
+                    let mut phase = pair.imag.atan2(pair.real).to_degrees();
                     if phase < 0.0 {
                         phase += 360.0;
                     }
-                    *pair = (amplitude, phase);
+                    *pair = ComplexSample {
+                        real: amplitude,
+                        imag: phase,
+                    };
                 }
                 VIPS_OPERATION_COMPLEX_RECT => {
-                    let radians = pair.1.to_radians();
-                    *pair = (pair.0 * radians.cos(), pair.0 * radians.sin());
+                    let radians = pair.imag.to_radians();
+                    *pair = ComplexSample {
+                        real: pair.real * radians.cos(),
+                        imag: pair.real * radians.sin(),
+                    };
                 }
                 VIPS_OPERATION_COMPLEX_CONJ => {
-                    pair.1 = -pair.1;
+                    pair.imag = -pair.imag;
                 }
                 _ => return Err(()),
             }
         }
-        let out = unsafe { image_from_complex_pairs(spec, &pairs, image)? };
+        let out = unsafe { complex_image_from_samples(spec, &pairs, image)? };
         unsafe { set_output_image(object, "out", out) }
     })();
     unsafe {
@@ -867,13 +764,13 @@ unsafe fn op_complexget(object: *mut VipsObject) -> Result<(), ()> {
     let result = (|| {
         let input_format = unsafe { image.as_ref() }.ok_or(())?.BandFmt;
         let out = if complex_component_format(input_format).is_some() {
-            let (spec, pairs) = unsafe { read_complex_input(image)? };
+            let (spec, pairs) = unsafe { read_complex_image(image)? };
             let mut out = new_output_from_spec(spec, complexget_output_format(spec.format));
             out.data = pairs
                 .into_iter()
-                .map(|(real, imag)| match get {
-                    VIPS_OPERATION_COMPLEXGET_REAL => real,
-                    VIPS_OPERATION_COMPLEXGET_IMAG => imag,
+                .map(|pair| match get {
+                    VIPS_OPERATION_COMPLEXGET_REAL => pair.real,
+                    VIPS_OPERATION_COMPLEXGET_IMAG => pair.imag,
                     _ => 0.0,
                 })
                 .collect();
@@ -911,10 +808,15 @@ unsafe fn op_complexform(object: *mut VipsObject) -> Result<(), ()> {
         let left = ImageBuffer::from_image(left_image)?;
         let right = ImageBuffer::from_image(right_image)?;
         let (left, right, common) = align_pair(&left, &right)?;
-        let mut spec = left.spec;
-        spec.format = complex_output_format(common);
-        let pairs: Vec<(f64, f64)> = left.data.into_iter().zip(right.data).collect();
-        let out = unsafe { image_from_complex_pairs(spec, &pairs, left_image)? };
+        let (mut spec, _) = complex_from_buffer(&left);
+        spec.format = complex_promoted_format(common);
+        let pairs: Vec<ComplexSample> = left
+            .data
+            .into_iter()
+            .zip(right.data)
+            .map(|(real, imag)| ComplexSample { real, imag })
+            .collect();
+        let out = unsafe { complex_image_from_samples(spec, &pairs, left_image)? };
         unsafe { set_output_image(object, "out", out) }
     })();
     unsafe {

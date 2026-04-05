@@ -3,7 +3,10 @@ use crate::abi::basic::{
     VIPS_ANGLE45_D225, VIPS_ANGLE45_D270, VIPS_ANGLE45_D315, VIPS_ANGLE45_D45, VIPS_ANGLE45_D90,
     VIPS_COMBINE_MAX, VIPS_COMBINE_MIN, VIPS_COMBINE_SUM, VIPS_PRECISION_INTEGER,
 };
-use crate::abi::image::{VipsBandFormat, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UINT};
+use crate::abi::image::{
+    VipsBandFormat, VIPS_DEMAND_STYLE_SMALLTILE, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT,
+    VIPS_FORMAT_UINT,
+};
 use crate::abi::object::VipsObject;
 use crate::pixels::format::clamp_for_format;
 use crate::pixels::kernel::{gaussian_kernel, Kernel};
@@ -73,20 +76,20 @@ pub(crate) fn apply_kernel(
     kernel: &Kernel,
     precision: VipsPrecision,
 ) -> ImageBuffer {
-    let mut out = input.with_format(conv_output_format(input.spec.format, precision));
+    let (cx, cy) = kernel.origin();
+    let mut out = input
+        .with_format(conv_output_format(input.spec.format, precision))
+        .with_origin(-(cx as i32), -(cy as i32))
+        .with_demand_style(VIPS_DEMAND_STYLE_SMALLTILE);
     let scale = kernel.scale_or_one();
-    let cx = kernel.width as isize / 2;
-    let cy = kernel.height as isize / 2;
     for y in 0..input.spec.height {
         for x in 0..input.spec.width {
             for band in 0..input.spec.bands {
                 let mut sum = 0.0;
-                for ky in 0..kernel.height {
-                    for kx in 0..kernel.width {
-                        let px = x as isize + kx as isize - cx;
-                        let py = y as isize + ky as isize - cy;
-                        sum += input.sample_clamped(px, py, band) * kernel.at(kx, ky);
-                    }
+                for sample in kernel.iter() {
+                    let px = x as isize + sample.dx;
+                    let py = y as isize + sample.dy;
+                    sum += input.sample_clamped(px, py, band) * sample.value;
                 }
                 out.set(x, y, band, sum / scale + kernel.offset);
             }
@@ -121,7 +124,21 @@ pub(crate) fn apply_separable(
             }
         }
     }
-    let mut out = tmp.clone();
+    let mut out = tmp
+        .clone()
+        .with_demand_style(VIPS_DEMAND_STYLE_SMALLTILE)
+        .with_origin(
+            if kernel.width == 1 {
+                -(radius as i32)
+            } else {
+                0
+            },
+            if kernel.height == 1 {
+                -(radius as i32)
+            } else {
+                0
+            },
+        );
     for y in 0..input.spec.height {
         for x in 0..input.spec.width {
             for band in 0..input.spec.bands {

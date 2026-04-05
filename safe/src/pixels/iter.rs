@@ -49,6 +49,10 @@ impl Iterator for PixelIter {
     }
 }
 
+pub(crate) fn checked_sample_count(width: usize, height: usize, bands: usize) -> Option<usize> {
+    width.checked_mul(height)?.checked_mul(bands)
+}
+
 pub(crate) fn pixel_index(width: usize, bands: usize, x: usize, y: usize, band: usize) -> usize {
     ((y * width) + x) * bands + band
 }

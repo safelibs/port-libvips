@@ -159,6 +159,9 @@ fn arithmetic_and_extract_area_flow() {
     assert_eq!(vips_image_get_width(crop), 1);
     assert_eq!(vips_image_get_height(crop), 2);
     assert_eq!(read_samples(crop), vec![22.0, 44.0]);
+    assert_eq!(unsafe { (*crop).Xoffset }, -1);
+    assert_eq!(unsafe { (*crop).Yoffset }, 0);
+    assert_eq!(unsafe { (*crop).dhint }, VIPS_DEMAND_STYLE_THINSTRIP);
 
     unref_image(crop);
     unref_image(linear);
@@ -202,6 +205,13 @@ fn create_convolution_histogram_morphology_and_freqfilt_flow() {
     );
     assert_eq!(vips_image_get_width(blurred), 4);
     assert_eq!(vips_image_get_height(blurred), 4);
+    assert_eq!(vips_image_get_format(blurred), VIPS_FORMAT_FLOAT);
+    assert_eq!(unsafe { (*blurred).Xoffset }, -1);
+    assert_eq!(unsafe { (*blurred).Yoffset }, -1);
+    assert_eq!(unsafe { (*blurred).dhint }, VIPS_DEMAND_STYLE_SMALLTILE);
+    let blurred_values = read_samples(blurred);
+    assert!((blurred_values[0] - 23.020_833).abs() < 1e-5);
+    assert!((blurred_values[3] - 231.979_17).abs() < 1e-4);
 
     let mut hist_equal = ptr::null_mut();
     assert_eq!(
@@ -209,26 +219,51 @@ fn create_convolution_histogram_morphology_and_freqfilt_flow() {
         0
     );
     assert_eq!(vips_image_get_width(hist_equal), 4);
+    assert_eq!(vips_image_get_format(hist_equal), VIPS_FORMAT_UCHAR);
+    assert_eq!(
+        read_samples(hist_equal),
+        vec![
+            63.0, 127.0, 191.0, 255.0, 63.0, 127.0, 191.0, 255.0, 63.0, 127.0, 191.0, 255.0, 63.0,
+            127.0, 191.0, 255.0,
+        ]
+    );
 
     let mut mask = ptr::null_mut();
     assert_eq!(
-        unsafe { vips_mask_ideal(&mut mask, 4, 4, 0.5, ptr::null::<c_char>()) },
+        unsafe {
+            vips_mask_ideal(
+                &mut mask,
+                4,
+                4,
+                0.0,
+                c"reject".as_ptr(),
+                1i32,
+                ptr::null::<c_char>(),
+            )
+        },
         0
+    );
+    assert_eq!(
+        read_samples(mask),
+        vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     );
 
     let mut filtered = ptr::null_mut();
     assert_eq!(
-        unsafe { vips_freqmult(blurred, mask, &mut filtered, ptr::null::<c_char>()) },
+        unsafe { vips_freqmult(grey, mask, &mut filtered, ptr::null::<c_char>()) },
         0
     );
     assert_eq!(vips_image_get_width(filtered), 4);
+    assert_eq!(vips_image_get_format(filtered), VIPS_FORMAT_UCHAR);
+    assert_eq!(read_samples(filtered), vec![127.0; 16]);
 
-    let morph_mask = image_from_uchar(3, 3, 1, &[1, 1, 1, 1, 1, 1, 1, 1, 1]);
+    let binary = image_from_uchar(4, 4, 1, &[0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    let morph_mask = image_from_uchar(3, 3, 1, &[255, 255, 255, 255, 255, 255, 255, 255, 255]);
     let mut morphed = ptr::null_mut();
     assert_eq!(
         unsafe {
             vips_morph(
-                grey,
+                binary,
                 &mut morphed,
                 morph_mask,
                 VIPS_OPERATION_MORPHOLOGY_DILATE,
@@ -237,11 +272,21 @@ fn create_convolution_histogram_morphology_and_freqfilt_flow() {
         },
         0
     );
-    let morphed_values = read_samples(morphed);
-    assert!(morphed_values.iter().all(|value| *value >= 0.0));
+    assert_eq!(vips_image_get_format(morphed), VIPS_FORMAT_UCHAR);
+    assert_eq!(unsafe { (*morphed).Xoffset }, -1);
+    assert_eq!(unsafe { (*morphed).Yoffset }, -1);
+    assert_eq!(unsafe { (*morphed).dhint }, VIPS_DEMAND_STYLE_SMALLTILE);
+    assert_eq!(
+        read_samples(morphed),
+        vec![
+            255.0, 255.0, 255.0, 0.0, 255.0, 255.0, 255.0, 0.0, 255.0, 255.0, 255.0, 0.0, 0.0, 0.0,
+            0.0, 0.0,
+        ]
+    );
 
     unref_image(morphed);
     unref_image(morph_mask);
+    unref_image(binary);
     unref_image(filtered);
     unref_image(mask);
     unref_image(hist_equal);

@@ -56,9 +56,17 @@ pub(crate) fn read_samples(image: *mut VipsImage) -> Vec<f64> {
     let bytes = unsafe { slice::from_raw_parts(ptr.cast::<u8>(), len) };
     let values = match format {
         VIPS_FORMAT_UCHAR => bytes.iter().map(|value| *value as f64).collect(),
+        VIPS_FORMAT_USHORT => bytes
+            .chunks_exact(2)
+            .map(|chunk| u16::from_ne_bytes(chunk.try_into().unwrap()) as f64)
+            .collect(),
         VIPS_FORMAT_FLOAT => bytes
             .chunks_exact(4)
             .map(|chunk| f32::from_ne_bytes(chunk.try_into().unwrap()) as f64)
+            .collect(),
+        VIPS_FORMAT_DOUBLE => bytes
+            .chunks_exact(8)
+            .map(|chunk| f64::from_ne_bytes(chunk.try_into().unwrap()))
             .collect(),
         _ => bytes.iter().map(|value| *value as f64).collect(),
     };
@@ -66,6 +74,11 @@ pub(crate) fn read_samples(image: *mut VipsImage) -> Vec<f64> {
         glib_sys::g_free(ptr);
     }
     values
+}
+
+pub(crate) fn assert_failed_output_cleared(result: i32, image: *mut VipsImage) {
+    assert_eq!(result, -1);
+    assert!(image.is_null());
 }
 
 pub(crate) fn error_message() -> String {

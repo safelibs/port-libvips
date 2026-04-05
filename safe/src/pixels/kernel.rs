@@ -12,6 +12,18 @@ pub(crate) struct Kernel {
     pub offset: f64,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct KernelSample {
+    pub dx: isize,
+    pub dy: isize,
+    pub value: f64,
+}
+
+pub(crate) struct KernelIter<'a> {
+    kernel: &'a Kernel,
+    next: usize,
+}
+
 impl Kernel {
     pub(crate) fn new(
         width: usize,
@@ -38,6 +50,17 @@ impl Kernel {
             1.0
         } else {
             self.scale
+        }
+    }
+
+    pub(crate) fn origin(&self) -> (isize, isize) {
+        (self.width as isize / 2, self.height as isize / 2)
+    }
+
+    pub(crate) fn iter(&self) -> KernelIter<'_> {
+        KernelIter {
+            kernel: self,
+            next: 0,
         }
     }
 
@@ -103,6 +126,28 @@ impl Kernel {
         }
 
         Self::new(self.width, self.height, rotated, self.scale, self.offset)
+    }
+}
+
+impl Iterator for KernelIter<'_> {
+    type Item = KernelSample;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next >= self.kernel.data.len() {
+            return None;
+        }
+
+        let index = self.next;
+        self.next += 1;
+
+        let x = index % self.kernel.width;
+        let y = index / self.kernel.width;
+        let (cx, cy) = self.kernel.origin();
+        Some(KernelSample {
+            dx: x as isize - cx,
+            dy: y as isize - cy,
+            value: self.kernel.at(x, y),
+        })
     }
 }
 

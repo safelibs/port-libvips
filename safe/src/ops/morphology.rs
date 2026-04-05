@@ -5,7 +5,8 @@ use crate::abi::basic::{
     VIPS_OPERATION_MORPHOLOGY_ERODE,
 };
 use crate::abi::image::{
-    VIPS_CODING_NONE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_INT, VIPS_INTERPRETATION_MULTIBAND,
+    VIPS_CODING_NONE, VIPS_DEMAND_STYLE_SMALLTILE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_INT,
+    VIPS_FORMAT_UCHAR, VIPS_INTERPRETATION_MULTIBAND,
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::kernel::Kernel;
@@ -16,36 +17,56 @@ use super::{
     set_output_image_like, set_output_int,
 };
 
+fn morph_coeff(value: f64) -> Result<u8, ()> {
+    let value = value.round();
+    if (value - 0.0).abs() < f64::EPSILON {
+        Ok(0)
+    } else if (value - 128.0).abs() < f64::EPSILON {
+        Ok(128)
+    } else if (value - 255.0).abs() < f64::EPSILON {
+        Ok(255)
+    } else {
+        Err(())
+    }
+}
+
 unsafe fn op_morph(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
     let mask = unsafe { get_image_ref(object, "mask")? };
     let kernel = Kernel::from_image(mask)?;
     let morph = unsafe { get_enum(object, "morph")? } as VipsOperationMorphology;
-    let mut out = input.clone();
-    let cx = kernel.width as isize / 2;
-    let cy = kernel.height as isize / 2;
+    let (cx, cy) = kernel.origin();
+    let coeffs = kernel
+        .iter()
+        .map(|sample| morph_coeff(sample.value).map(|coeff| (sample.dx, sample.dy, coeff)))
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut out = input
+        .with_format(VIPS_FORMAT_UCHAR)
+        .with_origin(-(cx as i32), -(cy as i32))
+        .with_demand_style(VIPS_DEMAND_STYLE_SMALLTILE);
     for y in 0..input.spec.height {
         for x in 0..input.spec.width {
             for band in 0..input.spec.bands {
                 let mut value = if morph == VIPS_OPERATION_MORPHOLOGY_ERODE {
-                    f64::INFINITY
+                    255.0
                 } else {
-                    f64::NEG_INFINITY
+                    0.0
                 };
-                for ky in 0..kernel.height {
-                    for kx in 0..kernel.width {
-                        if kernel.at(kx, ky) == 0.0 {
-                            continue;
+                for (dx, dy, coeff) in &coeffs {
+                    let sample =
+                        input.sample_clamped(x as isize + dx, y as isize + dy, band) != 0.0;
+                    match morph {
+                        VIPS_OPERATION_MORPHOLOGY_ERODE => {
+                            if (*coeff == 255 && !sample) || (*coeff == 0 && sample) {
+                                value = 0.0;
+                                break;
+                            }
                         }
-                        let sample = input.sample_clamped(
-                            x as isize + kx as isize - cx,
-                            y as isize + ky as isize - cy,
-                            band,
-                        );
-                        if morph == VIPS_OPERATION_MORPHOLOGY_ERODE {
-                            value = value.min(sample);
-                        } else {
-                            value = value.max(sample);
+                        _ => {
+                            if (*coeff == 255 && sample) || (*coeff == 0 && !sample) {
+                                value = 255.0;
+                                break;
+                            }
                         }
                     }
                 }

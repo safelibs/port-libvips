@@ -124,7 +124,10 @@ fn histogram_cast_index(value: f64, format: VipsBandFormat) -> usize {
 unsafe fn op_hist_find(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
     let band = check_selected_band(&input, unsafe { selected_band(object)? })?;
-    let out = hist_image_for_selection(&input, band).to_image();
+    let out = match band {
+        Some(selected) => hist_image(&hist_for_band(&input, selected), VIPS_FORMAT_UINT).to_image(),
+        None => hist_image_for_selection(&input, None).to_image(),
+    };
     unsafe { set_output_image(object, "out", out) }
 }
 

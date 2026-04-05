@@ -40,6 +40,22 @@ pub(crate) fn format_components(format: VipsBandFormat) -> usize {
     }
 }
 
+pub(crate) fn complex_component_format(format: VipsBandFormat) -> Option<VipsBandFormat> {
+    match format {
+        VIPS_FORMAT_COMPLEX => Some(VIPS_FORMAT_FLOAT),
+        VIPS_FORMAT_DPCOMPLEX => Some(VIPS_FORMAT_DOUBLE),
+        _ => None,
+    }
+}
+
+pub(crate) fn complex_promoted_format(format: VipsBandFormat) -> VipsBandFormat {
+    if matches!(format, VIPS_FORMAT_DOUBLE | VIPS_FORMAT_DPCOMPLEX) {
+        VIPS_FORMAT_DPCOMPLEX
+    } else {
+        VIPS_FORMAT_COMPLEX
+    }
+}
+
 pub(crate) fn format_min(format: VipsBandFormat) -> Option<f64> {
     match format {
         VIPS_FORMAT_UCHAR => Some(u8::MIN as f64),

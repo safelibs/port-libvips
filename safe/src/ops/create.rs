@@ -2,9 +2,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::abi::basic::{VipsPrecision, VIPS_PRECISION_FLOAT, VIPS_PRECISION_INTEGER};
 use crate::abi::image::{
-    VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT,
-    VIPS_INTERPRETATION_FOURIER, VIPS_INTERPRETATION_HISTOGRAM, VIPS_INTERPRETATION_MULTIBAND,
-    VIPS_INTERPRETATION_XYZ,
+    VIPS_DEMAND_STYLE_THINSTRIP, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR,
+    VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_FOURIER,
+    VIPS_INTERPRETATION_HISTOGRAM, VIPS_INTERPRETATION_MULTIBAND, VIPS_INTERPRETATION_XYZ,
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::kernel::{gaussian_kernel, log_kernel};
@@ -31,6 +31,15 @@ fn blank(width: usize, height: usize, bands: usize) -> ImageBuffer {
 
 fn point_to_uchar(value: f64) -> f64 {
     (value * 255.0).clamp(0.0, 255.0)
+}
+
+fn clamp_point_dimensions(width: usize, height: usize) -> (usize, usize) {
+    (width.max(1), height.max(1))
+}
+
+fn point_output(mut out: ImageBuffer) -> ImageBuffer {
+    out.spec.dhint = VIPS_DEMAND_STYLE_THINSTRIP;
+    out
 }
 
 fn matrix_rows(buffer: &ImageBuffer) -> Result<Vec<Vec<f64>>, ()> {
@@ -85,9 +94,10 @@ unsafe fn op_black(object: *mut VipsObject) -> Result<(), ()> {
 unsafe fn op_grey(object: *mut VipsObject) -> Result<(), ()> {
     let width = usize::try_from(unsafe { get_int(object, "width")? }).map_err(|_| ())?;
     let height = usize::try_from(unsafe { get_int(object, "height")? }).map_err(|_| ())?;
+    let (width, height) = clamp_point_dimensions(width, height);
     let uchar =
         unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
-    let mut out = ImageBuffer::new(
+    let mut out = point_output(ImageBuffer::new(
         width,
         height,
         1,
@@ -98,7 +108,7 @@ unsafe fn op_grey(object: *mut VipsObject) -> Result<(), ()> {
         },
         crate::abi::image::VIPS_CODING_NONE,
         crate::abi::image::VIPS_INTERPRETATION_B_W,
-    );
+    ));
     let denom = width.saturating_sub(1).max(1) as f64;
     for y in 0..height {
         for x in 0..width {
@@ -206,6 +216,7 @@ unsafe fn op_identity(object: *mut VipsObject) -> Result<(), ()> {
 unsafe fn op_eye(object: *mut VipsObject) -> Result<(), ()> {
     let width = usize::try_from(unsafe { get_int(object, "width")? }).map_err(|_| ())?;
     let height = usize::try_from(unsafe { get_int(object, "height")? }).map_err(|_| ())?;
+    let (width, height) = clamp_point_dimensions(width, height);
     let factor = if unsafe { argument_assigned(object, "factor")? } {
         unsafe { get_double(object, "factor")? }
     } else {
@@ -213,7 +224,7 @@ unsafe fn op_eye(object: *mut VipsObject) -> Result<(), ()> {
     };
     let uchar =
         unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
-    let mut out = ImageBuffer::new(
+    let mut out = point_output(ImageBuffer::new(
         width,
         height,
         1,
@@ -224,7 +235,7 @@ unsafe fn op_eye(object: *mut VipsObject) -> Result<(), ()> {
         },
         crate::abi::image::VIPS_CODING_NONE,
         crate::abi::image::VIPS_INTERPRETATION_B_W,
-    );
+    ));
     let max_x = width.saturating_sub(1).max(1) as f64;
     let max_y = height.saturating_sub(1).max(1) as f64;
     let c = factor * std::f64::consts::PI / (2.0 * max_x);
@@ -284,6 +295,7 @@ unsafe fn op_mask_from_point(
 ) -> Result<(), ()> {
     let width = usize::try_from(unsafe { get_int(object, "width")? }).map_err(|_| ())?;
     let height = usize::try_from(unsafe { get_int(object, "height")? }).map_err(|_| ())?;
+    let (width, height) = clamp_point_dimensions(width, height);
     let optical =
         unsafe { argument_assigned(object, "optical")? } && unsafe { get_bool(object, "optical")? };
     let reject =
@@ -292,7 +304,7 @@ unsafe fn op_mask_from_point(
         unsafe { argument_assigned(object, "nodc")? } && unsafe { get_bool(object, "nodc")? };
     let uchar =
         unsafe { argument_assigned(object, "uchar")? } && unsafe { get_bool(object, "uchar")? };
-    let mut out = ImageBuffer::new(
+    let mut out = point_output(ImageBuffer::new(
         width,
         height,
         1,
@@ -303,7 +315,7 @@ unsafe fn op_mask_from_point(
         },
         crate::abi::image::VIPS_CODING_NONE,
         VIPS_INTERPRETATION_FOURIER,
-    );
+    ));
     for y in 0..height {
         for x in 0..width {
             let (dx, dy, is_dc) = mask_base(width, height, x, y, optical);

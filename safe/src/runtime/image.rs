@@ -1179,38 +1179,47 @@ pub extern "C" fn safe_vips_crop_internal(
     width: libc::c_int,
     height: libc::c_int,
 ) -> libc::c_int {
+    if !out.is_null() {
+        unsafe {
+            *out = std::ptr::null_mut();
+        }
+    }
+    let bad_extract_area = || {
+        append_message_str("extract_area", "bad extract area");
+        -1
+    };
     if ensure_pixels(input).is_err() || out.is_null() {
-        return -1;
+        return bad_extract_area();
     }
     let Some(input_ref) = (unsafe { input.as_ref() }) else {
-        return -1;
+        return bad_extract_area();
     };
     if left < 0 || top < 0 || width <= 0 || height <= 0 {
-        return -1;
+        return bad_extract_area();
     }
     let Ok(left_u) = usize::try_from(left) else {
-        return -1;
+        return bad_extract_area();
     };
     let Ok(top_u) = usize::try_from(top) else {
-        return -1;
+        return bad_extract_area();
     };
     let Ok(width_u) = usize::try_from(width) else {
-        return -1;
+        return bad_extract_area();
     };
     let Ok(height_u) = usize::try_from(height) else {
-        return -1;
+        return bad_extract_area();
     };
     let Some(right_u) = left_u.checked_add(width_u) else {
-        return -1;
+        return bad_extract_area();
     };
     let Some(bottom_u) = top_u.checked_add(height_u) else {
-        return -1;
+        return bad_extract_area();
     };
     if right_u > input_ref.Xsize.max(0) as usize || bottom_u > input_ref.Ysize.max(0) as usize {
-        return -1;
+        return bad_extract_area();
     }
     let Some(state) = (unsafe { image_state(input) }) else {
-        return -1;
+        return bad_extract_area();
     };
     let bpp = bytes_per_pixel(input_ref);
     let line = line_size(input_ref);
@@ -1226,6 +1235,12 @@ pub extern "C" fn safe_vips_crop_internal(
         input_ref.Xres,
         input_ref.Yres,
     );
+    if let Some(crop_ref) = unsafe { crop.as_mut() } {
+        crop_ref.Xoffset = -left;
+        crop_ref.Yoffset = -top;
+        crop_ref.dhint = crate::abi::image::VIPS_DEMAND_STYLE_THINSTRIP;
+        crop_ref.hint_set = glib_sys::GTRUE;
+    }
     if let Some(out_state) = unsafe { image_state(crop) } {
         out_state.pixels = vec![0; width_u.saturating_mul(height_u).saturating_mul(bpp)];
         for y in 0..height_u {
