@@ -9,7 +9,6 @@ const VERSION_STRING: &[u8] = b"8.15.1\0";
 
 struct InitState {
     init_count: usize,
-    shut_down: bool,
     argv0: Option<CString>,
     prgname: Option<CString>,
 }
@@ -18,7 +17,6 @@ impl InitState {
     fn new() -> Self {
         Self {
             init_count: 0,
-            shut_down: false,
             argv0: None,
             prgname: None,
         }
@@ -42,8 +40,6 @@ fn basename(argv0: &CStr) -> CString {
 
 fn ensure_bootstrap_types() -> bool {
     runtime::object::ensure_types();
-    let _ = runtime::object::vips_format_get_type();
-    let _ = runtime::object::vips_sbuf_get_type();
     runtime::r#type::ensure_types();
     runtime::operation::ensure_generated_types()
 }
@@ -52,11 +48,6 @@ fn ensure_bootstrap_types() -> bool {
 pub extern "C" fn vips_init(argv0: *const c_char) -> c_int {
     let needs_bootstrap = {
         let mut state = state().lock().expect("init state");
-        if state.shut_down && state.init_count == 0 {
-            runtime::error::append_message_str("vips_init", "library has already been shut down");
-            return -1;
-        }
-
         let needs_bootstrap = state.init_count == 0;
         state.init_count += 1;
 
@@ -103,7 +94,6 @@ pub extern "C" fn vips_shutdown() {
 
         state.init_count -= 1;
         if state.init_count == 0 {
-            state.shut_down = true;
             state.argv0 = None;
             state.prgname = None;
             true
@@ -113,7 +103,7 @@ pub extern "C" fn vips_shutdown() {
     };
 
     if final_shutdown {
-        runtime::cache::vips_cache_drop_all();
+        runtime::cache::shutdown_runtime_state();
         vips_thread_shutdown();
         runtime::threadpool::shutdown_runtime_state();
     }

@@ -75,6 +75,16 @@ fn state() -> &'static Mutex<CacheState> {
     STATE.get_or_init(|| Mutex::new(CacheState::default()))
 }
 
+pub(crate) fn shutdown_runtime_state() {
+    let removed = {
+        let mut state = state().lock().expect("cache state");
+        state.time = 0;
+        state.config = CacheConfig::default();
+        std::mem::take(&mut state.entries)
+    };
+    unref_entries(removed);
+}
+
 unsafe fn object_class(object: *mut VipsObject) -> *mut VipsObjectClass {
     if object.is_null() {
         return ptr::null_mut();

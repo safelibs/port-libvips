@@ -628,6 +628,40 @@ fn threadpool_and_cache_controls_are_serial_and_stable() {
 }
 
 #[test]
+fn init_shutdown_cycles_reset_runtime_state() {
+    const DEFAULT_CACHE_MAX: i32 = 100;
+    const DEFAULT_CACHE_MAX_FILES: i32 = 100;
+    const DEFAULT_CACHE_MAX_MEM: usize = 100 * 1024 * 1024;
+
+    let _guard = guard();
+    init_vips();
+
+    vips_concurrency_set(0);
+    let default_concurrency = vips_concurrency_get();
+    let custom_concurrency = if default_concurrency != 7 { 7 } else { 8 };
+
+    for _ in 0..2 {
+        vips_concurrency_set(custom_concurrency);
+        vips_cache_set_max(23);
+        vips_cache_set_max_files(7);
+        vips_cache_set_max_mem(1234);
+        assert_eq!(vips_concurrency_get(), custom_concurrency);
+        assert_eq!(vips_cache_get_max(), 23);
+        assert_eq!(vips_cache_get_max_files(), 7);
+        assert_eq!(vips_cache_get_max_mem(), 1234);
+
+        vips_shutdown();
+        assert_eq!(vips_init(c"runtime_io_reinit".as_ptr()), 0);
+
+        assert_eq!(vips_concurrency_get(), default_concurrency);
+        assert_eq!(vips_cache_get_max(), DEFAULT_CACHE_MAX);
+        assert_eq!(vips_cache_get_max_files(), DEFAULT_CACHE_MAX_FILES);
+        assert_eq!(vips_cache_get_max_mem(), DEFAULT_CACHE_MAX_MEM);
+        assert_eq!(vips_cache_get_size(), 0);
+    }
+}
+
+#[test]
 fn operation_cache_build_and_drop_all_are_stateful() {
     let _guard = guard();
     init_vips();
