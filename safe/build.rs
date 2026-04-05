@@ -18,11 +18,24 @@ const ERROR_SHIM_NAME: &str = "error_shim.c";
 const API_SHIM_NAME: &str = "api_shim.c";
 const WRAPPER_SHIM_NAME: &str = "operation_wrapper_shim.c";
 const DEPRECATED_SHIM_NAME: &str = "deprecated_compat_shim.c";
+const FALLBACK_SHIM_NAME: &str = "full_surface_fallback_shim.c";
 const API_TEMPLATE_PATH: &str = "build_support/api_shim.c";
 const PUBLIC_HEADER_DIR: &str = "include/vips";
+const ORIGINAL_INTERNAL_HEADER_PATH: &str = "../original/libvips/include/vips/internal.h";
+const ORIGINAL_INTERNAL_INCLUDE_DIR: &str = "../original/libvips/include";
+const NSGIF_HEADER_PATH: &str = "../original/libvips/foreign/libnsgif/nsgif.h";
+const NSGIF_INCLUDE_DIR: &str = "../original/libvips/foreign/libnsgif";
+const LZW_HEADER_PATH: &str = "../original/libvips/foreign/libnsgif/lzw.h";
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum ExportSurface {
+    CoreBootstrap,
+    Full,
+}
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-env-changed=VIPS_SAFE_EXPORT_SURFACE");
     println!("cargo:rerun-if-changed={CORE_BOOTSTRAP_PATH}");
     println!("cargo:rerun-if-changed={FULL_EXPORT_SYMBOLS_PATH}");
     println!("cargo:rerun-if-changed={DEPRECATED_SYMBOLS_PATH}");
@@ -34,8 +47,18 @@ fn main() {
     fs::create_dir_all(&generated_dir).expect("create generated dir");
     let wrappers = read_generated_wrappers(&manifest_dir.join(GENERATED_OPERATIONS_PATH));
     let deprecated_exports = read_deprecated_exports(&manifest_dir);
+    let export_surface = export_surface();
     for header in collect_public_headers(&manifest_dir.join(PUBLIC_HEADER_DIR)) {
         println!("cargo:rerun-if-changed={}", header.display());
+    }
+    for source in collect_files_recursive(&manifest_dir.join("src"), "rs") {
+        println!("cargo:rerun-if-changed={}", source.display());
+    }
+    for extra_header in fallback_header_inputs(&manifest_dir) {
+        if extra_header.starts_with(manifest_dir.join(PUBLIC_HEADER_DIR)) {
+            continue;
+        }
+        println!("cargo:rerun-if-changed={}", extra_header.display());
     }
 
     let export_map_path = generated_dir.join(EXPORT_MAP_NAME);
@@ -47,12 +70,26 @@ fn main() {
 
     compile_c_shims(&manifest_dir, &wrappers, &deprecated_exports);
 
+    let selected_export_map = match export_surface {
+        ExportSurface::CoreBootstrap => &export_map_path,
+        ExportSurface::Full => &full_export_map_path,
+    };
+
     println!("cargo:rustc-cdylib-link-arg=-Wl,-soname,{SONAME}");
     println!(
         "cargo:rustc-cdylib-link-arg=-Wl,--version-script={}",
-        export_map_path.display()
+        selected_export_map.display()
     );
     println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");
+}
+
+fn export_surface() -> ExportSurface {
+    match env::var("VIPS_SAFE_EXPORT_SURFACE") {
+        Ok(value) if value == "full" => ExportSurface::Full,
+        Ok(value) if value == "core-bootstrap" || value.is_empty() => ExportSurface::CoreBootstrap,
+        Ok(value) => panic!("unsupported VIPS_SAFE_EXPORT_SURFACE={value}"),
+        Err(_) => ExportSurface::CoreBootstrap,
+    }
 }
 
 fn render_export_map(symbols_path: &Path) -> String {
@@ -99,11 +136,57 @@ fn collect_public_headers(dir: &Path) -> Vec<PathBuf> {
     headers
 }
 
+fn collect_files_recursive(dir: &Path, extension: &str) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    let Ok(entries) = fs::read_dir(dir) else {
+        return files;
+    };
+
+    for entry in entries.filter_map(Result::ok) {
+        let path = entry.path();
+        if path.is_dir() {
+            files.extend(collect_files_recursive(&path, extension));
+        } else if path.extension().and_then(|ext| ext.to_str()) == Some(extension) {
+            files.push(path);
+        }
+    }
+
+    files.sort();
+    files
+}
+
+fn fallback_header_inputs(manifest_dir: &Path) -> Vec<PathBuf> {
+    let mut headers = collect_public_headers(&manifest_dir.join(PUBLIC_HEADER_DIR));
+    for relative in [
+        ORIGINAL_INTERNAL_HEADER_PATH,
+        NSGIF_HEADER_PATH,
+        LZW_HEADER_PATH,
+    ] {
+        let path = manifest_dir.join(relative);
+        if path.is_file() {
+            headers.push(path);
+        }
+    }
+    headers.sort();
+    headers
+}
+
 fn strip_comments(text: &str) -> String {
     let block_comments = Regex::new(r"(?s)/\*.*?\*/").expect("compile block comment regex");
     let line_comments = Regex::new(r"//.*").expect("compile line comment regex");
     let without_block = block_comments.replace_all(text, "");
     line_comments.replace_all(&without_block, "").into_owned()
+}
+
+fn strip_preprocessor_lines(text: &str) -> String {
+    text.lines()
+        .filter(|line| !line.trim_start().starts_with('#'))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn normalized_c_text(text: &str) -> String {
+    strip_preprocessor_lines(&strip_comments(text))
 }
 
 fn normalize_decl_space(value: &str) -> String {
@@ -155,31 +238,9 @@ fn parameter_name(parameter: &str) -> Option<String> {
 
     let ident = Regex::new(r"[A-Za-z_][A-Za-z0-9_]*").expect("identifier regex");
     let keywords = [
-        "const",
-        "unsigned",
-        "signed",
-        "struct",
-        "enum",
-        "union",
-        "volatile",
-        "register",
-        "extern",
-        "static",
-        "inline",
-        "long",
-        "short",
-        "int",
-        "char",
-        "float",
-        "double",
-        "void",
-        "size_t",
-        "gboolean",
-        "gint",
-        "guint",
-        "gdouble",
-        "gpointer",
-        "VipsPel",
+        "const", "unsigned", "signed", "struct", "enum", "union", "volatile", "register", "extern",
+        "static", "inline", "long", "short", "int", "char", "float", "double", "void", "size_t",
+        "gboolean", "gint", "guint", "gdouble", "gpointer", "VipsPel",
     ];
     let tokens = ident
         .find_iter(parameter)
@@ -230,11 +291,11 @@ fn find_declaration(text: &str, symbol: &str, function: bool) -> Option<String> 
     let escaped = regex::escape(symbol);
     let pattern = if function {
         format!(
-            r"(?ms)(?:^|\n)\s*(?:[A-Z_]+(?:\([^\n;]*\))?\s+)*(?P<decl>[A-Za-z_][A-Za-z0-9_\s\*]*?\b{escaped}\s*\([^;]*\))\s*;"
+            r"(?ms)(?:^|\n)\s*(?:[A-Z_]+(?:\([^\n;]*\))?\s+)*(?P<decl>[A-Za-z_][A-Za-z0-9_\s\*]*?\b{escaped}\s*\([^;]*\))(?:\s+[A-Z_][A-Z0-9_]*(?:\([^;]*\))?)*\s*;"
         )
     } else {
         format!(
-            r"(?ms)(?:^|\n)\s*(?:[A-Z_]+(?:\([^\n;]*\))?\s+)*(?P<decl>[A-Za-z_][A-Za-z0-9_\s\*]*?\b{escaped})\s*;"
+            r"(?ms)(?:^|\n)\s*(?:[A-Z_]+(?:\([^\n;]*\))?\s+)*(?P<decl>[A-Za-z_][A-Za-z0-9_\s\*\[\]]*?\b{escaped}(?:\s*\[[^\]]*\])?)\s*;"
         )
     };
     let regex = Regex::new(&pattern).expect("compile deprecated declaration regex");
@@ -252,7 +313,7 @@ fn read_deprecated_exports(manifest_dir: &Path) -> Vec<DeprecatedExport> {
         .map(|path| fs::read_to_string(path).expect("read public header"))
         .collect::<Vec<_>>()
         .join("\n");
-    let stripped = strip_comments(&header_text);
+    let stripped = normalized_c_text(&header_text);
 
     symbols
         .into_iter()
@@ -373,6 +434,119 @@ fn read_generated_wrappers(path: &Path) -> Vec<WrapperDefinition> {
 
     definitions.sort_by(|left, right| left.function.cmp(&right.function));
     definitions
+}
+
+fn read_rust_exports(src_dir: &Path) -> BTreeSet<String> {
+    let extern_fn =
+        Regex::new(r#"pub\s+(?:unsafe\s+)?extern\s+"C"\s+fn\s+([A-Za-z_][A-Za-z0-9_]*)"#)
+            .expect("compile rust extern fn regex");
+    let static_item = Regex::new(r#"pub\s+static(?:\s+mut)?\s+([A-Za-z_][A-Za-z0-9_]*)"#)
+        .expect("compile rust static regex");
+    let object_type_macro = Regex::new(r#"(?m)^\s*object_type!\(\s*([A-Za-z_][A-Za-z0-9_]*)"#)
+        .expect("compile object_type macro regex");
+    let type_getter_macro = Regex::new(
+        r#"(?m)^\s*(?:boxed_getter|enum_getter|flags_getter)!\(\s*([A-Za-z_][A-Za-z0-9_]*)"#,
+    )
+    .expect("compile getter macro regex");
+
+    let mut exports = BTreeSet::new();
+    for path in collect_files_recursive(src_dir, "rs") {
+        let contents = fs::read_to_string(&path).expect("read rust source");
+        for captures in extern_fn.captures_iter(&contents) {
+            exports.insert(captures[1].to_owned());
+        }
+        for captures in static_item.captures_iter(&contents) {
+            exports.insert(captures[1].to_owned());
+        }
+        for captures in object_type_macro.captures_iter(&contents) {
+            exports.insert(captures[1].to_owned());
+        }
+        for captures in type_getter_macro.captures_iter(&contents) {
+            exports.insert(captures[1].to_owned());
+        }
+    }
+    exports
+}
+
+fn read_c_public_exports(path: &Path) -> BTreeSet<String> {
+    let declaration =
+        Regex::new(r"(?ms)^VIPS_PUBLIC\s+.*?\b([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{]*\)\s*\{")
+            .expect("compile C public export regex");
+    let contents = fs::read_to_string(path).expect("read public C shim");
+    declaration
+        .captures_iter(&contents)
+        .map(|captures| captures[1].to_owned())
+        .collect()
+}
+
+fn error_shim_exports() -> BTreeSet<String> {
+    [
+        "vips_error_buffer",
+        "vips_error_buffer_copy",
+        "vips_error_clear",
+        "vips_error_freeze",
+        "vips_error_thaw",
+        "vips_error_g",
+        "vips_error",
+        "vips_error_system",
+        "vips_error_exit",
+    ]
+    .into_iter()
+    .map(ToOwned::to_owned)
+    .collect()
+}
+
+fn deprecated_export_symbol(export: &DeprecatedExport) -> String {
+    match export {
+        DeprecatedExport::Function(function) => function.symbol.clone(),
+        DeprecatedExport::Variable(variable) => variable_symbol(&variable.declaration),
+    }
+}
+
+fn variable_symbol(declaration: &str) -> String {
+    let symbol = Regex::new(r"([A-Za-z_][A-Za-z0-9_]*)\s*(?:\[[^\]]*\])?$")
+        .expect("compile variable symbol regex");
+    let declaration = declaration.trim().trim_end_matches(';').trim();
+    symbol
+        .captures(declaration)
+        .and_then(|captures| captures.get(1))
+        .map(|capture| capture.as_str().to_owned())
+        .unwrap_or_else(|| panic!("unable to extract variable symbol from {declaration}"))
+}
+
+fn implemented_full_surface_symbols(
+    manifest_dir: &Path,
+    wrappers: &[WrapperDefinition],
+    deprecated_exports: &[DeprecatedExport],
+) -> BTreeSet<String> {
+    let mut exports = read_rust_exports(&manifest_dir.join("src"));
+    exports.extend(read_c_public_exports(&manifest_dir.join(API_TEMPLATE_PATH)));
+    exports.extend(error_shim_exports());
+    for wrapper in wrappers {
+        exports.insert(wrapper.function.clone());
+    }
+    for export in deprecated_exports {
+        exports.insert(deprecated_export_symbol(export));
+    }
+    for symbol in deprecated_manual_symbols() {
+        exports.insert(symbol.to_owned());
+    }
+    exports
+}
+
+fn missing_full_surface_symbols(
+    manifest_dir: &Path,
+    wrappers: &[WrapperDefinition],
+    deprecated_exports: &[DeprecatedExport],
+) -> Vec<String> {
+    let full_symbols = read_symbols(&manifest_dir.join(FULL_EXPORT_SYMBOLS_PATH))
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+    let implemented = implemented_full_surface_symbols(manifest_dir, wrappers, deprecated_exports);
+    full_symbols
+        .difference(&implemented)
+        .cloned()
+        .collect::<Vec<_>>()
 }
 
 fn manual_wrapper(function: &str) -> bool {
@@ -524,6 +698,7 @@ fn compile_c_shims(
     let api_source_path = out_dir.join(API_SHIM_NAME);
     let wrapper_source_path = out_dir.join(WRAPPER_SHIM_NAME);
     let deprecated_source_path = out_dir.join(DEPRECATED_SHIM_NAME);
+    let fallback_source_path = out_dir.join(FALLBACK_SHIM_NAME);
     fs::write(&error_source_path, render_error_shim()).expect("write error shim");
     fs::write(&api_source_path, render_api_shim()).expect("write api shim");
     fs::write(&wrapper_source_path, render_wrapper_shim(wrappers)).expect("write wrapper shim");
@@ -532,6 +707,11 @@ fn compile_c_shims(
         render_deprecated_shim(manifest_dir, wrappers, deprecated_exports),
     )
     .expect("write deprecated shim");
+    fs::write(
+        &fallback_source_path,
+        render_fallback_shim(manifest_dir, wrappers, deprecated_exports),
+    )
+    .expect("write fallback shim");
 
     let gio = pkg_config::Config::new()
         .cargo_metadata(false)
@@ -544,10 +724,13 @@ fn compile_c_shims(
     build.file(&api_source_path);
     build.file(&wrapper_source_path);
     build.file(&deprecated_source_path);
+    build.file(&fallback_source_path);
     build.flag_if_supported("-std=c99");
     build.flag_if_supported("-fvisibility=hidden");
     build.warnings(false);
     build.include(manifest_dir.join("include"));
+    build.include(manifest_dir.join(ORIGINAL_INTERNAL_INCLUDE_DIR));
+    build.include(manifest_dir.join(NSGIF_INCLUDE_DIR));
     for include_path in gio.include_paths {
         build.include(include_path);
     }
@@ -592,7 +775,11 @@ fn compatible_alias_target(
     header_text: &str,
     available_targets: &BTreeSet<String>,
 ) -> Option<String> {
-    if function.parameters.iter().any(|parameter| parameter.variadic) {
+    if function
+        .parameters
+        .iter()
+        .any(|parameter| parameter.variadic)
+    {
         return None;
     }
     if !function.symbol.starts_with("im_") {
@@ -608,7 +795,8 @@ fn compatible_alias_target(
     if function.return_type != target_function.return_type {
         return None;
     }
-    if non_void_parameter_count(&function.parameters) != non_void_parameter_count(&target_function.parameters)
+    if non_void_parameter_count(&function.parameters)
+        != non_void_parameter_count(&target_function.parameters)
     {
         return None;
     }
@@ -1249,6 +1437,107 @@ fn render_deprecated_shim(
             }
         }
     }
+    source
+}
+
+fn fallback_default_return(return_type: &str) -> Option<&'static str> {
+    let return_type = return_type.trim();
+    if return_type == "void" {
+        None
+    } else if return_type == "gboolean" || return_type == "bool" {
+        Some("    return FALSE;\n")
+    } else if return_type.contains('*') {
+        Some("    return NULL;\n")
+    } else if matches!(
+        return_type,
+        "int" | "gint64" | "off_t" | "lzw_result" | "nsgif_error"
+    ) {
+        Some("    return -1;\n")
+    } else {
+        Some("    return 0;\n")
+    }
+}
+
+fn render_fallback_function(symbol: &str, declaration: &str) -> String {
+    let function = parse_deprecated_function(symbol, declaration.to_owned());
+    let mut source = String::new();
+    source.push_str("VIPS_PUBLIC ");
+    source.push_str(declaration);
+    source.push_str("\n{\n");
+    source.push_str("    safe_vips_missing_symbol(\"");
+    source.push_str(symbol);
+    source.push_str("\");\n");
+    if let Some(default_return) = fallback_default_return(&function.return_type) {
+        source.push_str(default_return);
+    }
+    source.push_str("}\n\n");
+    source
+}
+
+fn render_fallback_variable(declaration: &str) -> String {
+    let declaration = declaration
+        .trim()
+        .trim_end_matches(';')
+        .trim()
+        .trim_start_matches("extern ")
+        .trim();
+    let initializer = if declaration.contains('[') {
+        "{0}"
+    } else {
+        "0"
+    };
+    format!("VIPS_PUBLIC {declaration} = {initializer};\n\n")
+}
+
+fn render_fallback_shim(
+    manifest_dir: &Path,
+    wrappers: &[WrapperDefinition],
+    deprecated_exports: &[DeprecatedExport],
+) -> String {
+    let header_text = normalized_c_text(
+        &fallback_header_inputs(manifest_dir)
+            .into_iter()
+            .map(|path| fs::read_to_string(path).expect("read fallback header"))
+            .collect::<Vec<_>>()
+            .join("\n"),
+    );
+    let missing_symbols = missing_full_surface_symbols(manifest_dir, wrappers, deprecated_exports);
+
+    let mut source = String::from(
+        "// @generated by build.rs from reference/abi/libvips.symbols and in-repo headers\n\
+#include <glib.h>\n\
+#include <vips/vips.h>\n\
+#include <vips/private.h>\n\
+#include <vips/internal.h>\n\
+#include \"nsgif.h\"\n\
+#include \"lzw.h\"\n\
+\n\
+#if defined(__GNUC__)\n\
+#define VIPS_PUBLIC __attribute__((visibility(\"default\")))\n\
+#else\n\
+#define VIPS_PUBLIC\n\
+#endif\n\
+\n\
+typedef void *im_object;\n\
+\n\
+static void\n\
+safe_vips_missing_symbol(const char *symbol)\n\
+{\n\
+\tvips_error(symbol, \"%s is not implemented in the safe compatibility layer\", symbol);\n\
+}\n\
+\n",
+    );
+
+    for symbol in missing_symbols {
+        if let Some(declaration) = find_declaration(&header_text, &symbol, true) {
+            source.push_str(&render_fallback_function(&symbol, &declaration));
+        } else if let Some(declaration) = find_declaration(&header_text, &symbol, false) {
+            source.push_str(&render_fallback_variable(&declaration));
+        } else {
+            panic!("unable to locate declaration for fallback symbol {symbol}");
+        }
+    }
+
     source
 }
 

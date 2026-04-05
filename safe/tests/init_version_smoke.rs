@@ -29,6 +29,65 @@ fn init_version_and_error_exports_smoke() {
         .expect("prgname");
     assert_eq!(prgname, "init_version_smoke");
 
+    let object_type = vips::vips_object_get_type();
+    let image_type = vips::vips_image_get_type();
+    let format_type = vips::vips_format_get_type();
+    let sbuf_type = vips::vips_sbuf_get_type();
+    let foreign_type = vips::vips_foreign_get_type();
+    let foreign_load_type = vips::vips_foreign_load_get_type();
+    let foreign_save_type = vips::vips_foreign_save_get_type();
+    let interpolate_type = vips::vips_interpolate_get_type();
+    let thread_state_type = vips::vips_thread_state_get_type();
+
+    for gtype in [
+        object_type,
+        image_type,
+        format_type,
+        sbuf_type,
+        foreign_type,
+        foreign_load_type,
+        foreign_save_type,
+        interpolate_type,
+        thread_state_type,
+    ] {
+        assert_ne!(gtype, 0);
+    }
+
+    unsafe {
+        assert_ne!(
+            gobject_sys::g_type_is_a(image_type, object_type),
+            glib_sys::GFALSE
+        );
+        assert_ne!(
+            gobject_sys::g_type_is_a(format_type, object_type),
+            glib_sys::GFALSE
+        );
+        assert_ne!(
+            gobject_sys::g_type_is_a(sbuf_type, object_type),
+            glib_sys::GFALSE
+        );
+        assert_ne!(
+            gobject_sys::g_type_is_a(foreign_type, vips::vips_operation_get_type()),
+            glib_sys::GFALSE
+        );
+        assert_ne!(
+            gobject_sys::g_type_is_a(foreign_load_type, foreign_type),
+            glib_sys::GFALSE
+        );
+        assert_ne!(
+            gobject_sys::g_type_is_a(foreign_save_type, foreign_type),
+            glib_sys::GFALSE
+        );
+        assert_ne!(
+            gobject_sys::g_type_is_a(interpolate_type, object_type),
+            glib_sys::GFALSE
+        );
+        assert_ne!(
+            gobject_sys::g_type_is_a(thread_state_type, object_type),
+            glib_sys::GFALSE
+        );
+    }
+
     vips::vips_error_clear();
     assert_eq!(vips::vips_version(99), -1);
     let error_text = unsafe { CStr::from_ptr(vips::vips_error_buffer()) }

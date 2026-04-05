@@ -42,6 +42,8 @@ fn basename(argv0: &CStr) -> CString {
 
 fn ensure_bootstrap_types() -> bool {
     runtime::object::ensure_types();
+    let _ = runtime::object::vips_format_get_type();
+    let _ = runtime::object::vips_sbuf_get_type();
     runtime::r#type::ensure_types();
     runtime::operation::ensure_generated_types()
 }

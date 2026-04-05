@@ -9,6 +9,8 @@ unsafe extern "C" {
     pub fn vips_error(domain: *const c_char, fmt: *const c_char, ...);
     pub fn vips_error_system(err: c_int, domain: *const c_char, fmt: *const c_char, ...);
     pub fn vips_error_exit(fmt: *const c_char, ...);
+    pub fn vips_warn(domain: *const c_char, fmt: *const c_char, ...);
+    pub fn vips_info(domain: *const c_char, fmt: *const c_char, ...);
 
     #[link_name = "vips_error_buffer"]
     fn raw_vips_error_buffer() -> *const c_char;
