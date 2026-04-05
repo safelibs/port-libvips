@@ -442,9 +442,10 @@ PY
     --gir "${EXTRACT_GIR}" \
     --expect-version 8.15.1
   probe_output="$(
-    GI_TYPELIB_PATH="${EXTRACT_TYPELIB_DIR}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}" \
-    LD_LIBRARY_PATH="${EXTRACT_LIBDIR}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
-      g-ir-inspect --print-shlibs --print-typelibs --version=8.0 Vips
+    env -u GI_TYPELIB_PATH -u LD_LIBRARY_PATH \
+      GI_TYPELIB_PATH="${EXTRACT_TYPELIB_DIR}" \
+      LD_LIBRARY_PATH="${EXTRACT_LIBDIR}" \
+        g-ir-inspect --print-shlibs --print-typelibs --version=8.0 Vips
   )"
   grep -Eq '(^|[[:space:]])libvips\.so\.42$' <<<"${probe_output}" >/dev/null
 }

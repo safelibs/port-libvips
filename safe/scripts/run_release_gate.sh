@@ -328,7 +328,10 @@ SAFE_GIRDIR="$(dirname "${SAFE_TYPELIB}")"
     --lib-dir "${SAFE_LIBDIR}" \
     --typelib-dir "${SAFE_GIRDIR}" \
     --expect-version 8.15.1
-  g-ir-inspect --print-shlibs --print-typelibs --version=8.0 Vips >/dev/null
+  env -u GI_TYPELIB_PATH -u LD_LIBRARY_PATH \
+    GI_TYPELIB_PATH="${SAFE_GIRDIR}" \
+    LD_LIBRARY_PATH="${SAFE_LIBDIR}" \
+    g-ir-inspect --print-shlibs --print-typelibs --version=8.0 Vips >/dev/null
   scripts/check_introspection.sh \
     --lib-dir "${SAFE_LIBDIR}" \
     --gir "${SAFE_GIR}" \
@@ -533,9 +536,10 @@ scripts/check_introspection.sh \
   --lib-dir "${packaged_libdir}" \
   --typelib-dir "${packaged_typelib_dir}" \
   --expect-version 8.15.1
-GI_TYPELIB_PATH="${packaged_typelib_dir}" \
-LD_LIBRARY_PATH="${packaged_libdir}" \
-  g-ir-inspect --print-shlibs --print-typelibs --version=8.0 Vips >/dev/null
+env -u GI_TYPELIB_PATH -u LD_LIBRARY_PATH \
+  GI_TYPELIB_PATH="${packaged_typelib_dir}" \
+  LD_LIBRARY_PATH="${packaged_libdir}" \
+    g-ir-inspect --print-shlibs --print-typelibs --version=8.0 Vips >/dev/null
 scripts/check_introspection.sh \
   --lib-dir "${packaged_libdir}" \
   --gir "${packaged_gir}" \

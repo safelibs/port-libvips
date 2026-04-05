@@ -55,6 +55,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
+run_with_target_introspection_env() {
+  env \
+    -u LD_LIBRARY_PATH \
+    -u GI_TYPELIB_PATH \
+    LD_LIBRARY_PATH="${lib_dir}" \
+    GI_TYPELIB_PATH="${typelib_dir}" \
+    "$@"
+}
+
 cc "${SMOKE_SOURCE}" -o "${tmp_dir}/gir-smoke" \
   $(pkg-config --cflags --libs gobject-introspection-1.0 glib-2.0 gio-2.0)
 
@@ -66,13 +75,11 @@ if [[ -n "${gir_path}" ]]; then
     "${gir_path}"
 fi
 
-LD_LIBRARY_PATH="${lib_dir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
-GI_TYPELIB_PATH="${typelib_dir}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}" \
+run_with_target_introspection_env \
   "${tmp_dir}/gir-smoke" "${expect_version}"
 
 inspect_output="$(
-  LD_LIBRARY_PATH="${lib_dir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
-  GI_TYPELIB_PATH="${typelib_dir}${GI_TYPELIB_PATH:+:${GI_TYPELIB_PATH}}" \
+  run_with_target_introspection_env \
     g-ir-inspect --print-shlibs --print-typelibs --version=8.0 Vips
 )"
 if ! grep -Eq '(^|[[:space:]])libvips\.so\.42$' <<<"${inspect_output}"; then
