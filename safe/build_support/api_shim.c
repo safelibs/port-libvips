@@ -1095,20 +1095,84 @@ vips_flags_from_nick(const char *domain, GType type, const char *nick)
     return result;
 }
 
+static gint64
+safe_vips_image_pixel_length(VipsImage *image)
+{
+    gint64 psize;
+
+    switch (image->Coding) {
+    case VIPS_CODING_LABQ:
+    case VIPS_CODING_RAD:
+    case VIPS_CODING_NONE:
+        psize = VIPS_IMAGE_SIZEOF_IMAGE(image);
+        break;
+
+    default:
+        psize = image->Length;
+        break;
+    }
+
+    return psize + image->sizeof_header;
+}
+
+static int
+safe_vips_ftruncate(int fd, gint64 pos)
+{
+    if (ftruncate(fd, pos)) {
+        vips_error_system(errno, "vips__write_extension_block",
+            "%s", "unable to truncate");
+        return -1;
+    }
+
+    return 0;
+}
+
 VIPS_PUBLIC int
 vips__has_extension_block(VipsImage *im)
 {
-    (void) im;
-    return 0;
+    if (!im || im->file_length <= 0)
+        return 0;
+
+    return im->file_length > safe_vips_image_pixel_length(im);
 }
 
 VIPS_PUBLIC void *
 vips__read_extension_block(VipsImage *im, int *size)
 {
-    (void) im;
+    gint64 psize;
+    gint64 extra;
+    char *buf;
+
     if (size)
         *size = 0;
-    return NULL;
+
+    if (!im || im->fd < 0 || im->file_length <= 0)
+        return NULL;
+
+    psize = safe_vips_image_pixel_length(im);
+    extra = im->file_length - psize;
+    if (extra <= 0)
+        return NULL;
+    if (extra > 100 * 1024 * 1024) {
+        vips_error("VipsImage",
+            "%s", "more than 100 megabytes of extension data?");
+        return NULL;
+    }
+    if (vips__seek(im->fd, psize, SEEK_SET) == -1)
+        return NULL;
+
+    buf = g_malloc((size_t) extra + 1);
+    if (read(im->fd, buf, (size_t) extra) != (ssize_t) extra) {
+        g_free(buf);
+        vips_error("VipsImage", "%s", "unable to read extension block");
+        return NULL;
+    }
+    buf[extra] = '\0';
+
+    if (size)
+        *size = (int) extra;
+
+    return buf;
 }
 
 VIPS_PUBLIC int
@@ -1628,12 +1692,27 @@ vips__write_header_bytes(VipsImage *im, unsigned char *to)
 VIPS_PUBLIC int
 vips__write_extension_block(VipsImage *im, void *buf, int size)
 {
-    (void) im;
-    (void) buf;
-    (void) size;
-    vips_error("vipsedit",
-        "%s", "editing raw VIPS headers is not supported in the safe build");
-    return -1;
+    gint64 length;
+    gint64 psize;
+
+    if (!im || im->fd < 0 || size < 0)
+        return -1;
+
+    psize = safe_vips_image_pixel_length(im);
+    if ((length = vips_file_length(im->fd)) == -1)
+        return -1;
+    if (length < psize) {
+        vips_error("VipsImage", "%s", "file has been truncated");
+        return -1;
+    }
+    if (safe_vips_ftruncate(im->fd, psize) ||
+        vips__seek(im->fd, psize, SEEK_SET) == -1)
+        return -1;
+    if (size > 0 && vips__write(im->fd, buf, (size_t) size))
+        return -1;
+
+    im->file_length = psize + size;
+    return 0;
 }
 
 VIPS_PUBLIC gboolean
