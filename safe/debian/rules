@@ -19,6 +19,7 @@ export RUSTUP_HOME ?= $(HOME)/.rustup
 export RUSTUP_TOOLCHAIN ?= stable-x86_64-unknown-linux-gnu
 export CARGO ?= cargo
 export RUSTC ?= rustc
+REFERENCE_LIBVIPS = $(CURDIR)/../build-check-install/lib/libvips.so.42.17.1
 
 override_dh_clean:
 	rm -rf $(CARGO_TARGET_DIR)
@@ -37,7 +38,6 @@ override_dh_auto_configure:
 		-Dintrospection=enabled
 
 override_dh_auto_build:
-	$(CARGO) build --manifest-path $(CURDIR)/Cargo.toml --release --target-dir $(CARGO_TARGET_DIR)
 	dh_auto_build --builddirectory=$(MESON_BUILD_DIR)
 
 override_dh_auto_install:
@@ -47,11 +47,17 @@ override_dh_auto_install:
 override_dh_install:
 	dh_install
 	runtime_libdir="$(CURDIR)/debian/libvips42t64/usr/lib/$(DEB_HOST_MULTIARCH)"; \
+	dev_libdir="$(CURDIR)/debian/libvips-dev/usr/lib/$(DEB_HOST_MULTIARCH)"; \
 	if [ -d "$$runtime_libdir" ]; then \
-		vips_alias="$$(printf 'libvips\tso\t42')"; \
-		vips_cpp_alias="$$(printf 'libvips-cpp\tso\t42')"; \
-		ln -sf libvips.so.42 "$$runtime_libdir/$$vips_alias"; \
-		ln -sf libvips-cpp.so.42 "$$runtime_libdir/$$vips_cpp_alias"; \
+		python3 "$(CURDIR)/scripts/assert_not_reference_binary.py" \
+			"$(REFERENCE_LIBVIPS)" \
+			"$$runtime_libdir/libvips.so.42.17.1"; \
+		test -L "$$runtime_libdir/libvips.so.42"; \
+		test "$$(readlink "$$runtime_libdir/libvips.so.42")" = "libvips.so.42.17.1"; \
+	fi; \
+	if [ -d "$$dev_libdir" ]; then \
+		test -L "$$dev_libdir/libvips.so"; \
+		test "$$(readlink "$$dev_libdir/libvips.so")" = "libvips.so.42"; \
 	fi
 
 %:

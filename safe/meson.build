@@ -1,6 +1,6 @@
 project('vips-safe', 'c', 'cpp',
   version: '8.15.1',
-  meson_version: '>=0.57',
+  meson_version: '>=0.61',
   default_options: [
     'c_std=gnu99',
     'cpp_std=c++11',
@@ -137,12 +137,7 @@ cargo_build_cmd = [
 
 libvips_stage = custom_target(
   'libvips-stage',
-  input: reference_libvips_artifact,
-  output: [
-    full_library_name,
-    soname,
-    'libvips.so',
-  ],
+  output: full_library_name,
   build_by_default: true,
   build_always_stale: true,
   command: [
@@ -150,38 +145,46 @@ libvips_stage = custom_target(
     '-ec',
     '''
       set -eu
-      reference_lib="$1"
-      out_real="$2"
-      out_soname="$3"
-      out_link="$4"
-      stage_dir="$5"
-      stage_name="$6"
-      stage_soname="$7"
+      out_real="$1"
+      stage_dir="$2"
+      stage_name="$3"
+      stage_soname="$4"
+      cargo_artifact="$5"
+      shift 5
+
+      "$@"
+      test -f "$cargo_artifact"
 
       mkdir -p "$stage_dir"
-      cp "$reference_lib" "$out_real"
-      ln -sf "$(basename "$out_real")" "$out_soname"
-      ln -sf "$(basename "$out_soname")" "$out_link"
-
-      cp "$reference_lib" "$stage_dir/$stage_name"
+      cp "$cargo_artifact" "$out_real"
+      chmod 0755 "$out_real"
+      cp "$cargo_artifact" "$stage_dir/$stage_name"
+      chmod 0755 "$stage_dir/$stage_name"
       ln -sf "$stage_name" "$stage_dir/$stage_soname"
       ln -sf "$stage_soname" "$stage_dir/libvips.so"
     ''',
-    'meson-reference-libvips-stage',
-    '@INPUT@',
-    '@OUTPUT0@',
-    '@OUTPUT1@',
-    '@OUTPUT2@',
+    'meson-stage-rust-libvips',
+    '@OUTPUT@',
     meson.current_build_dir() / 'lib',
     full_library_name,
     soname,
-  ],
+    cargo_artifact,
+  ] + cargo_build_cmd,
+  env: cargo_env,
   install: true,
-  install_dir: [
-    get_option('libdir'),
-    get_option('libdir'),
-    get_option('libdir'),
-  ],
+  install_dir: get_option('libdir'),
+)
+
+install_symlink(
+  soname,
+  install_dir: get_option('libdir'),
+  pointing_to: full_library_name,
+)
+
+install_symlink(
+  'libvips.so',
+  install_dir: get_option('libdir'),
+  pointing_to: soname,
 )
 
 install_subdir(

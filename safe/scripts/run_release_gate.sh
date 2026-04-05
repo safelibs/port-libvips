@@ -3,6 +3,7 @@ set -euo pipefail
 
 readonly SAFE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly PROJECT_ROOT="$(cd -- "${SAFE_ROOT}/.." && pwd)"
+readonly REFERENCE_LIBVIPS="${PROJECT_ROOT}/build-check-install/lib/libvips.so.42.17.1"
 
 cleanup_paths=()
 cleanup() {
@@ -13,6 +14,68 @@ cleanup() {
   done
 }
 trap cleanup EXIT
+
+assert_not_reference_binary() {
+  local candidate="$1"
+  python3 scripts/assert_not_reference_binary.py \
+    "${REFERENCE_LIBVIPS}" \
+    "${candidate}"
+}
+
+assert_expected_symbols_present() {
+  local manifest="$1"
+  local candidate="$2"
+  python3 - "${manifest}" "${candidate}" <<'PY'
+from __future__ import annotations
+
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+version_node_re = re.compile(r"^VIPS(?:_CPP)?_[0-9]+$")
+manifest = Path(sys.argv[1])
+candidate = Path(sys.argv[2])
+
+expected = {
+    line.strip()
+    for line in manifest.read_text().splitlines()
+    if line.strip() and not line.startswith("#")
+}
+
+output = subprocess.check_output(
+    ["nm", "-D", "--defined-only", str(candidate)],
+    text=True,
+)
+actual = set()
+for line in output.splitlines():
+    parts = line.split()
+    if not parts:
+        continue
+    symbol = parts[-1].split("@@", 1)[0].split("@", 1)[0]
+    if version_node_re.match(symbol):
+        continue
+    actual.add(symbol)
+
+missing = sorted(expected - actual)
+if missing:
+    print("missing symbols:", file=sys.stderr)
+    for symbol in missing:
+        print(f"  {symbol}", file=sys.stderr)
+    raise SystemExit(1)
+
+print(f"matched {len(expected)} required symbols")
+PY
+}
+
+assert_libvips_soname_chain() {
+  local libdir="$1"
+  test -f "${libdir}/libvips.so.42.17.1"
+  test -L "${libdir}/libvips.so.42"
+  test -L "${libdir}/libvips.so"
+  test "$(readlink "${libdir}/libvips.so.42")" = 'libvips.so.42.17.1'
+  test "$(readlink "${libdir}/libvips.so")" = 'libvips.so.42'
+}
 
 cd "${SAFE_ROOT}"
 
@@ -28,6 +91,17 @@ cleanup_paths+=("${SAFE_INSTALL_ROOT}" "${SAFE_LINK_WORKDIR}")
 echo "[release-gate] meson install"
 meson setup build-release . --wipe --prefix "${SAFE_INSTALL_ROOT}"
 meson compile -C build-release
+
+SAFE_STAGED_LIBDIR="${SAFE_ROOT}/build-release/lib"
+SAFE_STAGED_LIBVIPS="${SAFE_STAGED_LIBDIR}/libvips.so.42.17.1"
+
+echo "[release-gate] staged-surface checks"
+assert_libvips_soname_chain "${SAFE_STAGED_LIBDIR}"
+assert_not_reference_binary "${SAFE_STAGED_LIBVIPS}"
+assert_expected_symbols_present \
+  reference/abi/core-bootstrap.symbols \
+  "${SAFE_STAGED_LIBVIPS}"
+
 meson install -C build-release
 
 SAFE_LIBVIPS="$(find "${SAFE_INSTALL_ROOT}" -type f -name 'libvips.so.42.17.1' | sort | sed -n '1p')"
@@ -44,6 +118,8 @@ test -n "${SAFE_GIR}"
 test -n "${SAFE_TYPELIB}"
 
 echo "[release-gate] install-surface checks"
+assert_libvips_soname_chain "$(dirname "${SAFE_LIBVIPS}")"
+assert_not_reference_binary "${SAFE_LIBVIPS}"
 python3 scripts/compare_symbols.py \
   reference/abi/libvips.symbols \
   "${SAFE_LIBVIPS}"
@@ -133,10 +209,6 @@ dpkg-deb -x "${runtime_deb}" "${runtime_root}"
 dpkg-deb -x "${dev_deb}" "${dev_root}"
 dpkg-deb -x "${gir_deb}" "${gir_root}"
 
-python3 scripts/compare_modules.py \
-  reference/modules \
-  "${runtime_root}"
-
 packaged_libvips="$(find "${runtime_root}" -type f -name 'libvips.so.42.17.1' | sort | sed -n '1p')"
 packaged_libdir="$(dirname "${packaged_libvips}")"
 packaged_typelib_dir="$(find "${gir_root}" -type d -path '*/girepository-1.0' | sort | sed -n '1p')"
@@ -144,6 +216,11 @@ packaged_gir="$(find "${dev_root}" -type f -name 'Vips-8.0.gir' | sort | sed -n 
 test -n "${packaged_libvips}"
 test -n "${packaged_typelib_dir}"
 test -n "${packaged_gir}"
+
+assert_not_reference_binary "${packaged_libvips}"
+python3 scripts/compare_modules.py \
+  reference/modules \
+  "${runtime_root}"
 
 scripts/check_introspection.sh \
   --lib-dir "${packaged_libdir}" \
