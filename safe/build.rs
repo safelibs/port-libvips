@@ -9,7 +9,9 @@ use serde_json::Value;
 const SONAME: &str = "libvips.so.42";
 const GENERATED_DIR: &str = "generated";
 const EXPORT_MAP_NAME: &str = "export.map";
+const FULL_EXPORT_MAP_NAME: &str = "export-full.map";
 const CORE_BOOTSTRAP_PATH: &str = "reference/abi/core-bootstrap.symbols";
+const FULL_EXPORT_SYMBOLS_PATH: &str = "reference/abi/libvips.symbols";
 const DEPRECATED_SYMBOLS_PATH: &str = "reference/abi/deprecated-im.symbols";
 const GENERATED_OPERATIONS_PATH: &str = "src/generated/operations.json";
 const ERROR_SHIM_NAME: &str = "error_shim.c";
@@ -19,79 +21,10 @@ const DEPRECATED_SHIM_NAME: &str = "deprecated_compat_shim.c";
 const API_TEMPLATE_PATH: &str = "build_support/api_shim.c";
 const PUBLIC_HEADER_DIR: &str = "include/vips";
 
-const PHASE4_SYMBOLS: &[&str] = &[
-    "vips_add_option_entries",
-    "vips_argument_class_map",
-    "vips_argument_map",
-    "vips_call",
-    "vips_call_argv",
-    "vips_call_options",
-    "vips_call_required_optional",
-    "vips_call_split",
-    "vips_call_split_option_string",
-    "vips_class_find",
-    "vips_class_map_all",
-    "vips_isprefix",
-    "vips_nickname_find",
-    "vips_object_argument_needsstring",
-    "vips_object_build",
-    "vips_object_get_argument",
-    "vips_object_class_install_argument",
-    "vips_object_dump",
-    "vips_object_get_argument_to_string",
-    "vips_object_get_description",
-    "vips_object_get_property",
-    "vips_object_local_array",
-    "vips_object_local_cb",
-    "vips_object_map",
-    "vips_object_new",
-    "vips_object_new_from_string",
-    "vips_object_preclose",
-    "vips_object_print_all",
-    "vips_object_print_dump",
-    "vips_object_print_name",
-    "vips_object_print_summary",
-    "vips_object_print_summary_class",
-    "vips_object_rewind",
-    "vips_object_sanity",
-    "vips_object_sanity_all",
-    "vips_object_set",
-    "vips_object_set_argument_from_string",
-    "vips_object_set_from_string",
-    "vips_object_set_property",
-    "vips_object_set_required",
-    "vips_object_set_static",
-    "vips_object_set_valist",
-    "vips_object_summary",
-    "vips_object_summary_class",
-    "vips_object_to_string",
-    "vips_object_unref_outputs",
-    "vips_operation_block_set",
-    "vips_operation_call_valist",
-    "vips_operation_class_print_usage",
-    "vips_operation_get_flags",
-    "vips_operation_invalidate",
-    "vips_operation_new",
-    "vips_type_depth",
-    "vips_type_find",
-    "vips_type_map",
-    "vips_type_map_all",
-    "vips_value_is_null",
-    "vips_image_free_buffer",
-    "vips_image_new_from_image",
-    "vips_image_new_from_image1",
-    "vips_image_new_matrix",
-    "vips_vector_disable_targets",
-    "vips_vector_get_builtin_targets",
-    "vips_vector_get_supported_targets",
-    "vips_vector_isenabled",
-    "vips_vector_set_enabled",
-    "vips_vector_target_name",
-];
-
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={CORE_BOOTSTRAP_PATH}");
+    println!("cargo:rerun-if-changed={FULL_EXPORT_SYMBOLS_PATH}");
     println!("cargo:rerun-if-changed={DEPRECATED_SYMBOLS_PATH}");
     println!("cargo:rerun-if-changed={GENERATED_OPERATIONS_PATH}");
     println!("cargo:rerun-if-changed={API_TEMPLATE_PATH}");
@@ -106,12 +39,11 @@ fn main() {
     }
 
     let export_map_path = generated_dir.join(EXPORT_MAP_NAME);
-    let export_map = render_export_map(
-        &manifest_dir.join(CORE_BOOTSTRAP_PATH),
-        &manifest_dir.join(DEPRECATED_SYMBOLS_PATH),
-        &wrappers,
-    );
-    fs::write(&export_map_path, export_map).expect("write export map");
+    let core_export_map = render_export_map(&manifest_dir.join(CORE_BOOTSTRAP_PATH));
+    fs::write(&export_map_path, core_export_map).expect("write export map");
+    let full_export_map_path = generated_dir.join(FULL_EXPORT_MAP_NAME);
+    let full_export_map = render_export_map(&manifest_dir.join(FULL_EXPORT_SYMBOLS_PATH));
+    fs::write(&full_export_map_path, full_export_map).expect("write full export map");
 
     compile_c_shims(&manifest_dir, &wrappers, &deprecated_exports);
 
@@ -123,25 +55,10 @@ fn main() {
     println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");
 }
 
-fn render_export_map(
-    symbols_path: &Path,
-    deprecated_symbols_path: &Path,
-    wrappers: &[WrapperDefinition],
-) -> String {
+fn render_export_map(symbols_path: &Path) -> String {
     let mut lines = vec!["VIPS_42 {".to_owned()];
 
     let mut symbols = read_symbols(symbols_path);
-    symbols.extend(read_symbols(deprecated_symbols_path));
-    for symbol in PHASE4_SYMBOLS {
-        if !symbols.iter().any(|existing| existing == symbol) {
-            symbols.push((*symbol).to_owned());
-        }
-    }
-    for wrapper in wrappers {
-        if !symbols.iter().any(|existing| existing == &wrapper.function) {
-            symbols.push(wrapper.function.clone());
-        }
-    }
     symbols.sort();
     symbols.dedup();
     if !symbols.is_empty() {

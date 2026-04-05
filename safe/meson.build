@@ -13,6 +13,7 @@ project('vips-safe', 'c', 'cpp',
 i18n = import('i18n')
 
 cargo = find_program('cargo')
+cc_bin = find_program('cc')
 sh = find_program('sh')
 python3 = find_program('python3')
 g_ir_scanner = find_program('g-ir-scanner', required: false)
@@ -28,7 +29,18 @@ cpp = meson.get_compiler('cpp')
 cc = meson.get_compiler('c')
 dl_dep = cc.find_library('dl', required: false)
 
-if not g_ir_scanner.found() or not g_ir_compiler.found()
+surface_mode = run_command(
+  sh,
+  '-ec',
+  'printf %s "${VIPS_SAFE_EXPORT_SURFACE:-core-bootstrap}"',
+  check: true,
+).stdout().strip()
+if surface_mode != 'core-bootstrap' and surface_mode != 'full'
+  error('unsupported VIPS_SAFE_EXPORT_SURFACE=' + surface_mode)
+endif
+full_surface_enabled = surface_mode == 'full'
+
+if full_surface_enabled and (not g_ir_scanner.found() or not g_ir_compiler.found())
   error('g-ir-scanner and g-ir-compiler are required for the compatibility packaging build')
 endif
 
@@ -51,6 +63,9 @@ reference_libvips_cpp_artifact = build_check_root / 'cplusplus' / cxx_full_libra
 
 cargo_target_dir = meson.current_source_dir() / 'target'
 cargo_artifact = cargo_target_dir / 'release' / 'libvips.so'
+cargo_static_artifact = cargo_target_dir / 'release' / 'libvips.a'
+core_export_map_artifact = meson.current_source_dir() / 'generated' / 'export.map'
+full_export_map_artifact = meson.current_source_dir() / 'generated' / 'export-full.map'
 
 feature_options = [
   'modules',
@@ -150,10 +165,32 @@ libvips_stage = custom_target(
       stage_name="$3"
       stage_soname="$4"
       cargo_artifact="$5"
-      shift 5
+      cargo_static_artifact="$6"
+      core_export_map="$7"
+      full_export_map="$8"
+      surface="$9"
+      cc_bin="${10}"
+      shift 10
 
       "$@"
-      test -f "$cargo_artifact"
+      test -f "$cargo_static_artifact"
+
+      case "$surface" in
+        core-bootstrap)
+          export_map="$core_export_map"
+          ;;
+        full)
+          export_map="$full_export_map"
+          ;;
+        *)
+          echo "unsupported VIPS_SAFE_EXPORT_SURFACE=$surface" >&2
+          exit 1
+          ;;
+      esac
+      test -f "$export_map"
+
+      "$cc_bin" -shared -Wl,-soname,"$stage_soname" -Wl,--no-undefined "-Wl,--version-script=$export_map" -Wl,--whole-archive "$cargo_static_artifact" -Wl,--no-whole-archive -o "$cargo_artifact" -lgio-2.0 -lgobject-2.0 -lglib-2.0 -lgobject-2.0 -lglib-2.0 -lgobject-2.0 -lglib-2.0 -lgcc_s -lutil -lrt -lpthread -lm -ldl -lc
+      chmod 0755 "$cargo_artifact"
 
       mkdir -p "$stage_dir"
       cp "$cargo_artifact" "$out_real"
@@ -169,6 +206,11 @@ libvips_stage = custom_target(
     full_library_name,
     soname,
     cargo_artifact,
+    cargo_static_artifact,
+    core_export_map_artifact,
+    full_export_map_artifact,
+    surface_mode,
+    cc_bin,
   ] + cargo_build_cmd,
   env: cargo_env,
   install: true,
@@ -281,20 +323,7 @@ install_data(
 
 runtime_libdir = meson.current_build_dir() / 'lib'
 runtime_link = runtime_libdir / 'libvips.so'
-sample_png = root_dir / 'original' / 'test' / 'test-suite' / 'images' / 'sample.png'
-vendor_pyvips_dir = meson.current_source_dir() / 'vendor' / 'pyvips-3.1.1'
 runtime_module_dir = runtime_libdir / module_dir_basename
-
-test_c_args = ['-DHAVE_UNISTD_H=1']
-test_include = include_directories('../build-check-install/include')
-tool_c_args = [
-  '-DGETTEXT_PACKAGE="@0@"'.format(gettext_domain),
-  '-DENABLE_DEPRECATED=0',
-  '-DENABLE_MODULES=1',
-  '-DHAVE_ORC=0',
-]
-tool_include = include_directories('../build-check-install/include', '../original/libvips/include')
-cpp_include = include_directories('../build-check-install/include', '../original/cplusplus/include')
 
 libvips_cpp_stage = custom_target(
   'libvips-cpp-stage',
@@ -353,6 +382,21 @@ install_data(
   vips_cpp_pc,
   install_dir: get_option('libdir') / 'pkgconfig',
 )
+
+if full_surface_enabled
+sample_png = root_dir / 'original' / 'test' / 'test-suite' / 'images' / 'sample.png'
+vendor_pyvips_dir = meson.current_source_dir() / 'vendor' / 'pyvips-3.1.1'
+
+test_c_args = ['-DHAVE_UNISTD_H=1']
+test_include = include_directories('../build-check-install/include')
+tool_c_args = [
+  '-DGETTEXT_PACKAGE="@0@"'.format(gettext_domain),
+  '-DENABLE_DEPRECATED=0',
+  '-DENABLE_MODULES=1',
+  '-DHAVE_ORC=0',
+]
+tool_include = include_directories('../build-check-install/include', '../original/libvips/include')
+cpp_include = include_directories('../build-check-install/include', '../original/cplusplus/include')
 
 example_targets = []
 foreach example_name : [
@@ -726,6 +770,7 @@ module_stage = custom_target(
     '@INPUT@',
   ],
 )
+endif
 
 # The upstream compatibility surfaces look under $prefix/lib. Mirror the
 # installed multiarch libraries and modules there for install-prefix checks
@@ -750,7 +795,9 @@ meson.add_install_script(
     done
 
     rm -rf "$compat_module_dir"
-    cp -a "$multiarch_libdir/$module_dir" "$compat_module_dir"
+    if [ -d "$multiarch_libdir/$module_dir" ]; then
+      cp -a "$multiarch_libdir/$module_dir" "$compat_module_dir"
+    fi
   ''',
   'meson-install-compat',
   get_option('prefix'),
@@ -758,6 +805,7 @@ meson.add_install_script(
   module_dir_basename,
 )
 
+if full_surface_enabled
 upstream_scripts_stage = custom_target(
   'upstream-scripts-stage',
   input: [
@@ -1021,3 +1069,4 @@ test(
   depends: [libvips_stage, module_stage] + tool_targets,
   timeout: 120,
 )
+endif

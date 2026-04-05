@@ -78,6 +78,7 @@ assert_libvips_soname_chain() {
 }
 
 cd "${SAFE_ROOT}"
+export VIPS_SAFE_EXPORT_SURFACE=full
 
 echo "[release-gate] cargo"
 cargo build --release
