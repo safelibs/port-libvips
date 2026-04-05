@@ -63,6 +63,12 @@ fn write_back(image: *mut crate::abi::image::VipsImage, buffer: &ImageBuffer) ->
         let end = offset + sample_size;
         let _ = write_sample(&mut state.pixels[offset..end], image_ref.BandFmt, value);
     }
+    state.pending_load = None;
+    if let Some(source) = state.source.take() {
+        unsafe {
+            object_unref(source);
+        }
+    }
     sync_pixels(image);
     vips_image_invalidate_all(image);
     Ok(())

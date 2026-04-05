@@ -61,12 +61,20 @@ pub(crate) fn target_name(target: i64) -> Option<&'static str> {
     }
 }
 
-pub(crate) fn lane_width_f64() -> usize {
-    if supported_targets() & TARGET_SIMD256 != 0 {
-        4
-    } else if supported_targets() & TARGET_SIMD128 != 0 {
-        2
+pub(crate) fn best_target(targets: i64) -> i64 {
+    if targets & TARGET_SIMD256 != 0 {
+        TARGET_SIMD256
+    } else if targets & TARGET_SIMD128 != 0 {
+        TARGET_SIMD128
     } else {
-        1
+        TARGET_SCALAR
+    }
+}
+
+pub(crate) fn lane_width_f64_for_targets(targets: i64) -> usize {
+    match best_target(targets) {
+        TARGET_SIMD256 => 4,
+        TARGET_SIMD128 => 2,
+        _ => 1,
     }
 }

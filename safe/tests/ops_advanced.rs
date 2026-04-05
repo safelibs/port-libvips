@@ -7,6 +7,7 @@ use std::sync::{Mutex, Once, OnceLock};
 use vips::*;
 
 unsafe extern "C" {
+    fn vips_black(out: *mut *mut VipsImage, width: i32, height: i32, ...) -> i32;
     fn vips_HSV2sRGB(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
     fn vips_colourspace(
         input: *mut VipsImage,
@@ -62,6 +63,9 @@ unsafe extern "C" {
         width: i32,
         ...
     ) -> i32;
+    fn vips_vector_disable_targets(disabled_targets: i64);
+    fn vips_vector_get_supported_targets() -> i64;
+    fn vips_vector_target_name(target: i64) -> *const c_char;
 }
 
 fn guard() -> std::sync::MutexGuard<'static, ()> {
@@ -171,6 +175,13 @@ fn colour_and_profile_flow() {
     assert!(!data.is_null());
     assert!(len > 0);
 
+    let mut none_profile = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_profile_load(c"none".as_ptr(), &mut none_profile, ptr::null::<c_char>()) },
+        0
+    );
+    assert!(none_profile.is_null());
+
     unref_image(rows);
     unref_image(columns);
     unref_image(lab);
@@ -241,12 +252,64 @@ fn resample_and_thumbnail_flow() {
     assert!(centred_values[0] > corner_values[0]);
     assert!(centred_values[1] > corner_values[1]);
 
+    let constant = image_from_uchar(16, 16, 1, &[42; 16 * 16]);
+    let mut reduced_gap = ptr::null_mut();
+    let reduced_gap_result = unsafe {
+        vips_reduce(
+            constant,
+            &mut reduced_gap,
+            4.0,
+            4.0,
+            c"gap".as_ptr(),
+            2.0f64,
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_eq!(reduced_gap_result, 0, "{}", error_text());
+    assert!(read_u8(reduced_gap).iter().all(|value| *value == 42));
+
+    let mut large = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_black(&mut large, 1600, 1000, ptr::null::<c_char>()) },
+        0
+    );
+    let mut geometry = ptr::null_mut();
+    let geometry_result =
+        unsafe { vips_resize(large, &mut geometry, 10.0 / 1600.0, ptr::null::<c_char>()) };
+    assert_eq!(geometry_result, 0, "{}", error_text());
+    assert_eq!(vips_image_get_width(geometry), 10);
+    assert_eq!(vips_image_get_height(geometry), 6);
+
+    let supported_targets = unsafe { vips_vector_get_supported_targets() };
+    let target_name = unsafe { CStr::from_ptr(vips_vector_target_name(0)) }
+        .to_string_lossy()
+        .into_owned();
+    assert_eq!(target_name, "none");
+    if supported_targets != 0 {
+        let lowest_target = supported_targets & supported_targets.wrapping_neg();
+        let name = unsafe { CStr::from_ptr(vips_vector_target_name(lowest_target)) }
+            .to_string_lossy()
+            .into_owned();
+        assert_ne!(name, "none");
+        unsafe {
+            vips_vector_disable_targets(supported_targets);
+        }
+        assert_eq!(unsafe { vips_vector_get_supported_targets() }, 0);
+        unsafe {
+            vips_vector_disable_targets(0);
+        }
+    }
+
     let mut thumb = ptr::null_mut();
     let thumb_result = unsafe { vips_thumbnail_image(input, &mut thumb, 2, ptr::null::<c_char>()) };
     assert_eq!(thumb_result, 0, "{}", error_text());
     assert_eq!(vips_image_get_width(thumb), 2);
     assert!(vips_image_get_height(thumb) >= 1);
 
+    unref_image(geometry);
+    unref_image(large);
+    unref_image(reduced_gap);
+    unref_image(constant);
     unref_image(corner);
     unref_image(centred);
     unref_image(line);
@@ -320,29 +383,35 @@ fn draw_invalidation_and_mosaic_flow() {
     assert!(wide_values[6] > 10 && wide_values[6] < 200);
     assert_eq!(narrow_values[6], 200);
 
+    let match_reference = image_from_uchar(4, 1, 1, &[0, 0, 0, 0]);
+    let match_secondary = image_from_uchar(2, 1, 1, &[50, 150]);
     let mut matched = ptr::null_mut();
     assert_eq!(
         unsafe {
             vips_match(
-                reference,
-                secondary,
+                match_reference,
+                match_secondary,
                 &mut matched,
+                0,
+                0,
+                0,
+                0,
                 2,
                 0,
-                0,
-                0,
-                2,
-                0,
-                0,
+                1,
                 0,
                 ptr::null::<c_char>(),
             )
         },
         0
     );
-    assert_eq!(vips_image_get_width(matched), 10);
+    assert_eq!(vips_image_get_width(matched), 4);
+    assert_eq!(vips_image_get_height(matched), 1);
+    assert_eq!(read_u8(matched), vec![50, 100, 150, 0]);
 
     unref_image(matched);
+    unref_image(match_secondary);
+    unref_image(match_reference);
     unref_image(narrow_blend);
     unref_image(wide_blend);
     unref_image(stamp);

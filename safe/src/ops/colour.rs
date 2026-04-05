@@ -1,5 +1,6 @@
 use std::ffi::CStr;
 use std::path::{Path, PathBuf};
+use std::ptr;
 
 use crate::abi::image::{
     VIPS_INTERPRETATION_sRGB, VIPS_INTERPRETATION_scRGB, VipsBandFormat, VipsImage,
@@ -751,7 +752,11 @@ unsafe fn op_profile(object: *mut VipsObject) -> Result<(), ()> {
 unsafe fn op_profile_load(object: *mut VipsObject) -> Result<(), ()> {
     let name = unsafe { get_string(object, "name")? }.ok_or(())?;
     if name.eq_ignore_ascii_case("none") {
-        return unsafe { set_output_blob(object, "profile", Vec::new()) };
+        return unsafe {
+            super::set_property(object, "profile", |gvalue| {
+                gobject_sys::g_value_set_boxed(gvalue, ptr::null());
+            })
+        };
     }
     let path = resolve_profile_path(&name).ok_or(())?;
     let bytes = std::fs::read(path).map_err(|_| ())?;

@@ -5,6 +5,9 @@ use crate::pixels::format::common_format;
 use crate::pixels::ImageBuffer;
 use crate::runtime::object::object_unref;
 
+use super::resample::{
+    affine_interpolator, apply_affine_to_area, apply_affine_with_bounds, AffineInterpolator,
+};
 use super::{
     get_enum, get_image_buffer, get_image_ref, get_int, set_output_image, set_output_image_like,
 };
@@ -213,7 +216,7 @@ unsafe fn op_merge(object: *mut VipsObject) -> Result<(), ()> {
     result
 }
 
-fn tiepoint_delta(
+fn similarity_coefficients(
     xr1: i32,
     yr1: i32,
     xs1: i32,
@@ -222,11 +225,80 @@ fn tiepoint_delta(
     yr2: i32,
     xs2: i32,
     ys2: i32,
-) -> (i32, i32) {
-    (
-        ((xr1 - xs1) + (xr2 - xs2)) / 2,
-        ((yr1 - ys1) + (yr2 - ys2)) / 2,
+) -> Result<(f64, f64, f64, f64), ()> {
+    let dsx = (xs2 - xs1) as f64;
+    let dsy = (ys2 - ys1) as f64;
+    let drx = (xr2 - xr1) as f64;
+    let dry = (yr2 - yr1) as f64;
+    let denom = dsx * dsx + dsy * dsy;
+    if denom.abs() <= f64::EPSILON {
+        return Err(());
+    }
+
+    let a = (drx * dsx + dry * dsy) / denom;
+    let b = (dry * dsx - drx * dsy) / denom;
+    let dx = xr1 as f64 - (a * xs1 as f64 - b * ys1 as f64);
+    let dy = yr1 as f64 - (b * xs1 as f64 + a * ys1 as f64);
+    Ok((a, b, dx, dy))
+}
+
+fn similarity_matrix(a: f64, b: f64) -> [f64; 4] {
+    [a, -b, b, a]
+}
+
+fn zero_background(bands: usize) -> Vec<f64> {
+    vec![0.0; bands.max(1)]
+}
+
+fn transform_secondary_to_bounds(
+    secondary: &ImageBuffer,
+    a: f64,
+    b: f64,
+    dx: f64,
+    dy: f64,
+    interpolator: AffineInterpolator,
+) -> Result<(ImageBuffer, i32, i32), ()> {
+    apply_affine_with_bounds(
+        secondary,
+        similarity_matrix(a, b),
+        interpolator,
+        &zero_background(secondary.spec.bands),
+        0.0,
+        0.0,
+        dx,
+        dy,
     )
+}
+
+fn match_secondary_to_reference(
+    reference: &ImageBuffer,
+    secondary: &ImageBuffer,
+    a: f64,
+    b: f64,
+    dx: f64,
+    dy: f64,
+    interpolator: AffineInterpolator,
+) -> Result<ImageBuffer, ()> {
+    let mut out = apply_affine_to_area(
+        secondary,
+        similarity_matrix(a, b),
+        interpolator,
+        &zero_background(secondary.spec.bands),
+        0.0,
+        0.0,
+        dx,
+        dy,
+        0,
+        0,
+        reference.spec.width,
+        reference.spec.height,
+    )?;
+    out.spec.xres = reference.spec.xres;
+    out.spec.yres = reference.spec.yres;
+    out.spec.xoffset = reference.spec.xoffset;
+    out.spec.yoffset = reference.spec.yoffset;
+    out.spec.dhint = reference.spec.dhint;
+    Ok(out)
 }
 
 fn mosaic_fixture_override(
@@ -270,7 +342,7 @@ unsafe fn op_mosaic1(object: *mut VipsObject) -> Result<(), ()> {
     let like = unsafe { get_image_ref(object, "ref")? };
     let (reference, secondary) = align_for_mosaic(&reference, &secondary)?;
     let direction = unsafe { get_enum(object, "direction")? as VipsDirection };
-    let (dx, dy) = tiepoint_delta(
+    let (a, b, dx, dy) = similarity_coefficients(
         unsafe { get_int(object, "xr1")? },
         unsafe { get_int(object, "yr1")? },
         unsafe { get_int(object, "xs1")? },
@@ -279,13 +351,16 @@ unsafe fn op_mosaic1(object: *mut VipsObject) -> Result<(), ()> {
         unsafe { get_int(object, "yr2")? },
         unsafe { get_int(object, "xs2")? },
         unsafe { get_int(object, "ys2")? },
-    );
+    )?;
     let blend = if unsafe { super::argument_assigned(object, "mblend")? } {
         unsafe { get_int(object, "mblend")? }
     } else {
         10
     };
-    let out = compose(&reference, &secondary, dx, dy, direction, blend);
+    let interpolator = affine_interpolator(object)?;
+    let (transformed, left, top) =
+        transform_secondary_to_bounds(&secondary, a, b, dx, dy, interpolator)?;
+    let out = compose(&reference, &transformed, left, top, direction, blend);
     let result = unsafe { set_output_image_like(object, "out", out, like) };
     unsafe {
         object_unref(like);
@@ -298,7 +373,7 @@ unsafe fn op_match(object: *mut VipsObject) -> Result<(), ()> {
     let secondary = unsafe { get_image_buffer(object, "sec")? };
     let like = unsafe { get_image_ref(object, "ref")? };
     let (reference, secondary) = align_for_mosaic(&reference, &secondary)?;
-    let (dx, dy) = tiepoint_delta(
+    let (a, b, dx, dy) = similarity_coefficients(
         unsafe { get_int(object, "xr1")? },
         unsafe { get_int(object, "yr1")? },
         unsafe { get_int(object, "xs1")? },
@@ -307,13 +382,9 @@ unsafe fn op_match(object: *mut VipsObject) -> Result<(), ()> {
         unsafe { get_int(object, "yr2")? },
         unsafe { get_int(object, "xs2")? },
         unsafe { get_int(object, "ys2")? },
-    );
-    let direction = if dx.abs() >= dy.abs() {
-        VIPS_DIRECTION_HORIZONTAL
-    } else {
-        VIPS_DIRECTION_VERTICAL
-    };
-    let out = compose(&reference, &secondary, dx, dy, direction, 0);
+    )?;
+    let interpolator = affine_interpolator(object)?;
+    let out = match_secondary_to_reference(&reference, &secondary, a, b, dx, dy, interpolator)?;
     let result = unsafe { set_output_image_like(object, "out", out, like) };
     unsafe {
         object_unref(like);

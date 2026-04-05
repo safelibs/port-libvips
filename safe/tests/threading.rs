@@ -119,17 +119,11 @@ fn cleanup_source(source: *mut VipsSource) {
     }
 }
 
-#[test]
-fn delayed_load_failure_is_cached_across_threads() {
-    let _guard = guard();
-    init_vips();
-
-    let (source, state) = failing_source();
-    let barrier = Arc::new(Barrier::new(4));
+fn run_thumbnail_wave(source: *mut VipsSource, thread_count: usize) -> Vec<i32> {
+    let barrier = Arc::new(Barrier::new(thread_count));
     let source_ptr = source as usize;
-
     let mut threads = Vec::new();
-    for _ in 0..4 {
+    for _ in 0..thread_count {
         let barrier = Arc::clone(&barrier);
         threads.push(std::thread::spawn(move || {
             barrier.wait();
@@ -143,11 +137,24 @@ fn delayed_load_failure_is_cached_across_threads() {
         }));
     }
 
-    let results = threads
+    threads
         .into_iter()
         .map(|thread| thread.join().expect("thread"))
-        .collect::<Vec<_>>();
-    assert!(results.iter().all(|result| *result == -1));
+        .collect()
+}
+
+#[test]
+fn delayed_load_failure_is_cached_across_threads() {
+    let _guard = guard();
+    init_vips();
+
+    let (source, state) = failing_source();
+    let first_wave = run_thumbnail_wave(source, 4);
+    assert!(first_wave.iter().all(|result| *result == -1));
+    assert_eq!(state.read_calls.load(Ordering::SeqCst), 1);
+
+    let second_wave = run_thumbnail_wave(source, 4);
+    assert!(second_wave.iter().all(|result| *result == -1));
     assert_eq!(state.read_calls.load(Ordering::SeqCst), 1);
 
     cleanup_source(source);

@@ -16,7 +16,7 @@ use crate::pixels::ImageBuffer;
 use crate::runtime::image::safe_vips_image_new_from_source_internal;
 use crate::runtime::object::object_unref;
 use crate::runtime::source::{vips_source_new_from_file, vips_source_new_from_memory};
-use crate::simd::reduce::{dot, normalize_weights};
+use crate::simd::{dot, normalize_weights};
 
 use super::{
     argument_assigned, get_array_double, get_blob_bytes, get_bool, get_double, get_enum,
@@ -337,6 +337,58 @@ fn shrinkv_box(input: &ImageBuffer, shrink: f64, ceil_mode: bool) -> ImageBuffer
     out
 }
 
+fn gap_preshrink_factor(shrink: f64, gap: f64, kernel: VipsKernel) -> usize {
+    if gap <= 0.0 || gap < 1.0 || kernel == VIPS_KERNEL_NEAREST || shrink <= 1.0 {
+        return 1;
+    }
+
+    (shrink / gap).floor().max(1.0) as usize
+}
+
+fn reduce_horizontal_with_gap(
+    input: &ImageBuffer,
+    shrink: f64,
+    kernel: VipsKernel,
+    centre: bool,
+    gap: f64,
+) -> ImageBuffer {
+    let preshrink = gap_preshrink_factor(shrink, gap, kernel);
+    let preshrunk = if preshrink > 1 {
+        shrinkh_box(input, preshrink as f64, false)
+    } else {
+        input.clone()
+    };
+    let residual = shrink / preshrink as f64;
+    if residual <= 1.0 + f64::EPSILON {
+        return preshrunk;
+    }
+
+    let out_width = ((preshrunk.spec.width as f64 / residual).round().max(1.0)) as usize;
+    resample_to(&preshrunk, out_width, preshrunk.spec.height, kernel, centre)
+}
+
+fn reduce_vertical_with_gap(
+    input: &ImageBuffer,
+    shrink: f64,
+    kernel: VipsKernel,
+    centre: bool,
+    gap: f64,
+) -> ImageBuffer {
+    let preshrink = gap_preshrink_factor(shrink, gap, kernel);
+    let preshrunk = if preshrink > 1 {
+        shrinkv_box(input, preshrink as f64, false)
+    } else {
+        input.clone()
+    };
+    let residual = shrink / preshrink as f64;
+    if residual <= 1.0 + f64::EPSILON {
+        return preshrunk;
+    }
+
+    let out_height = ((preshrunk.spec.height as f64 / residual).round().max(1.0)) as usize;
+    resample_to(&preshrunk, preshrunk.spec.width, out_height, kernel, centre)
+}
+
 fn centre_crop(input: &ImageBuffer, width: usize, height: usize) -> ImageBuffer {
     let width = width.min(input.spec.width).max(1);
     let height = height.min(input.spec.height).max(1);
@@ -455,12 +507,12 @@ unsafe fn set_out_image(
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum AffineInterpolator {
+pub(crate) enum AffineInterpolator {
     Nearest,
     Bilinear,
 }
 
-fn affine_interpolator(object: *mut VipsObject) -> Result<AffineInterpolator, ()> {
+pub(crate) fn affine_interpolator(object: *mut VipsObject) -> Result<AffineInterpolator, ()> {
     if !unsafe { argument_assigned(object, "interpolate")? } {
         return Ok(AffineInterpolator::Bilinear);
     }
@@ -736,7 +788,7 @@ fn mapim_sample(
     }
 }
 
-fn apply_affine(
+pub(crate) fn apply_affine_to_area(
     input: &ImageBuffer,
     matrix: [f64; 4],
     interpolator: AffineInterpolator,
@@ -745,6 +797,10 @@ fn apply_affine(
     idy: f64,
     odx: f64,
     ody: f64,
+    left: i32,
+    top: i32,
+    out_width: usize,
+    out_height: usize,
 ) -> Result<ImageBuffer, ()> {
     let det = matrix[0] * matrix[3] - matrix[1] * matrix[2];
     if det.abs() <= f64::EPSILON {
@@ -755,15 +811,6 @@ fn apply_affine(
     let ib = -matrix[1] / det;
     let ic = -matrix[2] / det;
     let id = matrix[0] / det;
-    let (left, top, out_width, out_height) = affine_output_area(
-        input.spec.width,
-        input.spec.height,
-        matrix,
-        idx,
-        idy,
-        odx,
-        ody,
-    );
 
     let mut out = input.with_shape(out_width, out_height, input.spec.bands);
     out.spec.xoffset = (odx - left as f64).round() as i32;
@@ -788,6 +835,42 @@ fn apply_affine(
     }
 
     Ok(out)
+}
+
+pub(crate) fn apply_affine_with_bounds(
+    input: &ImageBuffer,
+    matrix: [f64; 4],
+    interpolator: AffineInterpolator,
+    background: &[f64],
+    idx: f64,
+    idy: f64,
+    odx: f64,
+    ody: f64,
+) -> Result<(ImageBuffer, i32, i32), ()> {
+    let (left, top, out_width, out_height) = affine_output_area(
+        input.spec.width,
+        input.spec.height,
+        matrix,
+        idx,
+        idy,
+        odx,
+        ody,
+    );
+    let out = apply_affine_to_area(
+        input,
+        matrix,
+        interpolator,
+        background,
+        idx,
+        idy,
+        odx,
+        ody,
+        left,
+        top,
+        out_width,
+        out_height,
+    )?;
+    Ok((out, left, top))
 }
 
 unsafe fn op_affine_like(object: *mut VipsObject, matrix: [f64; 4]) -> Result<(), ()> {
@@ -816,7 +899,7 @@ unsafe fn op_affine_like(object: *mut VipsObject, matrix: [f64; 4]) -> Result<()
         0.0
     };
 
-    let out = apply_affine(
+    let (out, _, _) = apply_affine_with_bounds(
         &input,
         matrix,
         interpolator,
@@ -943,15 +1026,19 @@ unsafe fn op_reduce(object: *mut VipsObject) -> Result<(), ()> {
     let like = unsafe { get_image_ref(object, "in")? };
     let hshrink = get_double_with_fallback(object, "hshrink", "xshrink")?.max(1.0);
     let vshrink = get_double_with_fallback(object, "vshrink", "yshrink")?.max(1.0);
+    let gap = if unsafe { argument_assigned(object, "gap")? } {
+        unsafe { get_double(object, "gap")? }.max(0.0)
+    } else {
+        0.0
+    };
     let kernel = preferred_kernel(object, VIPS_KERNEL_LANCZOS3)?;
     let centre = if unsafe { argument_assigned(object, "centre")? } {
         unsafe { get_bool(object, "centre")? }
     } else {
         true
     };
-    let out_width = ((input.spec.width as f64 / hshrink).round().max(1.0)) as usize;
-    let out_height = ((input.spec.height as f64 / vshrink).round().max(1.0)) as usize;
-    let out = resample_to(&input, out_width, out_height, kernel, centre);
+    let tmp = reduce_vertical_with_gap(&input, vshrink, kernel, centre, gap);
+    let out = reduce_horizontal_with_gap(&tmp, hshrink, kernel, centre, gap);
     let result = unsafe { set_out_image(object, out, like) };
     unsafe {
         object_unref(like);
@@ -963,14 +1050,18 @@ unsafe fn op_reduceh(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
     let like = unsafe { get_image_ref(object, "in")? };
     let hshrink = get_double_with_fallback(object, "hshrink", "xshrink")?.max(1.0);
+    let gap = if unsafe { argument_assigned(object, "gap")? } {
+        unsafe { get_double(object, "gap")? }.max(0.0)
+    } else {
+        0.0
+    };
     let kernel = preferred_kernel(object, VIPS_KERNEL_LANCZOS3)?;
     let centre = if unsafe { argument_assigned(object, "centre")? } {
         unsafe { get_bool(object, "centre")? }
     } else {
         true
     };
-    let out_width = ((input.spec.width as f64 / hshrink).round().max(1.0)) as usize;
-    let out = resample_to(&input, out_width, input.spec.height, kernel, centre);
+    let out = reduce_horizontal_with_gap(&input, hshrink, kernel, centre, gap);
     let result = unsafe { set_out_image(object, out, like) };
     unsafe {
         object_unref(like);
@@ -982,14 +1073,18 @@ unsafe fn op_reducev(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
     let like = unsafe { get_image_ref(object, "in")? };
     let vshrink = get_double_with_fallback(object, "vshrink", "yshrink")?.max(1.0);
+    let gap = if unsafe { argument_assigned(object, "gap")? } {
+        unsafe { get_double(object, "gap")? }.max(0.0)
+    } else {
+        0.0
+    };
     let kernel = preferred_kernel(object, VIPS_KERNEL_LANCZOS3)?;
     let centre = if unsafe { argument_assigned(object, "centre")? } {
         unsafe { get_bool(object, "centre")? }
     } else {
         true
     };
-    let out_height = ((input.spec.height as f64 / vshrink).round().max(1.0)) as usize;
-    let out = resample_to(&input, input.spec.width, out_height, kernel, centre);
+    let out = reduce_vertical_with_gap(&input, vshrink, kernel, centre, gap);
     let result = unsafe { set_out_image(object, out, like) };
     unsafe {
         object_unref(like);

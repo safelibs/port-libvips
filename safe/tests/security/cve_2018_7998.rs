@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ffi::c_void;
 use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Barrier, Mutex, OnceLock};
 
 use super::*;
 
@@ -104,6 +104,30 @@ fn cleanup_source(source: *mut VipsSource) {
     }
 }
 
+fn run_thumbnail_wave(source: *mut VipsSource, thread_count: usize) -> Vec<i32> {
+    let barrier = Arc::new(Barrier::new(thread_count));
+    let source_ptr = source as usize;
+    let mut threads = Vec::new();
+    for _ in 0..thread_count {
+        let barrier = Arc::clone(&barrier);
+        threads.push(std::thread::spawn(move || {
+            barrier.wait();
+            let source = source_ptr as *mut VipsSource;
+            let mut out = ptr::null_mut();
+            let result = unsafe {
+                vips_thumbnail_source(source, &mut out, 16, ptr::null::<std::ffi::c_char>())
+            };
+            assert!(out.is_null());
+            result
+        }));
+    }
+
+    threads
+        .into_iter()
+        .map(|thread| thread.join().expect("thread"))
+        .collect()
+}
+
 #[test]
 fn cve_2018_7998_thumbnail_source_caches_delayed_load_failure() {
     let _guard = guard();
@@ -124,6 +148,24 @@ fn cve_2018_7998_thumbnail_source_caches_delayed_load_failure() {
         -1
     );
     assert!(second.is_null());
+    assert_eq!(state.read_calls.load(Ordering::SeqCst), 1);
+
+    cleanup_source(source);
+}
+
+#[test]
+fn cve_2018_7998_thumbnail_source_failure_race_is_cached() {
+    let _guard = guard();
+    init_vips();
+
+    let (source, state) = failing_source();
+
+    let results = run_thumbnail_wave(source, 4);
+    assert!(results.iter().all(|result| *result == -1));
+    assert_eq!(state.read_calls.load(Ordering::SeqCst), 1);
+
+    let replay = run_thumbnail_wave(source, 4);
+    assert!(replay.iter().all(|result| *result == -1));
     assert_eq!(state.read_calls.load(Ordering::SeqCst), 1);
 
     cleanup_source(source);
