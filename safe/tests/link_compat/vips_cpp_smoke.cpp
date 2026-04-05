@@ -13,8 +13,7 @@ int main(int argc, char **argv)
 		vips_error_exit("usage: %s input-file", argv[0]);
 
 	try {
-		VImage image = VImage::new_from_file(argv[1],
-			VImage::option()->set("access", VIPS_ACCESS_SEQUENTIAL));
+		VImage image = VImage::new_from_file(argv[1]);
 		double avg = image.avg();
 		VImage pixel = image.crop(0, 0, 1, 1);
 		std::vector<double> values = pixel(0, 0);
