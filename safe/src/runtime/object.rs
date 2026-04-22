@@ -1117,6 +1117,105 @@ unsafe extern "C" fn vips_object_real_summary(object: *mut VipsObject, buf: *mut
     unsafe { append_text(buf, text) };
 }
 
+fn band_format_summary(format: crate::abi::image::VipsBandFormat) -> &'static str {
+    match format {
+        crate::abi::image::VIPS_FORMAT_UCHAR => "uchar",
+        crate::abi::image::VIPS_FORMAT_CHAR => "char",
+        crate::abi::image::VIPS_FORMAT_USHORT => "ushort",
+        crate::abi::image::VIPS_FORMAT_SHORT => "short",
+        crate::abi::image::VIPS_FORMAT_UINT => "uint",
+        crate::abi::image::VIPS_FORMAT_INT => "int",
+        crate::abi::image::VIPS_FORMAT_FLOAT => "float",
+        crate::abi::image::VIPS_FORMAT_COMPLEX => "complex",
+        crate::abi::image::VIPS_FORMAT_DOUBLE => "double",
+        crate::abi::image::VIPS_FORMAT_DPCOMPLEX => "dpcomplex",
+        _ => "notset",
+    }
+}
+
+fn coding_summary(coding: crate::abi::image::VipsCoding) -> Option<&'static str> {
+    match coding {
+        crate::abi::image::VIPS_CODING_NONE => None,
+        crate::abi::image::VIPS_CODING_LABQ => Some("labq"),
+        crate::abi::image::VIPS_CODING_RAD => Some("rad"),
+        _ => Some("error"),
+    }
+}
+
+fn interpretation_summary(
+    interpretation: crate::abi::image::VipsInterpretation,
+) -> &'static str {
+    match interpretation {
+        crate::abi::image::VIPS_INTERPRETATION_MULTIBAND => "multiband",
+        crate::abi::image::VIPS_INTERPRETATION_B_W => "b-w",
+        crate::abi::image::VIPS_INTERPRETATION_HISTOGRAM => "histogram",
+        crate::abi::image::VIPS_INTERPRETATION_XYZ => "xyz",
+        crate::abi::image::VIPS_INTERPRETATION_LAB => "lab",
+        crate::abi::image::VIPS_INTERPRETATION_CMYK => "cmyk",
+        crate::abi::image::VIPS_INTERPRETATION_LABQ => "labq",
+        crate::abi::image::VIPS_INTERPRETATION_RGB => "rgb",
+        crate::abi::image::VIPS_INTERPRETATION_CMC => "cmc",
+        crate::abi::image::VIPS_INTERPRETATION_LCH => "lch",
+        crate::abi::image::VIPS_INTERPRETATION_LABS => "labs",
+        crate::abi::image::VIPS_INTERPRETATION_sRGB => "srgb",
+        crate::abi::image::VIPS_INTERPRETATION_YXY => "yxy",
+        crate::abi::image::VIPS_INTERPRETATION_FOURIER => "fourier",
+        crate::abi::image::VIPS_INTERPRETATION_RGB16 => "rgb16",
+        crate::abi::image::VIPS_INTERPRETATION_GREY16 => "grey16",
+        crate::abi::image::VIPS_INTERPRETATION_MATRIX => "matrix",
+        crate::abi::image::VIPS_INTERPRETATION_scRGB => "scrgb",
+        crate::abi::image::VIPS_INTERPRETATION_HSV => "hsv",
+        _ => "error",
+    }
+}
+
+unsafe fn image_string_field(image: *mut VipsImage, name: &'static CStr) -> Option<String> {
+    let mut value = ptr::null();
+    if crate::runtime::header::vips_image_get_string(image, name.as_ptr(), &mut value) != 0
+        || value.is_null()
+    {
+        return None;
+    }
+    let text = unsafe { CStr::from_ptr(value) }.to_string_lossy().into_owned();
+    unsafe {
+        glib_sys::g_free(value.cast_mut().cast());
+    }
+    (!text.is_empty()).then_some(text)
+}
+
+unsafe extern "C" fn vips_image_real_summary(object: *mut VipsObject, buf: *mut VipsBuf) {
+    if object.is_null() || buf.is_null() {
+        return;
+    }
+    let image = object.cast::<VipsImage>();
+    let Some(image_ref) = (unsafe { image.as_ref() }) else {
+        return;
+    };
+
+    let mut parts = vec![
+        format!(
+            "{}x{} {}",
+            image_ref.Xsize,
+            image_ref.Ysize,
+            band_format_summary(image_ref.BandFmt)
+        ),
+        format!(
+            "{} band{}",
+            image_ref.Bands,
+            if image_ref.Bands == 1 { "" } else { "s" }
+        ),
+    ];
+    if let Some(coding) = coding_summary(image_ref.Coding) {
+        parts.push(coding.to_owned());
+    }
+    parts.push(interpretation_summary(image_ref.Type).to_owned());
+    if let Some(loader) = unsafe { image_string_field(image, c"vips-loader") } {
+        parts.push(loader);
+    }
+
+    unsafe { append_text(buf, parts.join(", ")) };
+}
+
 unsafe extern "C" fn vips_object_real_dump(object: *mut VipsObject, buf: *mut VipsBuf) {
     if object.is_null() || buf.is_null() {
         return;
@@ -1256,6 +1355,7 @@ unsafe extern "C" fn vips_image_class_init(
     let type_ = unsafe { (*(klass.cast::<gobject_sys::GTypeClass>())).g_type };
     unsafe {
         init_subclass_class(class);
+        (*class).summary = Some(vips_image_real_summary);
         (*gobject_class).set_property = Some(vips_object_set_property);
         (*gobject_class).get_property = Some(vips_object_get_property);
     }

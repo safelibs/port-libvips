@@ -7,6 +7,7 @@ pub mod sniff;
 
 use std::collections::HashMap;
 use std::ffi::{c_void, CStr, CString};
+use std::io::Cursor;
 use std::os::raw::c_char;
 use std::ptr;
 use std::sync::{Mutex, OnceLock};
@@ -211,6 +212,35 @@ fn parse_jpeg_header(bytes: &[u8], options: LoadOptions) -> Result<ForeignLoadRe
 
     append_message_str("jpegload", "missing jpeg frame header");
     Err(())
+}
+
+fn decode_jpeg_pixels(bytes: &[u8]) -> Result<Vec<u8>, ()> {
+    let mut decoder = jpeg_decoder::Decoder::new(Cursor::new(bytes));
+    let pixels = decoder.decode().map_err(|err| {
+        append_message_str("jpegload", &err.to_string());
+    })?;
+    let info = decoder.info().ok_or_else(|| {
+        append_message_str("jpegload", "missing jpeg frame information");
+    })?;
+
+    match info.pixel_format {
+        jpeg_decoder::PixelFormat::L8
+        | jpeg_decoder::PixelFormat::L16
+        | jpeg_decoder::PixelFormat::RGB24 => Ok(pixels),
+        jpeg_decoder::PixelFormat::CMYK32 => {
+            let mut rgb = Vec::with_capacity(pixels.len() / 4 * 3);
+            for chunk in pixels.chunks_exact(4) {
+                let c = chunk[0] as u16;
+                let m = chunk[1] as u16;
+                let y = chunk[2] as u16;
+                let k = chunk[3] as u16;
+                rgb.push((255u16.saturating_sub((c + k).min(255))) as u8);
+                rgb.push((255u16.saturating_sub((m + k).min(255))) as u8);
+                rgb.push((255u16.saturating_sub((y + k).min(255))) as u8);
+            }
+            Ok(rgb)
+        }
+    }
 }
 
 fn parse_png(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
@@ -597,8 +627,8 @@ pub fn decode_pending(pending: &base::PendingDecode) -> Result<Vec<u8>, ()> {
         return loaders::container::extract_pixel_payload(&pending.bytes);
     }
     match pending.kind {
-        ForeignKind::Jpeg
-        | ForeignKind::Gif
+        ForeignKind::Jpeg => decode_jpeg_pixels(&pending.bytes),
+        ForeignKind::Gif
         | ForeignKind::Tiff
         | ForeignKind::Webp
         | ForeignKind::Heif
@@ -652,8 +682,23 @@ pub fn save_to_bytes(
         ForeignKind::Csv => savers::text::save_csv(image),
         ForeignKind::Matrix => savers::text::save_matrix(image),
         ForeignKind::Raw => savers::text::save_raw(image),
+        ForeignKind::Png => {
+            if ensure_pixels(image).is_err() {
+                return Err(());
+            }
+            let Some(image_ref) = (unsafe { image.as_ref() }) else {
+                return Err(());
+            };
+            let Some(state) = (unsafe { image_state(image) }) else {
+                return Err(());
+            };
+            crate::runtime::image::safe_encode_png_bytes(image_ref, &state.pixels).map_err(
+                |message| {
+                    append_message_str("pngsave", &message);
+                },
+            )
+        }
         ForeignKind::Jpeg
-        | ForeignKind::Png
         | ForeignKind::Tiff
         | ForeignKind::Webp
         | ForeignKind::Heif
