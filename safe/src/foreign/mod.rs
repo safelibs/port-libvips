@@ -19,8 +19,11 @@ use crate::foreign::base::{
     parse_option_string, save_options_from_map, target_save_name, ForeignKind, ForeignLoadResult,
     InputKind, LoadOptions, SaveOptions,
 };
+use crate::pixels::format::{read_sample, write_sample};
 use crate::runtime::error::append_message_str;
-use crate::runtime::image::{ensure_pixels, image_state, set_filename, set_history, sync_pixels};
+use crate::runtime::image::{
+    ensure_pixels, format_sizeof, image_state, set_filename, set_history, sync_pixels,
+};
 use crate::runtime::object;
 use crate::runtime::source::read_all_bytes;
 use crate::runtime::target::{vips_target_end, vips_target_write};
@@ -241,6 +244,76 @@ fn decode_jpeg_pixels(bytes: &[u8]) -> Result<Vec<u8>, ()> {
             Ok(rgb)
         }
     }
+}
+
+fn pixels_for_png_encode(image: &VipsImage, pixels: &[u8]) -> Result<Vec<u8>, ()> {
+    let samples = (image.Xsize.max(0) as usize)
+        .saturating_mul(image.Ysize.max(0) as usize)
+        .saturating_mul(image.Bands.max(0) as usize);
+    let output_format = if image.BandFmt == crate::abi::image::VIPS_FORMAT_USHORT {
+        crate::abi::image::VIPS_FORMAT_USHORT
+    } else {
+        crate::abi::image::VIPS_FORMAT_UCHAR
+    };
+    let output_sample_size = format_sizeof(output_format);
+    let expected = samples.saturating_mul(output_sample_size);
+    if pixels.len() == expected {
+        return Ok(pixels.to_vec());
+    }
+
+    if expected == 0 || samples == 0 || output_sample_size == 0 {
+        append_message_str("pngsave", "wrong data size");
+        return Err(());
+    }
+
+    let mut out = vec![0; expected];
+    let input_sample_size = format_sizeof(image.BandFmt);
+    if input_sample_size != 0 && pixels.len() == samples.saturating_mul(input_sample_size) {
+        for (src, dst) in pixels
+            .chunks_exact(input_sample_size)
+            .zip(out.chunks_exact_mut(output_sample_size))
+        {
+            let value = read_sample(src, image.BandFmt).ok_or(())?;
+            if !write_sample(dst, output_format, value) {
+                append_message_str("pngsave", "unsupported image format");
+                return Err(());
+            }
+        }
+        return Ok(out);
+    }
+
+    if pixels.len() == samples.saturating_mul(4) {
+        for (src, dst) in pixels
+            .chunks_exact(4)
+            .zip(out.chunks_exact_mut(output_sample_size))
+        {
+            let value = f32::from_ne_bytes(src.try_into().map_err(|_| ())?) as f64;
+            if !write_sample(dst, output_format, value) {
+                append_message_str("pngsave", "unsupported image format");
+                return Err(());
+            }
+        }
+        return Ok(out);
+    }
+    if pixels.len() == samples.saturating_mul(8) {
+        for (src, dst) in pixels
+            .chunks_exact(8)
+            .zip(out.chunks_exact_mut(output_sample_size))
+        {
+            let value = f64::from_ne_bytes(src.try_into().map_err(|_| ())?);
+            if !write_sample(dst, output_format, value) {
+                append_message_str("pngsave", "unsupported image format");
+                return Err(());
+            }
+        }
+        return Ok(out);
+    }
+
+    append_message_str(
+        "pngsave",
+        &format!("wrong data size, expected {expected} got {}", pixels.len()),
+    );
+    Err(())
 }
 
 fn parse_png(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
@@ -692,11 +765,10 @@ pub fn save_to_bytes(
             let Some(state) = (unsafe { image_state(image) }) else {
                 return Err(());
             };
-            crate::runtime::image::safe_encode_png_bytes(image_ref, &state.pixels).map_err(
-                |message| {
-                    append_message_str("pngsave", &message);
-                },
-            )
+            let pixels = pixels_for_png_encode(image_ref, &state.pixels)?;
+            crate::runtime::image::safe_encode_png_bytes(image_ref, &pixels).map_err(|message| {
+                append_message_str("pngsave", &message);
+            })
         }
         ForeignKind::Jpeg
         | ForeignKind::Tiff
@@ -1298,7 +1370,8 @@ pub fn dispatch_operation(
                     let Some(state) = (unsafe { image_state(image) }) else {
                         return Err(());
                     };
-                    crate::runtime::image::safe_encode_png_bytes(image_ref, &state.pixels).map_err(
+                    let pixels = pixels_for_png_encode(image_ref, &state.pixels)?;
+                    crate::runtime::image::safe_encode_png_bytes(image_ref, &pixels).map_err(
                         |message| {
                             append_message_str("pngsave", &message);
                         },
