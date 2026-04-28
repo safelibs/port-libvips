@@ -47,17 +47,27 @@ fn sample_jpg() -> PathBuf {
 }
 
 fn temp_vips_path() -> PathBuf {
+    temp_path_with_suffix(".v")
+}
+
+fn temp_path_with_suffix(suffix: &str) -> PathBuf {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system time")
         .as_nanos();
-    std::env::temp_dir().join(format!("safe-runtime-io-{unique}.v"))
+    std::env::temp_dir().join(format!("safe-runtime-io-{unique}{suffix}"))
 }
 
 unsafe extern "C" {
     fn vips_image_new_from_file(name: *const c_char, ...) -> *mut VipsImage;
     fn vips_image_write_to_file(image: *mut VipsImage, name: *const c_char, ...) -> libc::c_int;
     fn vips_image_get_history(image: *mut VipsImage) -> *const c_char;
+    fn vips_thumbnail(
+        filename: *const c_char,
+        out: *mut *mut VipsImage,
+        width: libc::c_int,
+        ...
+    ) -> libc::c_int;
     fn vips_image_get_as_string(
         image: *mut VipsImage,
         name: *const c_char,
@@ -386,6 +396,62 @@ fn legacy_vips_files_preserve_fd_and_header_edit_compat() {
     }
 
     std::fs::remove_file(&output_path).expect("remove temp .v file");
+}
+
+#[test]
+fn jpeg_file_copy_to_png_materializes_without_external_convert() {
+    let _guard = guard();
+    init_vips();
+
+    let input_path = sample_jpg();
+    let output_path = temp_path_with_suffix(".png");
+    let _ = std::fs::remove_file(&output_path);
+
+    let input_c = CString::new(input_path.to_string_lossy().into_owned()).expect("input path");
+    let output_c = CString::new(output_path.to_string_lossy().into_owned()).expect("output path");
+
+    let input = unsafe { vips_image_new_from_file(input_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!input.is_null());
+    let input_width = unsafe { (*input).Xsize };
+    let input_height = unsafe { (*input).Ysize };
+    assert_eq!(
+        unsafe { vips_image_write_to_file(input, output_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    unsafe {
+        gobject_sys::g_object_unref(input.cast());
+    }
+
+    let reopened = unsafe { vips_image_new_from_file(output_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!reopened.is_null());
+    assert_eq!(unsafe { (*reopened).Xsize }, input_width);
+    assert_eq!(unsafe { (*reopened).Ysize }, input_height);
+    unsafe {
+        gobject_sys::g_object_unref(reopened.cast());
+    }
+    std::fs::remove_file(&output_path).expect("remove temp png file");
+}
+
+#[test]
+fn jpeg_file_thumbnail_materializes_without_external_convert() {
+    let _guard = guard();
+    init_vips();
+
+    let input_path = sample_jpg();
+    let input_c = CString::new(input_path.to_string_lossy().into_owned()).expect("input path");
+    let mut thumbnail = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_thumbnail(input_c.as_ptr(), &mut thumbnail, 32, ptr::null::<c_char>()) },
+        0
+    );
+    assert!(!thumbnail.is_null());
+    assert!(unsafe { (*thumbnail).Xsize } <= 32);
+    assert!(unsafe { (*thumbnail).Ysize } <= 32);
+    assert!(unsafe { (*thumbnail).Xsize } > 0);
+    assert!(unsafe { (*thumbnail).Ysize } > 0);
+    unsafe {
+        gobject_sys::g_object_unref(thumbnail.cast());
+    }
 }
 
 #[test]

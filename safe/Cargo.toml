@@ -71,6 +71,7 @@ gio-sys = "0.18"
 glib-sys = "0.18"
 gobject-sys = "0.18"
 libc = "0.2"
+jpeg-decoder = { version = "0.3", default-features = false }
 png = "0.17"
 
 [build-dependencies]

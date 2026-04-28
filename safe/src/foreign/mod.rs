@@ -597,8 +597,8 @@ pub fn decode_pending(pending: &base::PendingDecode) -> Result<Vec<u8>, ()> {
         return loaders::container::extract_pixel_payload(&pending.bytes);
     }
     match pending.kind {
-        ForeignKind::Jpeg
-        | ForeignKind::Gif
+        ForeignKind::Jpeg => loaders::jpeg::decode_pixels(&pending.bytes),
+        ForeignKind::Gif
         | ForeignKind::Tiff
         | ForeignKind::Webp
         | ForeignKind::Heif
