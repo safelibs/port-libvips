@@ -41,7 +41,7 @@
 | vips-cli-load-save | fixed | source surface | `impl_02_source_surface_failures` | Initial log validator/artifacts/libvips-safe/port-04-test/logs/libvips/vips-cli-load-save.log failed with `foreign: convert failed: No such file or directory`; rerun log validator/artifacts/libvips-safe-source/port-04-test/logs/libvips/vips-cli-load-save.log passes and reports `/tmp/validator-tmp/out.png: 290x442 uchar, 3 bands, srgb, pngload`. |
 | thumbnail-behavior | fixed | source surface | `impl_02_source_surface_failures` | Initial log validator/artifacts/libvips-safe/port-04-test/logs/libvips/thumbnail-behavior.log failed with `foreign: convert failed: No such file or directory`; rerun log validator/artifacts/libvips-safe-source/port-04-test/logs/libvips/thumbnail-behavior.log passes and reports `/tmp/validator-tmp/thumb.jpg: 21x32 uchar, 3 bands, srgb, jpegload`. |
 | usage-ruby-vips-gravity-generated | fixed | ruby usage operation | `impl_03_ruby_usage_operation_failures` | Initial result validator/artifacts/libvips-safe/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json and log validator/artifacts/libvips-safe/port-04-test/logs/libvips/usage-ruby-vips-gravity-generated.log failed with `gravity: operation not implemented`; phase 3 rerun result validator/artifacts/libvips-safe-ops/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json passed. |
-| usage-ruby-vips-crop-sample-jpeg | fixed by source JPEG materialization | foreign I/O and buffer | `impl_04_foreign_io_buffer_failures` | Initial log validator/artifacts/libvips-safe/port-04-test/logs/libvips/usage-ruby-vips-crop-sample-jpeg.log failed through the same missing external `convert` JPEG decode path; rerun result validator/artifacts/libvips-safe-source/port-04-test/results/libvips/usage-ruby-vips-crop-sample-jpeg.json passed. |
+| usage-ruby-vips-crop-sample-jpeg | fixed by source JPEG materialization | foreign I/O and buffer | `impl_04_foreign_io_buffer_failures` | Initial log validator/artifacts/libvips-safe/port-04-test/logs/libvips/usage-ruby-vips-crop-sample-jpeg.log failed through the same missing external `convert` JPEG decode path; source rerun result validator/artifacts/libvips-safe-source/port-04-test/results/libvips/usage-ruby-vips-crop-sample-jpeg.json passed, and phase 4 rerun result validator/artifacts/libvips-safe-foreign/port-04-test/results/libvips/usage-ruby-vips-crop-sample-jpeg.json passed. |
 
 ## Source Surface Phase Rerun
 - Implement phase: `impl_02_source_surface_failures`
@@ -85,11 +85,35 @@
 | --- | --- | --- | --- | --- |
 | usage-ruby-vips-gravity-generated | passed: validator/artifacts/libvips-safe-ops/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json | The generated wrapper and operation type exposed `vips_gravity`, but the conversion dispatch table did not handle the `gravity` nickname, so Ruby reached `generated_operation_build` and received `gravity: operation not implemented`. | safe/tests/ops_core.rs: `gravity_centre_crop_matches_ruby_usage_case` calls the exported `vips_gravity` symbol on a 3x3 generated grayscale image, asserts a 2x2 uchar single-band output, and verifies the centered crop payload `[1, 2, 4, 5]`. | safe/src/ops/conversion.rs, safe/src/ops/mod.rs |
 
+## Foreign I/O Buffer Phase Rerun
+- Implement phase: `impl_04_foreign_io_buffer_failures`
+- Safe commit after buffer fixes: 6e33af34dec46ac37b98b1ecf713a716ddc06643
+- Packages rebuilt with `dpkg-buildpackage -b -uc -us` and staged under validator-overrides/libvips: libvips42t64, libvips-dev, libvips-tools, and gir1.2-vips-8.0.
+- Port deb lock refreshed in place at validator/artifacts/libvips-safe-port-lock.json with mode `port-04-test`, commit 6e33af34dec46ac37b98b1ecf713a716ddc06643, release tag `build-6e33af34dec4`, the four canonical packages, and `unported_original_packages: []`.
+- Local verification: `cargo test --all-features --test runtime_io -- --nocapture`, `cargo test --all-features --test security -- --nocapture`, `cargo test --all-features -- --nocapture`, `meson setup build-validator-foreign . --prefix "$PWD/.tmp/validator-foreign-prefix"`, `meson compile -C build-validator-foreign`, and `tests/upstream/run-shell-suite.sh build-validator-foreign` all passed.
+- Package build verification: Debian package build ran the upstream Meson suite with 9 passed and 1 expected skip, then produced the four canonical override packages.
+- Command: `RECORD_CASTS=1 bash test.sh --config repositories.yml --tests-root tests --artifact-root artifacts/libvips-safe-foreign --mode port-04-test --library libvips --override-deb-root /home/yans/safelibs/pipeline/ports/port-libvips/validator-overrides --port-deb-lock /home/yans/safelibs/pipeline/ports/port-libvips/validator/artifacts/libvips-safe-port-lock.json --record-casts`
+- Artifact root: validator/artifacts/libvips-safe-foreign
+- Matrix exit status: 0
+- Result JSON records: 85 testcase records plus summary.json
+- Cast records: 85
+- Passed: 85
+- Failed: 0
+- Summary: validator/artifacts/libvips-safe-foreign/port-04-test/results/libvips/summary.json reports 5 source cases and 80 usage cases, all passed.
+
+## Foreign I/O Buffer Case Details
+| Surface | Rerun result | Root cause | Regression coverage | Production files changed |
+| --- | --- | --- | --- | --- |
+| JPEG buffer C API (`vips_jpegload_buffer`, `vips_jpegsave_buffer`) | Full phase 4 validator rerun passed: validator/artifacts/libvips-safe-foreign/port-04-test/results/libvips/summary.json | The generated varargs wrappers treated raw `(void *, size_t)` buffer parameters as operation required arguments, while the operation dispatch expects a `VipsBlob`; the generated `jpegsave_buffer` path also returned a boxed blob instead of GLib-freeable data plus length. PNG already had manual shims, so JPEG now mirrors that behavior. | safe/tests/runtime_io.rs: `public_foreign_buffer_apis_round_trip_png_and_jpeg` exercises `vips_image_new_from_buffer`, `vips_image_write_to_buffer`, `vips_source_new_from_memory`, `pngload_buffer`, `jpegload_buffer`, `pngsave_buffer`, and `jpegsave_buffer`, verifies dimensions/bands/format/interpretation/loader metadata, reloads returned buffers, and frees returned memory with `g_free`. | safe/build.rs, safe/build_support/api_shim.c, safe/tests/runtime_io.rs |
+| File/source/target PNG/JPEG APIs | Full phase 4 validator rerun passed: validator/artifacts/libvips-safe-foreign/port-04-test/results/libvips/summary.json | No remaining validator failure after source and operation phases, but phase 4 required direct public API coverage for file/source/target I/O ownership and metadata preservation. | safe/tests/runtime_io.rs: `public_foreign_file_source_and_target_apis_round_trip_png_and_jpeg` exercises `pngload`, `jpegload`, `pngsave`, `jpegsave`, `vips_source_new_from_file`, `vips_target_new_to_file`, and target writes, then reloads outputs and checks sample dimensions, bands, band format, interpretation, and `vips-loader` metadata. | safe/tests/runtime_io.rs |
+
 ## Remaining Open Failures
-- None. The phase 3 operation-owned usage failure is closed. The earlier sample JPEG crop row remains documented as fixed by source JPEG materialization rather than as an operation failure.
+- None. The phase 4 foreign I/O and buffer rerun passed all 85 validator cases, including the previously foreign-owned sample JPEG crop testcase.
 
 ## Skipped Validator Checks
 - None
 
-## Next Implementation Phase
-- `impl_04_foreign_io_buffer_failures`
+## Next Workflow Phases
+- `check_04_foreign_io_buffer_software_tester`
+- `check_04_foreign_io_buffer_senior_tester`
+- Next implement phase after checks: `impl_05_packaging_container_and_remaining_failures`
