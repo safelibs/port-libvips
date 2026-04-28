@@ -60,12 +60,53 @@ fn temp_path_with_suffix(suffix: &str) -> PathBuf {
 
 unsafe extern "C" {
     fn vips_image_new_from_file(name: *const c_char, ...) -> *mut VipsImage;
+    fn vips_image_new_from_buffer(
+        buf: *const c_void,
+        len: usize,
+        option_string: *const c_char,
+        ...
+    ) -> *mut VipsImage;
     fn vips_image_write_to_file(image: *mut VipsImage, name: *const c_char, ...) -> libc::c_int;
+    fn vips_image_write_to_buffer(
+        image: *mut VipsImage,
+        suffix: *const c_char,
+        buf: *mut *mut c_void,
+        len: *mut usize,
+        ...
+    ) -> libc::c_int;
     fn vips_image_get_history(image: *mut VipsImage) -> *const c_char;
     fn vips_thumbnail(
         filename: *const c_char,
         out: *mut *mut VipsImage,
         width: libc::c_int,
+        ...
+    ) -> libc::c_int;
+    fn vips_pngload(filename: *const c_char, out: *mut *mut VipsImage, ...) -> libc::c_int;
+    fn vips_jpegload(filename: *const c_char, out: *mut *mut VipsImage, ...) -> libc::c_int;
+    fn vips_pngload_buffer(
+        buf: *mut c_void,
+        len: usize,
+        out: *mut *mut VipsImage,
+        ...
+    ) -> libc::c_int;
+    fn vips_jpegload_buffer(
+        buf: *mut c_void,
+        len: usize,
+        out: *mut *mut VipsImage,
+        ...
+    ) -> libc::c_int;
+    fn vips_pngsave(image: *mut VipsImage, filename: *const c_char, ...) -> libc::c_int;
+    fn vips_jpegsave(image: *mut VipsImage, filename: *const c_char, ...) -> libc::c_int;
+    fn vips_pngsave_buffer(
+        image: *mut VipsImage,
+        buf: *mut *mut c_void,
+        len: *mut usize,
+        ...
+    ) -> libc::c_int;
+    fn vips_jpegsave_buffer(
+        image: *mut VipsImage,
+        buf: *mut *mut c_void,
+        len: *mut usize,
         ...
     ) -> libc::c_int;
     fn vips_image_get_as_string(
@@ -168,6 +209,65 @@ fn image_summary(image: *mut VipsImage) -> String {
         .into_owned();
     vips_buf_destroy(&mut buf);
     value
+}
+
+fn assert_sample_image(image: *mut VipsImage, loader: &CStr) {
+    assert!(!image.is_null());
+    assert_eq!(unsafe { (*image).Xsize }, 290);
+    assert_eq!(unsafe { (*image).Ysize }, 442);
+    assert_eq!(unsafe { (*image).Bands }, 3);
+    let (expected_format, expected_interpretation) = if loader.to_bytes() == b"pngload" {
+        (VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_RGB16)
+    } else {
+        (VIPS_FORMAT_UCHAR, VIPS_INTERPRETATION_sRGB)
+    };
+    assert_eq!(unsafe { (*image).BandFmt }, expected_format);
+    assert_eq!(unsafe { (*image).Type }, expected_interpretation);
+    assert_eq!(
+        copy_string(image, c"vips-loader").as_deref(),
+        loader.to_str().ok()
+    );
+}
+
+fn assert_reloaded_buffer(bytes: &[u8], expected_loader: &CStr) {
+    let image = unsafe {
+        vips_image_new_from_buffer(
+            bytes.as_ptr().cast::<c_void>(),
+            bytes.len(),
+            c"".as_ptr(),
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_sample_image(image, expected_loader);
+    unsafe {
+        gobject_sys::g_object_unref(image.cast());
+    }
+}
+
+fn assert_png_bytes(bytes: &[u8]) {
+    assert!(
+        bytes.starts_with(b"\x89PNG\r\n\x1a\n"),
+        "unexpected png prefix: {:?}",
+        &bytes[..bytes.len().min(8)]
+    );
+}
+
+fn assert_jpeg_bytes(bytes: &[u8]) {
+    assert!(
+        bytes.starts_with(&[0xff, 0xd8, 0xff]),
+        "unexpected jpeg prefix: {:?}",
+        &bytes[..bytes.len().min(8)]
+    );
+}
+
+fn take_glib_buffer(ptr: *mut c_void, len: usize) -> Vec<u8> {
+    assert!(!ptr.is_null());
+    assert!(len > 0);
+    let bytes = unsafe { slice::from_raw_parts(ptr.cast::<u8>(), len) }.to_vec();
+    unsafe {
+        glib_sys::g_free(ptr);
+    }
+    bytes
 }
 
 fn save_sample_jpg_as_vips_file() -> (PathBuf, Vec<u8>) {
@@ -471,6 +571,229 @@ fn jpeg_file_thumbnail_materializes_without_external_convert() {
     assert!(unsafe { (*thumbnail).Ysize } > 0);
     unsafe {
         gobject_sys::g_object_unref(thumbnail.cast());
+    }
+}
+
+#[test]
+fn public_foreign_file_source_and_target_apis_round_trip_png_and_jpeg() {
+    let _guard = guard();
+    init_vips();
+
+    let png_input = CString::new(sample_png().to_string_lossy().into_owned()).expect("png path");
+    let jpg_input = CString::new(sample_jpg().to_string_lossy().into_owned()).expect("jpg path");
+
+    let mut png = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_pngload(png_input.as_ptr(), &mut png, ptr::null::<c_char>()) },
+        0
+    );
+    assert_sample_image(png, c"pngload");
+
+    let mut jpg = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_jpegload(jpg_input.as_ptr(), &mut jpg, ptr::null::<c_char>()) },
+        0
+    );
+    assert_sample_image(jpg, c"jpegload");
+
+    let png_output = temp_path_with_suffix(".png");
+    let jpg_output = temp_path_with_suffix(".jpg");
+    let target_output = temp_path_with_suffix(".target.png");
+    let _ = std::fs::remove_file(&png_output);
+    let _ = std::fs::remove_file(&jpg_output);
+    let _ = std::fs::remove_file(&target_output);
+    let png_output_c = CString::new(png_output.to_string_lossy().into_owned()).expect("png out");
+    let jpg_output_c = CString::new(jpg_output.to_string_lossy().into_owned()).expect("jpg out");
+    let target_output_c =
+        CString::new(target_output.to_string_lossy().into_owned()).expect("target out");
+
+    assert_eq!(
+        unsafe { vips_pngsave(png, png_output_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    let reopened_png =
+        unsafe { vips_image_new_from_file(png_output_c.as_ptr(), ptr::null::<c_char>()) };
+    assert_sample_image(reopened_png, c"pngload");
+
+    assert_eq!(
+        unsafe { vips_jpegsave(jpg, jpg_output_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    let reopened_jpg =
+        unsafe { vips_image_new_from_file(jpg_output_c.as_ptr(), ptr::null::<c_char>()) };
+    assert_sample_image(reopened_jpg, c"jpegload");
+
+    let source = vips_source_new_from_file(jpg_input.as_ptr());
+    assert!(!source.is_null());
+    let source_image =
+        safe_vips_image_new_from_source_internal(source, c"".as_ptr(), VIPS_ACCESS_RANDOM);
+    assert_sample_image(source_image, c"jpegload");
+
+    let target = vips_target_new_to_file(target_output_c.as_ptr());
+    assert!(!target.is_null());
+    assert_eq!(
+        safe_vips_image_write_to_target_internal(png, c".png".as_ptr(), target),
+        0
+    );
+    unsafe {
+        gobject_sys::g_object_unref(target.cast());
+    }
+    let target_reopened =
+        unsafe { vips_image_new_from_file(target_output_c.as_ptr(), ptr::null::<c_char>()) };
+    assert_sample_image(target_reopened, c"pngload");
+
+    unsafe {
+        gobject_sys::g_object_unref(target_reopened.cast());
+        gobject_sys::g_object_unref(source_image.cast());
+        gobject_sys::g_object_unref(source.cast());
+        gobject_sys::g_object_unref(reopened_jpg.cast());
+        gobject_sys::g_object_unref(reopened_png.cast());
+        gobject_sys::g_object_unref(jpg.cast());
+        gobject_sys::g_object_unref(png.cast());
+    }
+    std::fs::remove_file(&png_output).expect("remove png output");
+    std::fs::remove_file(&jpg_output).expect("remove jpg output");
+    std::fs::remove_file(&target_output).expect("remove target output");
+}
+
+#[test]
+fn public_foreign_buffer_apis_round_trip_png_and_jpeg() {
+    let _guard = guard();
+    init_vips();
+
+    let png_bytes = std::fs::read(sample_png()).expect("sample png");
+    let jpg_bytes = std::fs::read(sample_jpg()).expect("sample jpg");
+    assert_png_bytes(&png_bytes);
+    assert_jpeg_bytes(&jpg_bytes);
+
+    let png_from_buffer = unsafe {
+        vips_image_new_from_buffer(
+            png_bytes.as_ptr().cast::<c_void>(),
+            png_bytes.len(),
+            c"".as_ptr(),
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_sample_image(png_from_buffer, c"pngload");
+
+    let jpg_from_buffer = unsafe {
+        vips_image_new_from_buffer(
+            jpg_bytes.as_ptr().cast::<c_void>(),
+            jpg_bytes.len(),
+            c"".as_ptr(),
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_sample_image(jpg_from_buffer, c"jpegload");
+
+    let mut png_direct = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_pngload_buffer(
+                png_bytes.as_ptr().cast::<c_void>() as *mut c_void,
+                png_bytes.len(),
+                &mut png_direct,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_sample_image(png_direct, c"pngload");
+
+    let mut jpg_direct = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_jpegload_buffer(
+                jpg_bytes.as_ptr().cast::<c_void>() as *mut c_void,
+                jpg_bytes.len(),
+                &mut jpg_direct,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_sample_image(jpg_direct, c"jpegload");
+
+    let source = vips_source_new_from_memory(jpg_bytes.as_ptr().cast::<c_void>(), jpg_bytes.len());
+    assert!(!source.is_null());
+    let source_image =
+        safe_vips_image_new_from_source_internal(source, c"".as_ptr(), VIPS_ACCESS_RANDOM);
+    assert_sample_image(source_image, c"jpegload");
+
+    let mut image_png_ptr = ptr::null_mut();
+    let mut image_png_len = 0usize;
+    assert_eq!(
+        unsafe {
+            vips_image_write_to_buffer(
+                png_from_buffer,
+                c".png".as_ptr(),
+                &mut image_png_ptr,
+                &mut image_png_len,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    let image_png_bytes = take_glib_buffer(image_png_ptr, image_png_len);
+    assert_reloaded_buffer(&image_png_bytes, c"pngload");
+
+    let mut image_jpg_ptr = ptr::null_mut();
+    let mut image_jpg_len = 0usize;
+    assert_eq!(
+        unsafe {
+            vips_image_write_to_buffer(
+                jpg_from_buffer,
+                c".jpg".as_ptr(),
+                &mut image_jpg_ptr,
+                &mut image_jpg_len,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    let image_jpg_bytes = take_glib_buffer(image_jpg_ptr, image_jpg_len);
+    assert_reloaded_buffer(&image_jpg_bytes, c"jpegload");
+
+    let mut png_save_ptr = ptr::null_mut();
+    let mut png_save_len = 0usize;
+    assert_eq!(
+        unsafe {
+            vips_pngsave_buffer(
+                png_direct,
+                &mut png_save_ptr,
+                &mut png_save_len,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    let png_save_bytes = take_glib_buffer(png_save_ptr, png_save_len);
+    assert_png_bytes(&png_save_bytes);
+    assert_reloaded_buffer(&png_save_bytes, c"pngload");
+
+    let mut jpg_save_ptr = ptr::null_mut();
+    let mut jpg_save_len = 0usize;
+    assert_eq!(
+        unsafe {
+            vips_jpegsave_buffer(
+                jpg_direct,
+                &mut jpg_save_ptr,
+                &mut jpg_save_len,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    let jpg_save_bytes = take_glib_buffer(jpg_save_ptr, jpg_save_len);
+    assert_reloaded_buffer(&jpg_save_bytes, c"jpegload");
+
+    unsafe {
+        gobject_sys::g_object_unref(source_image.cast());
+        gobject_sys::g_object_unref(source.cast());
+        gobject_sys::g_object_unref(jpg_direct.cast());
+        gobject_sys::g_object_unref(png_direct.cast());
+        gobject_sys::g_object_unref(jpg_from_buffer.cast());
+        gobject_sys::g_object_unref(png_from_buffer.cast());
     }
 }
 

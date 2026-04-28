@@ -1391,6 +1391,24 @@ vips_pngload_buffer(void *buf, size_t len, VipsImage **out, ...)
 }
 
 VIPS_PUBLIC int
+vips_jpegload_buffer(void *buf, size_t len, VipsImage **out, ...)
+{
+    va_list ap;
+    VipsBlob *blob;
+    int result;
+
+    blob = vips_blob_new(NULL, buf, len);
+
+    va_start(ap, out);
+    result = vips_call_split("jpegload_buffer", ap, blob, out);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(blob));
+
+    return result;
+}
+
+VIPS_PUBLIC int
 vips_pngsave_buffer(VipsImage *in, void **buf, size_t *len, ...)
 {
     va_list ap;
@@ -1401,6 +1419,34 @@ vips_pngsave_buffer(VipsImage *in, void **buf, size_t *len, ...)
 
     va_start(ap, len);
     result = vips_call_split("pngsave_buffer", ap, in, &area);
+    va_end(ap);
+
+    if (!result &&
+        area) {
+        if (buf) {
+            *buf = area->data;
+            area->free_fn = NULL;
+        }
+        if (len)
+            *len = area->length;
+
+        vips_area_unref(area);
+    }
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_jpegsave_buffer(VipsImage *in, void **buf, size_t *len, ...)
+{
+    va_list ap;
+    VipsArea *area;
+    int result;
+
+    area = NULL;
+
+    va_start(ap, len);
+    result = vips_call_split("jpegsave_buffer", ap, in, &area);
     va_end(ap);
 
     if (!result &&
