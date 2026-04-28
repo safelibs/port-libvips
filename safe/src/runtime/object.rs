@@ -13,7 +13,7 @@ use crate::abi::connection::{
     VipsSourceCustom, VipsSourceCustomClass, VipsTarget, VipsTargetClass, VipsTargetCustom,
     VipsTargetCustomClass,
 };
-use crate::abi::image::{VipsImage, VipsImageClass};
+use crate::abi::image::{VipsBandFormat, VipsImage, VipsImageClass, VipsInterpretation};
 use crate::abi::object::{
     VipsArgument, VipsArgumentClass, VipsArgumentClassMapFn, VipsArgumentFlags,
     VipsArgumentInstance, VipsArgumentMapFn, VipsArgumentTable, VipsClassMapFn, VipsObject,
@@ -1117,6 +1117,93 @@ unsafe extern "C" fn vips_object_real_summary(object: *mut VipsObject, buf: *mut
     unsafe { append_text(buf, text) };
 }
 
+fn band_format_name(format: VipsBandFormat) -> &'static str {
+    match format {
+        crate::abi::image::VIPS_FORMAT_UCHAR => "uchar",
+        crate::abi::image::VIPS_FORMAT_CHAR => "char",
+        crate::abi::image::VIPS_FORMAT_USHORT => "ushort",
+        crate::abi::image::VIPS_FORMAT_SHORT => "short",
+        crate::abi::image::VIPS_FORMAT_UINT => "uint",
+        crate::abi::image::VIPS_FORMAT_INT => "int",
+        crate::abi::image::VIPS_FORMAT_FLOAT => "float",
+        crate::abi::image::VIPS_FORMAT_COMPLEX => "complex",
+        crate::abi::image::VIPS_FORMAT_DOUBLE => "double",
+        crate::abi::image::VIPS_FORMAT_DPCOMPLEX => "dpcomplex",
+        _ => "notset",
+    }
+}
+
+fn interpretation_name(interpretation: VipsInterpretation) -> &'static str {
+    match interpretation {
+        crate::abi::image::VIPS_INTERPRETATION_B_W => "b-w",
+        crate::abi::image::VIPS_INTERPRETATION_HISTOGRAM => "histogram",
+        crate::abi::image::VIPS_INTERPRETATION_XYZ => "xyz",
+        crate::abi::image::VIPS_INTERPRETATION_LAB => "lab",
+        crate::abi::image::VIPS_INTERPRETATION_CMYK => "cmyk",
+        crate::abi::image::VIPS_INTERPRETATION_LABQ => "labq",
+        crate::abi::image::VIPS_INTERPRETATION_RGB => "rgb",
+        crate::abi::image::VIPS_INTERPRETATION_CMC => "cmc",
+        crate::abi::image::VIPS_INTERPRETATION_LCH => "lch",
+        crate::abi::image::VIPS_INTERPRETATION_LABS => "labs",
+        crate::abi::image::VIPS_INTERPRETATION_sRGB => "srgb",
+        crate::abi::image::VIPS_INTERPRETATION_YXY => "yxy",
+        crate::abi::image::VIPS_INTERPRETATION_FOURIER => "fourier",
+        crate::abi::image::VIPS_INTERPRETATION_RGB16 => "rgb16",
+        crate::abi::image::VIPS_INTERPRETATION_GREY16 => "grey16",
+        crate::abi::image::VIPS_INTERPRETATION_MATRIX => "matrix",
+        crate::abi::image::VIPS_INTERPRETATION_scRGB => "scrgb",
+        crate::abi::image::VIPS_INTERPRETATION_HSV => "hsv",
+        _ => "multiband",
+    }
+}
+
+fn image_loader_name(image: *mut VipsImage) -> Option<String> {
+    let mut loader: *const c_char = ptr::null();
+    if crate::runtime::header::vips_image_get_string(image, c"vips-loader".as_ptr(), &mut loader)
+        != 0
+        || loader.is_null()
+    {
+        return None;
+    }
+    let value = unsafe { CStr::from_ptr(loader) }
+        .to_string_lossy()
+        .into_owned();
+    unsafe {
+        glib_sys::g_free(loader.cast_mut().cast::<c_void>());
+    }
+    Some(value)
+}
+
+unsafe extern "C" fn vips_image_summary(object: *mut VipsObject, buf: *mut VipsBuf) {
+    if object.is_null() || buf.is_null() {
+        return;
+    }
+    let image = object.cast::<VipsImage>();
+    let Some(image_ref) = (unsafe { image.as_ref() }) else {
+        return;
+    };
+    let bands = if image_ref.Bands == 1 {
+        "1 band".to_owned()
+    } else {
+        format!("{} bands", image_ref.Bands)
+    };
+    let mut summary = format!(
+        "{}x{} {}, {}, {}",
+        image_ref.Xsize,
+        image_ref.Ysize,
+        band_format_name(image_ref.BandFmt),
+        bands,
+        interpretation_name(image_ref.Type)
+    );
+    if let Some(loader) = image_loader_name(image) {
+        summary.push_str(", ");
+        summary.push_str(&loader);
+    }
+    unsafe {
+        append_text(buf, summary);
+    }
+}
+
 unsafe extern "C" fn vips_object_real_dump(object: *mut VipsObject, buf: *mut VipsBuf) {
     if object.is_null() || buf.is_null() {
         return;
@@ -1256,6 +1343,7 @@ unsafe extern "C" fn vips_image_class_init(
     let type_ = unsafe { (*(klass.cast::<gobject_sys::GTypeClass>())).g_type };
     unsafe {
         init_subclass_class(class);
+        (*class).summary = Some(vips_image_summary);
         (*gobject_class).set_property = Some(vips_object_set_property);
         (*gobject_class).get_property = Some(vips_object_get_property);
     }

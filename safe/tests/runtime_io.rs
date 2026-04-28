@@ -152,6 +152,24 @@ fn read_extension_block_bytes(image: *mut VipsImage) -> Vec<u8> {
     bytes
 }
 
+fn image_summary(image: *mut VipsImage) -> String {
+    let mut buf = VipsBuf {
+        base: ptr::null_mut(),
+        mx: 0,
+        i: 0,
+        full: glib_sys::GFALSE,
+        lasti: 0,
+        dynamic: glib_sys::GFALSE,
+    };
+    vips_buf_init_dynamic(&mut buf, 256);
+    vips_object_summary(image.cast::<VipsObject>(), &mut buf);
+    let value = unsafe { CStr::from_ptr(vips_buf_all(&mut buf)) }
+        .to_string_lossy()
+        .into_owned();
+    vips_buf_destroy(&mut buf);
+    value
+}
+
 fn save_sample_jpg_as_vips_file() -> (PathBuf, Vec<u8>) {
     let input_path = sample_jpg();
     let output_path = temp_vips_path();
@@ -426,6 +444,8 @@ fn jpeg_file_copy_to_png_materializes_without_external_convert() {
     assert!(!reopened.is_null());
     assert_eq!(unsafe { (*reopened).Xsize }, input_width);
     assert_eq!(unsafe { (*reopened).Ysize }, input_height);
+    let summary = image_summary(reopened);
+    assert!(summary.contains(&format!("{input_width}x{input_height}")));
     unsafe {
         gobject_sys::g_object_unref(reopened.cast());
     }
