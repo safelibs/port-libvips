@@ -127,13 +127,104 @@
 - Failed: 0
 - Summary: validator/artifacts/libvips-safe-remaining/port-04-test/results/libvips/summary.json reports 5 source cases and 80 usage cases, all passed.
 
+## Final Clean Run
+- Implement phase: `impl_06_final_report_and_clean_run`
+- Validator repository: https://github.com/safelibs/validator
+- Validator commit: 1319bb0374ef66428a42dd71e49553c6d057feaf
+- Safe source commit before first final run: 5688a1ddbe9289dea4ed85ebe6f913c542538e48
+- Final safe source commit used for package lock and final validator evidence: 5688a1ddbe9289dea4ed85ebe6f913c542538e48
+- Final phase production changes: None.
+- Approved validator-bug skips: None.
+- Validator hygiene: `git -C validator diff -- README.md repositories.yml tests/libvips/testcases.yml tests/libvips/Dockerfile tests/libvips/host-run.sh tests/libvips/docker-entrypoint.sh` produced no diff. Validator status only contains untracked local venv/artifact roots.
+- Top-level preexisting unrelated work preserved: deleted `.plan/phases/*`, modified `.plan/workflow-structure.yaml`, and untracked `safe/.tmp/` were not touched or committed by this phase.
+
+## Final Package Overrides
+| Package | Override path | Architecture | Size | SHA-256 |
+| --- | --- | --- | --- | --- |
+| libvips42t64 | validator-overrides/libvips/libvips42t64_8.15.1-1.1build4_amd64.deb | amd64 | 1386062 | 87784773f188643e092d28e4dc4a548c23abb99d909626e24a2cf1eb6cd118b0 |
+| libvips-dev | validator-overrides/libvips/libvips-dev_8.15.1-1.1build4_amd64.deb | amd64 | 83304 | baa99134376d9bd7f0ebe33ab98a879a3c5555d6a57304c223871ec388e6ef98 |
+| libvips-tools | validator-overrides/libvips/libvips-tools_8.15.1-1.1build4_amd64.deb | amd64 | 27852 | c6d324c9d891bacd7b096d51052dcb88f467eb0f71ccac01e783fb43337a48be |
+| gir1.2-vips-8.0 | validator-overrides/libvips/gir1.2-vips-8.0_8.15.1-1.1build4_amd64.deb | amd64 | 5104 | 362d0824adb9f58e64c4d0932175ac976330db5fb0f74ddbf96a1020ac790c82 |
+
+## Final Commands Executed
+Package rebuild:
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips/safe
+dpkg-buildpackage -b -uc -us
+```
+
+Package staging:
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips
+version=$(dpkg-parsechangelog -l safe/debian/changelog -SVersion)
+arch=$(dpkg-architecture -qDEB_HOST_ARCH)
+install -m 0644 "libvips42t64_${version}_${arch}.deb" validator-overrides/libvips/
+install -m 0644 "libvips-dev_${version}_${arch}.deb" validator-overrides/libvips/
+install -m 0644 "libvips-tools_${version}_${arch}.deb" validator-overrides/libvips/
+install -m 0644 "gir1.2-vips-8.0_${version}_${arch}.deb" validator-overrides/libvips/
+```
+
+Local lock regeneration:
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips
+root=$(pwd)
+override_dir="$root/validator-overrides/libvips"
+lock_path="$root/validator/artifacts/libvips-safe-port-lock.json"
+commit=$(git rev-parse HEAD)
+release_tag="build-${commit:0:12}"
+debs='[]'
+for package in libvips42t64 libvips-dev libvips-tools gir1.2-vips-8.0; do
+  deb_path=$(find "$override_dir" -maxdepth 1 -type f -name "${package}_*.deb" | sort | tail -n 1)
+  filename=$(basename "$deb_path")
+  architecture=$(dpkg-deb --field "$deb_path" Architecture)
+  sha256=$(sha256sum "$deb_path" | awk '{print $1}')
+  size=$(stat -c '%s' "$deb_path")
+  debs=$(jq --arg package "$package" --arg filename "$filename" --arg architecture "$architecture" --arg sha256 "$sha256" --argjson size "$size" --arg url "file://$deb_path" '. + [{package:$package, filename:$filename, architecture:$architecture, sha256:$sha256, size:$size, browser_download_url:$url}]' <<<"$debs")
+done
+jq -n --arg commit "$commit" --arg release_tag "$release_tag" --argjson debs "$debs" '{schema_version:1, mode:"port-04-test", generated_at:"1970-01-01T00:00:00Z", source_config:"repositories.yml", source_inventory:"local-validator-overrides", libraries:[{library:"libvips", repository:"safelibs/port-libvips-local", tag_ref:"refs/tags/libvips/local-validator", commit:$commit, release_tag:$release_tag, debs:$debs, unported_original_packages:[]}]}' > "$lock_path"
+```
+
+Final validator matrix:
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips/validator
+PYTHON="/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/python" RECORD_CASTS=1 bash test.sh --config repositories.yml --tests-root tests --artifact-root artifacts/libvips-safe-final --mode port-04-test --library libvips --override-deb-root /home/yans/safelibs/pipeline/ports/port-libvips/validator-overrides --port-deb-lock /home/yans/safelibs/pipeline/ports/port-libvips/validator/artifacts/libvips-safe-port-lock.json --record-casts
+```
+
+Proof, site render, and site verification:
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips/validator
+/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/python tools/verify_proof_artifacts.py --config repositories.yml --tests-root tests --artifact-root artifacts/libvips-safe-final --proof-output proof/libvips-safe-validation-proof.json --mode port-04-test --library libvips --require-casts --min-source-cases 5 --min-usage-cases 80 --min-cases 85
+/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/python tools/render_site.py --config repositories.yml --tests-root tests --artifact-root artifacts/libvips-safe-final --proof-path artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json --output-root site/libvips-safe-final
+bash scripts/verify-site.sh --config repositories.yml --tests-root tests --artifacts-root artifacts/libvips-safe-final --proof-path artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json --site-root site/libvips-safe-final --library libvips
+```
+
+Local safe verification:
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips/safe
+cargo test --all-features -- --nocapture
+scripts/run_release_gate.sh
+```
+
+## Final Evidence
+- Port deb lock: validator/artifacts/libvips-safe-port-lock.json
+- Final artifact root: validator/artifacts/libvips-safe-final
+- Final summary: validator/artifacts/libvips-safe-final/port-04-test/results/libvips/summary.json
+- Final proof: validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json
+- Final rendered site: validator/site/libvips-safe-final
+- Final summary totals: 85 cases, 5 source cases, 80 usage cases, 85 casts, 85 passed, 0 failed.
+- Proof totals: 85 cases, 5 source cases, 80 usage cases, 85 casts, 85 passed, 0 failed.
+- Result JSON records: 85 testcase records plus summary.json.
+- Cast records: 85.
+- Local safe verification: `cargo test --all-features -- --nocapture` passed; `safe/scripts/run_release_gate.sh` passed, including Rust tests, Meson install/surface checks, upstream Meson suite (`9 passed, 1 skipped`), upstream Python suite (`203 passed, 49 skipped`), Debian package checks, extracted-package checks, and dependent application smokes.
+- Package lock verification: staged package names, architectures, sizes, and SHA-256 values match validator/artifacts/libvips-safe-port-lock.json.
+
 ## Remaining Open Failures
-- None. The phase 5 unmodified validator run passed all 85 cases, and no approved validator-bug skip was used.
+- None. The final no-skip validator run passed all 85 cases, and no approved validator-bug skip was used.
 
 ## Skipped Validator Checks
 - None
 
 ## Next Workflow Phases
-- `check_05_packaging_container_software_tester`
-- `check_05_packaging_container_senior_tester`
-- Bounce target for both verifiers: `impl_05_packaging_container_and_remaining_failures`
+- `check_06_final_software_tester`
+- `check_06_final_senior_tester`
+- Bounce target for both verifiers: `impl_06_final_report_and_clean_run`
