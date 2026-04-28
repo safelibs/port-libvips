@@ -40,7 +40,7 @@
 | --- | --- | --- | --- | --- |
 | vips-cli-load-save | fixed | source surface | `impl_02_source_surface_failures` | Initial log validator/artifacts/libvips-safe/port-04-test/logs/libvips/vips-cli-load-save.log failed with `foreign: convert failed: No such file or directory`; rerun log validator/artifacts/libvips-safe-source/port-04-test/logs/libvips/vips-cli-load-save.log passes and reports `/tmp/validator-tmp/out.png: 290x442 uchar, 3 bands, srgb, pngload`. |
 | thumbnail-behavior | fixed | source surface | `impl_02_source_surface_failures` | Initial log validator/artifacts/libvips-safe/port-04-test/logs/libvips/thumbnail-behavior.log failed with `foreign: convert failed: No such file or directory`; rerun log validator/artifacts/libvips-safe-source/port-04-test/logs/libvips/thumbnail-behavior.log passes and reports `/tmp/validator-tmp/thumb.jpg: 21x32 uchar, 3 bands, srgb, jpegload`. |
-| usage-ruby-vips-gravity-generated | open | ruby usage operation | `impl_03_ruby_usage_operation_failures` | validator/artifacts/libvips-safe/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json and validator/artifacts/libvips-safe/port-04-test/logs/libvips/usage-ruby-vips-gravity-generated.log: `gravity: operation not implemented` |
+| usage-ruby-vips-gravity-generated | fixed | ruby usage operation | `impl_03_ruby_usage_operation_failures` | Initial result validator/artifacts/libvips-safe/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json and log validator/artifacts/libvips-safe/port-04-test/logs/libvips/usage-ruby-vips-gravity-generated.log failed with `gravity: operation not implemented`; phase 3 rerun result validator/artifacts/libvips-safe-ops/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json passed. |
 | usage-ruby-vips-crop-sample-jpeg | fixed by source JPEG materialization | foreign I/O and buffer | `impl_04_foreign_io_buffer_failures` | Initial log validator/artifacts/libvips-safe/port-04-test/logs/libvips/usage-ruby-vips-crop-sample-jpeg.log failed through the same missing external `convert` JPEG decode path; rerun result validator/artifacts/libvips-safe-source/port-04-test/results/libvips/usage-ruby-vips-crop-sample-jpeg.json passed. |
 
 ## Source Surface Phase Rerun
@@ -66,13 +66,30 @@
 | gir-introspection-smoke | passed: validator/artifacts/libvips-safe-source/port-04-test/results/libvips/gir-introspection-smoke.json | No source-surface failure in this phase rerun. | Existing introspection smoke coverage remained sufficient. | None |
 | metadata-header-checks | passed: validator/artifacts/libvips-safe-source/port-04-test/results/libvips/metadata-header-checks.json | No source-surface failure in this phase rerun. | Existing metadata/header coverage remained sufficient. | None |
 
+## Ruby Usage Operation Phase Rerun
+- Implement phase: `impl_03_ruby_usage_operation_failures`
+- Safe commit after operation fixes: 9890f1a510031d1443e16d05a6228a31cc9e8590
+- Packages rebuilt with `dpkg-buildpackage -us -uc -b` and staged under validator-overrides/libvips: libvips42t64, libvips-dev, libvips-tools, and gir1.2-vips-8.0.
+- Port deb lock refreshed in place at validator/artifacts/libvips-safe-port-lock.json with mode `port-04-test`, commit 9890f1a510031d1443e16d05a6228a31cc9e8590, release tag `build-9890f1a51003`, the four canonical packages, and `unported_original_packages: []`.
+- Command: `RECORD_CASTS=1 bash test.sh --config repositories.yml --tests-root tests --artifact-root artifacts/libvips-safe-ops --mode port-04-test --library libvips --override-deb-root /home/yans/safelibs/pipeline/ports/port-libvips/validator-overrides --port-deb-lock /home/yans/safelibs/pipeline/ports/port-libvips/validator/artifacts/libvips-safe-port-lock.json --record-casts`
+- Artifact root: validator/artifacts/libvips-safe-ops
+- Matrix exit status: 0
+- Result JSON records: 85 testcase records plus summary.json
+- Cast records: 85
+- Passed: 85
+- Failed: 0
+- Summary: validator/artifacts/libvips-safe-ops/port-04-test/results/libvips/summary.json reports 5 source cases and 80 usage cases, all passed.
+
+## Ruby Usage Operation Case Details
+| Testcase ID | Rerun result | Root cause | Regression coverage | Production files changed |
+| --- | --- | --- | --- | --- |
+| usage-ruby-vips-gravity-generated | passed: validator/artifacts/libvips-safe-ops/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json | The generated wrapper and operation type exposed `vips_gravity`, but the conversion dispatch table did not handle the `gravity` nickname, so Ruby reached `generated_operation_build` and received `gravity: operation not implemented`. | safe/tests/ops_core.rs: `gravity_centre_crop_matches_ruby_usage_case` calls the exported `vips_gravity` symbol on a 3x3 generated grayscale image, asserts a 2x2 uchar single-band output, and verifies the centered crop payload `[1, 2, 4, 5]`. | safe/src/ops/conversion.rs, safe/src/ops/mod.rs |
+
 ## Remaining Open Failures
-| Testcase ID | Status | Owner phase | Evidence |
-| --- | --- | --- | --- |
-| usage-ruby-vips-gravity-generated | open | `impl_03_ruby_usage_operation_failures` | Rerun result validator/artifacts/libvips-safe-source/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json and log validator/artifacts/libvips-safe-source/port-04-test/logs/libvips/usage-ruby-vips-gravity-generated.log still fail with `gravity: operation not implemented`. |
+- None. The phase 3 operation-owned usage failure is closed. The earlier sample JPEG crop row remains documented as fixed by source JPEG materialization rather than as an operation failure.
 
 ## Skipped Validator Checks
 - None
 
 ## Next Implementation Phase
-- `impl_03_ruby_usage_operation_failures`
+- `impl_04_foreign_io_buffer_failures`
