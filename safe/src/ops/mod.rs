@@ -90,6 +90,7 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "gaussmat",
     "gaussnoise",
     "globalbalance",
+    "gravity",
     "grey",
     "grid",
     "hough_circle",

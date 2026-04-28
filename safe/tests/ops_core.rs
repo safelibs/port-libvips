@@ -24,6 +24,14 @@ unsafe extern "C" {
         height: i32,
         ...
     ) -> i32;
+    fn vips_gravity(
+        input: *mut VipsImage,
+        out: *mut *mut VipsImage,
+        direction: VipsCompassDirection,
+        width: i32,
+        height: i32,
+        ...
+    ) -> i32;
     fn vips_grey(out: *mut *mut VipsImage, width: i32, height: i32, ...) -> i32;
     fn vips_gaussmat(out: *mut *mut VipsImage, sigma: f64, min_ampl: f64, ...) -> i32;
     fn vips_conv(input: *mut VipsImage, out: *mut *mut VipsImage, mask: *mut VipsImage, ...)
@@ -168,6 +176,36 @@ fn arithmetic_and_extract_area_flow() {
     unref_image(added);
     unref_image(right);
     unref_image(left);
+}
+
+#[test]
+fn gravity_centre_crop_matches_ruby_usage_case() {
+    let _guard = guard();
+    init_vips();
+
+    let input = image_from_uchar(3, 3, 1, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let mut output = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_gravity(
+                input,
+                &mut output,
+                VIPS_COMPASS_DIRECTION_CENTRE,
+                2,
+                2,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(vips_image_get_width(output), 2);
+    assert_eq!(vips_image_get_height(output), 2);
+    assert_eq!(vips_image_get_bands(output), 1);
+    assert_eq!(vips_image_get_format(output), VIPS_FORMAT_UCHAR);
+    assert_eq!(read_samples(output), vec![1.0, 2.0, 4.0, 5.0]);
+
+    unref_image(output);
+    unref_image(input);
 }
 
 #[test]

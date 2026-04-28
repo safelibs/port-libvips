@@ -1,13 +1,17 @@
 use crate::abi::basic::{
-    VipsAlign, VipsAngle, VipsAngle45, VipsDirection, VipsExtend, VipsInteresting,
-    VipsOperationBoolean, VIPS_ALIGN_CENTRE, VIPS_ALIGN_HIGH, VIPS_ALIGN_LOW, VIPS_ANGLE45_D0,
-    VIPS_ANGLE45_D135, VIPS_ANGLE45_D180, VIPS_ANGLE45_D225, VIPS_ANGLE45_D270, VIPS_ANGLE45_D315,
-    VIPS_ANGLE45_D45, VIPS_ANGLE45_D90, VIPS_ANGLE_D0, VIPS_ANGLE_D180, VIPS_ANGLE_D270,
-    VIPS_ANGLE_D90, VIPS_DIRECTION_HORIZONTAL, VIPS_DIRECTION_VERTICAL, VIPS_EXTEND_BACKGROUND,
-    VIPS_EXTEND_BLACK, VIPS_EXTEND_COPY, VIPS_EXTEND_MIRROR, VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE,
-    VIPS_INTERESTING_ALL, VIPS_INTERESTING_ATTENTION, VIPS_INTERESTING_CENTRE,
-    VIPS_INTERESTING_HIGH, VIPS_INTERESTING_LOW, VIPS_INTERESTING_NONE, VIPS_KERNEL_LANCZOS3,
-    VIPS_PRECISION_INTEGER,
+    VipsAlign, VipsAngle, VipsAngle45, VipsCompassDirection, VipsDirection, VipsExtend,
+    VipsInteresting, VipsOperationBoolean, VIPS_ALIGN_CENTRE, VIPS_ALIGN_HIGH, VIPS_ALIGN_LOW,
+    VIPS_ANGLE45_D0, VIPS_ANGLE45_D135, VIPS_ANGLE45_D180, VIPS_ANGLE45_D225, VIPS_ANGLE45_D270,
+    VIPS_ANGLE45_D315, VIPS_ANGLE45_D45, VIPS_ANGLE45_D90, VIPS_ANGLE_D0, VIPS_ANGLE_D180,
+    VIPS_ANGLE_D270, VIPS_ANGLE_D90, VIPS_COMPASS_DIRECTION_CENTRE, VIPS_COMPASS_DIRECTION_EAST,
+    VIPS_COMPASS_DIRECTION_NORTH, VIPS_COMPASS_DIRECTION_NORTH_EAST,
+    VIPS_COMPASS_DIRECTION_NORTH_WEST, VIPS_COMPASS_DIRECTION_SOUTH,
+    VIPS_COMPASS_DIRECTION_SOUTH_EAST, VIPS_COMPASS_DIRECTION_SOUTH_WEST,
+    VIPS_COMPASS_DIRECTION_WEST, VIPS_DIRECTION_HORIZONTAL, VIPS_DIRECTION_VERTICAL,
+    VIPS_EXTEND_BACKGROUND, VIPS_EXTEND_BLACK, VIPS_EXTEND_COPY, VIPS_EXTEND_MIRROR,
+    VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE, VIPS_INTERESTING_ALL, VIPS_INTERESTING_ATTENTION,
+    VIPS_INTERESTING_CENTRE, VIPS_INTERESTING_HIGH, VIPS_INTERESTING_LOW, VIPS_INTERESTING_NONE,
+    VIPS_KERNEL_LANCZOS3, VIPS_PRECISION_INTEGER,
 };
 use crate::abi::image::{
     VipsBandFormat, VipsCoding, VipsInterpretation, VIPS_DEMAND_STYLE_THINSTRIP,
@@ -902,6 +906,63 @@ unsafe fn op_embed(object: *mut VipsObject) -> Result<(), ()> {
         Vec::new()
     };
     let out = apply_embed_background(&input, width, height, x, y, extend, &background);
+    let image = unsafe { get_image_ref(object, "in")? };
+    let result = unsafe { set_output_image_like(object, "out", out, image) };
+    unsafe {
+        crate::runtime::object::object_unref(image);
+    }
+    result
+}
+
+unsafe fn op_gravity(object: *mut VipsObject) -> Result<(), ()> {
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let direction = unsafe { get_enum(object, "direction")? } as VipsCompassDirection;
+    let width_i32 = unsafe { get_int(object, "width")? };
+    let height_i32 = unsafe { get_int(object, "height")? };
+    if width_i32 <= 0 || height_i32 <= 0 {
+        return Err(());
+    }
+
+    let width = usize::try_from(width_i32).map_err(|_| ())?;
+    let height = usize::try_from(height_i32).map_err(|_| ())?;
+    let in_width = i32::try_from(input.spec.width).map_err(|_| ())?;
+    let in_height = i32::try_from(input.spec.height).map_err(|_| ())?;
+    let x_mid = (width_i32 - in_width) / 2;
+    let y_mid = (height_i32 - in_height) / 2;
+    let x_high = width_i32 - in_width;
+    let y_high = height_i32 - in_height;
+    let (x, y) = match direction {
+        VIPS_COMPASS_DIRECTION_CENTRE => (x_mid, y_mid),
+        VIPS_COMPASS_DIRECTION_NORTH => (x_mid, 0),
+        VIPS_COMPASS_DIRECTION_EAST => (x_high, y_mid),
+        VIPS_COMPASS_DIRECTION_SOUTH => (x_mid, y_high),
+        VIPS_COMPASS_DIRECTION_WEST => (0, y_mid),
+        VIPS_COMPASS_DIRECTION_NORTH_EAST => (x_high, 0),
+        VIPS_COMPASS_DIRECTION_SOUTH_EAST => (x_high, y_high),
+        VIPS_COMPASS_DIRECTION_SOUTH_WEST => (0, y_high),
+        VIPS_COMPASS_DIRECTION_NORTH_WEST => (0, 0),
+        _ => return Err(()),
+    };
+    let extend = if unsafe { argument_assigned(object, "extend")? } {
+        unsafe { get_enum(object, "extend")? as VipsExtend }
+    } else {
+        VIPS_EXTEND_BLACK
+    };
+    let background = if unsafe { argument_assigned(object, "background")? } {
+        unsafe { get_array_double(object, "background")? }
+    } else {
+        Vec::new()
+    };
+
+    let out = apply_embed_background(
+        &input,
+        width,
+        height,
+        x as isize,
+        y as isize,
+        extend,
+        &background,
+    );
     let image = unsafe { get_image_ref(object, "in")? };
     let result = unsafe { set_output_image_like(object, "out", out, image) };
     unsafe {
@@ -2731,6 +2792,10 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
         }
         "embed" => {
             unsafe { op_embed(object)? };
+            Ok(true)
+        }
+        "gravity" => {
+            unsafe { op_gravity(object)? };
             Ok(true)
         }
         "replicate" => {
