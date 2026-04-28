@@ -132,8 +132,8 @@
 - Validator repository: https://github.com/safelibs/validator
 - Validator commit: 1319bb0374ef66428a42dd71e49553c6d057feaf
 - Safe source commit before first final run: 5688a1ddbe9289dea4ed85ebe6f913c542538e48
-- Final safe source commit used for package lock and final validator evidence: d7d8a2640416d3fb5e3acd23185ace2b8af038dd
-- Report correction note: this commit-only report fix is newer than the final evidence commit above; the generated package lock and proof artifacts were intentionally left unchanged because they already record `d7d8a2640416d3fb5e3acd23185ace2b8af038dd`.
+- Final safe source commit used for package lock and final validator evidence: 52585c0d2a81dbce43af4d659b35c9da034eb2eb
+- Evidence provenance: `validator/artifacts/libvips-safe-port-lock.json` and `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json` both record `52585c0d2a81dbce43af4d659b35c9da034eb2eb` with release tag `build-52585c0d2a81`; this report-only correction does not alter generated artifacts.
 - Final phase production changes: None.
 - Approved validator-bug skips: None.
 - Validator hygiene: `git -C validator diff -- README.md repositories.yml tests/libvips/testcases.yml tests/libvips/Dockerfile tests/libvips/host-run.sh tests/libvips/docker-entrypoint.sh` produced no diff. Validator status only contains untracked local venv/artifact roots.
