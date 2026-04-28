@@ -132,8 +132,8 @@
 - Validator repository: https://github.com/safelibs/validator
 - Validator commit: 1319bb0374ef66428a42dd71e49553c6d057feaf
 - Safe source commit before first final run: 5688a1ddbe9289dea4ed85ebe6f913c542538e48
-- Final safe source commit used for package lock and final validator evidence: 4900ca9d1c551dc1b74a53cb89ec60321e5e68ca
-- Evidence provenance: the required final clean-run block refreshed `validator/artifacts/libvips-safe-port-lock.json` and `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json`; both record `4900ca9d1c551dc1b74a53cb89ec60321e5e68ca` with release tag `build-4900ca9d1c55`.
+- Final safe source commit used for package lock and final validator evidence: 19af7bfbfa7fe7003d76c774a7d6175323e85204
+- Evidence provenance: the required final clean-run block refreshed `validator/artifacts/libvips-safe-port-lock.json` and `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json`; both record `19af7bfbfa7fe7003d76c774a7d6175323e85204` with release tag `build-19af7bfbfa7f`.
 - Final phase production changes: None.
 - Approved validator-bug skips: None.
 - Validator hygiene: `git -C validator diff -- README.md repositories.yml tests/libvips/testcases.yml tests/libvips/Dockerfile tests/libvips/host-run.sh tests/libvips/docker-entrypoint.sh` produced no diff. Validator status only contains untracked local venv/artifact roots.
@@ -218,7 +218,7 @@ scripts/run_release_gate.sh
 - Cast records: 85.
 - Local safe verification: `cargo test --all-features -- --nocapture` passed; `safe/scripts/run_release_gate.sh` passed, including Rust tests, Meson install/surface checks, upstream Meson suite (`9 passed, 1 skipped`), upstream Python suite (`203 passed, 49 skipped`), Debian package checks, extracted-package checks, and dependent application smokes.
 - Package lock verification: staged package names, architectures, sizes, and SHA-256 values match validator/artifacts/libvips-safe-port-lock.json.
-- Lock/proof provenance verification: after the final clean-run block, `validator/artifacts/libvips-safe-port-lock.json` `.libraries[0].commit` and `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json` `.libraries[0].port_commit` both match `4900ca9d1c551dc1b74a53cb89ec60321e5e68ca`.
+- Lock/proof provenance verification: after the final clean-run block, `validator/artifacts/libvips-safe-port-lock.json` `.libraries[0].commit` and `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json` `.libraries[0].port_commit` both match `19af7bfbfa7fe7003d76c774a7d6175323e85204`.
 
 ## Remaining Open Failures
 - None. The final no-skip validator run passed all 85 cases, and no approved validator-bug skip was used.
