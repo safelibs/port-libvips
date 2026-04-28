@@ -1604,11 +1604,16 @@ fn init_shutdown_cycles_reset_runtime_state() {
 
 #[test]
 fn operation_cache_build_and_drop_all_are_stateful() {
+    const DEFAULT_CACHE_MAX_FILES: i32 = 100;
+    const DEFAULT_CACHE_MAX_MEM: usize = 100 * 1024 * 1024;
+
     let _guard = guard();
     init_vips();
 
     vips_cache_drop_all();
     vips_cache_set_max(8);
+    vips_cache_set_max_files(DEFAULT_CACHE_MAX_FILES);
+    vips_cache_set_max_mem(DEFAULT_CACHE_MAX_MEM);
     assert_eq!(vips_cache_get_size(), 0);
 
     let first = new_cache_probe_operation();
