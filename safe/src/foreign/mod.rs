@@ -350,7 +350,7 @@ fn parse_ppm(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
     ))
 }
 
-fn fail_on_level(options: &LoadOptions) -> i32 {
+pub(crate) fn fail_on_level(options: &LoadOptions) -> i32 {
     options
         .fail_on
         .as_deref()
@@ -597,7 +597,21 @@ pub fn decode_pending(pending: &base::PendingDecode) -> Result<Vec<u8>, ()> {
         return loaders::container::extract_pixel_payload(&pending.bytes);
     }
     match pending.kind {
-        ForeignKind::Jpeg => loaders::jpeg::decode_pixels(&pending.bytes),
+        ForeignKind::Jpeg => match loaders::jpeg::decode_pixels(&pending.bytes) {
+            Ok(pixels) => Ok(pixels),
+            Err(message) => {
+                if fail_on_level(&pending.options) >= 1 {
+                    append_message_str("jpegload", &message);
+                    return Err(());
+                }
+                loaders::jpeg::blank_pixels_from_header(&pending.bytes).map_err(|fallback| {
+                    append_message_str(
+                        "jpegload",
+                        &format!("{message}; failed permissive truncated fallback: {fallback}"),
+                    );
+                })
+            }
+        },
         ForeignKind::Gif
         | ForeignKind::Tiff
         | ForeignKind::Webp
@@ -669,7 +683,7 @@ pub fn save_to_bytes(
 fn load_options_from_object(
     object: *mut crate::abi::object::VipsObject,
 ) -> Result<LoadOptions, ()> {
-    use crate::ops::{argument_assigned, get_bool, get_double, get_enum, get_int, get_string};
+    use crate::ops::{argument_assigned, get_bool, get_double, get_enum, get_int};
 
     let mut options = LoadOptions::default();
 
@@ -683,10 +697,7 @@ fn load_options_from_object(
         options.dpi = Some(unsafe { get_double(object, "dpi")? });
     }
     if unsafe { argument_assigned(object, "fail_on")? } {
-        options.fail_on = unsafe { get_string(object, "fail_on")? };
-        if options.fail_on.is_none() {
-            options.fail_on = Some(unsafe { get_enum(object, "fail_on")? }.to_string());
-        }
+        options.fail_on = Some(unsafe { get_enum(object, "fail_on")? }.to_string());
     }
     if unsafe { argument_assigned(object, "memory")? } {
         options.memory = unsafe { get_bool(object, "memory")? };

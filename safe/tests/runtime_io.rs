@@ -46,6 +46,16 @@ fn sample_jpg() -> PathBuf {
         .join("sample.jpg")
 }
 
+fn truncated_jpg() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("original")
+        .join("test")
+        .join("test-suite")
+        .join("images")
+        .join("truncated.jpg")
+}
+
 fn temp_vips_path() -> PathBuf {
     temp_path_with_suffix(".v")
 }
@@ -571,6 +581,44 @@ fn jpeg_file_thumbnail_materializes_without_external_convert() {
     assert!(unsafe { (*thumbnail).Ysize } > 0);
     unsafe {
         gobject_sys::g_object_unref(thumbnail.cast());
+    }
+}
+
+#[test]
+fn truncated_jpeg_default_load_materializes_permissively() {
+    let _guard = guard();
+    init_vips();
+
+    let input_path = truncated_jpg();
+    let input_c = CString::new(input_path.to_string_lossy().into_owned()).expect("input path");
+
+    for _ in 0..2 {
+        let image = unsafe { vips_image_new_from_file(input_c.as_ptr(), ptr::null::<c_char>()) };
+        assert!(!image.is_null());
+        assert_eq!(unsafe { (*image).Xsize }, 290);
+        assert_eq!(unsafe { (*image).Ysize }, 442);
+        assert_eq!(unsafe { (*image).Bands }, 3);
+
+        let mut average = -1.0;
+        assert_eq!(safe_vips_avg_internal(image, &mut average), 0);
+        assert!(average.is_finite());
+        unsafe {
+            gobject_sys::g_object_unref(image.cast());
+        }
+    }
+
+    let strict_name = CString::new(format!(
+        "{}[fail_on=truncated]",
+        input_path.to_string_lossy()
+    ))
+    .expect("strict input path");
+    let strict = unsafe { vips_image_new_from_file(strict_name.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!strict.is_null());
+    let mut average = -1.0;
+    assert_eq!(safe_vips_avg_internal(strict, &mut average), -1);
+    vips_error_clear();
+    unsafe {
+        gobject_sys::g_object_unref(strict.cast());
     }
 }
 

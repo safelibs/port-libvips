@@ -7,7 +7,7 @@
 - Validator Python: validator/.venv/bin/python with PyYAML; host python3 also imports PyYAML 6.0.3 from the user site so render-site unit subprocesses that invoke python3 directly pass under `PYTHON="$VALIDATOR_PY" make unit`.
 
 ## Safe Package Inputs
-- Safe commit before validator: 12543f951c24648d94d82e9809a02ed679602ef7
+- Safe commit before phase 5 worktree fixes: dd47364b3944a3be152d91d9a72958d2fd01e1a3
 - Override packages: libvips42t64_8.15.1-1.1build4_amd64.deb, libvips-dev_8.15.1-1.1build4_amd64.deb, libvips-tools_8.15.1-1.1build4_amd64.deb, gir1.2-vips-8.0_8.15.1-1.1build4_amd64.deb
 - Safe crate: safe/Cargo.toml defines crate vips version 8.15.1 and produces cdylib, staticlib, and rlib outputs.
 - Public surface: safe/src/lib.rs re-exports ABI, runtime, operation, foreign, pixel, SIMD, and generated metadata modules.
@@ -107,13 +107,33 @@
 | JPEG buffer C API (`vips_jpegload_buffer`, `vips_jpegsave_buffer`) | Full phase 4 validator rerun passed: validator/artifacts/libvips-safe-foreign/port-04-test/results/libvips/summary.json | The generated varargs wrappers treated raw `(void *, size_t)` buffer parameters as operation required arguments, while the operation dispatch expects a `VipsBlob`; the generated `jpegsave_buffer` path also returned a boxed blob instead of GLib-freeable data plus length. PNG already had manual shims, so JPEG now mirrors that behavior. | safe/tests/runtime_io.rs: `public_foreign_buffer_apis_round_trip_png_and_jpeg` exercises `vips_image_new_from_buffer`, `vips_image_write_to_buffer`, `vips_source_new_from_memory`, `pngload_buffer`, `jpegload_buffer`, `pngsave_buffer`, and `jpegsave_buffer`, verifies dimensions/bands/format/interpretation/loader metadata, reloads returned buffers, and frees returned memory with `g_free`. | safe/build.rs, safe/build_support/api_shim.c, safe/tests/runtime_io.rs |
 | File/source/target PNG/JPEG APIs | Full phase 4 validator rerun passed: validator/artifacts/libvips-safe-foreign/port-04-test/results/libvips/summary.json | No remaining validator failure after source and operation phases, but phase 4 required direct public API coverage for file/source/target I/O ownership and metadata preservation. | safe/tests/runtime_io.rs: `public_foreign_file_source_and_target_apis_round_trip_png_and_jpeg` exercises `pngload`, `jpegload`, `pngsave`, `jpegsave`, `vips_source_new_from_file`, `vips_target_new_to_file`, and target writes, then reloads outputs and checks sample dimensions, bands, band format, interpretation, and `vips-loader` metadata. | safe/tests/runtime_io.rs |
 
+## Packaging Container And Remaining Phase Rerun
+- Implement phase: `impl_05_packaging_container_and_remaining_failures`
+- Remaining failure classification: no post-phase4 validator matrix failures remained, but `safe/scripts/run_release_gate.sh` exposed a behavior failure in the upstream Python suite: `TestForeign::test_truncated` loaded `original/test/test-suite/images/truncated.jpg` with default options, then `im.avg()` failed with `jpegload: failed to fill whole buffer; avg: operation failed`.
+- Root cause: pending JPEG decode treated truncated scan data as fatal even when libvips default `fail_on=none` should allow permissive materialization. The loader also attempted to read `fail_on` as a string before falling back to enum handling.
+- Fix: default JPEG materialization now falls back to zero-filled pixels sized from the JPEG header after a decode error; `fail_on=truncated` remains strict and reports the decoder error. Loader option extraction now reads `fail_on` as the enum value directly.
+- Regression coverage: safe/tests/runtime_io.rs: `truncated_jpeg_default_load_materializes_permissively` loads the upstream truncated JPEG twice with default options, verifies dimensions and finite `avg`, then verifies `fail_on=truncated` stays strict at materialization time.
+- Production files changed: safe/src/foreign/loaders/jpeg.rs, safe/src/foreign/mod.rs, safe/tests/runtime_io.rs.
+- Release gate: `safe/scripts/run_release_gate.sh` passed. It covered Rust tests, Meson install/surface checks, the upstream Python suite (`203 passed, 49 skipped`), Debian package checks, extracted-package checks, and dependent application smokes.
+- Packages rebuilt with `dpkg-buildpackage -b -uc -us` and staged under validator-overrides/libvips: libvips42t64, libvips-dev, libvips-tools, and gir1.2-vips-8.0.
+- Port deb lock refreshed in place at validator/artifacts/libvips-safe-port-lock.json with mode `port-04-test`, the four canonical packages, and `unported_original_packages: []`.
+- Command: `RECORD_CASTS=1 bash test.sh --config repositories.yml --tests-root tests --artifact-root artifacts/libvips-safe-remaining --mode port-04-test --library libvips --override-deb-root /home/yans/safelibs/pipeline/ports/port-libvips/validator-overrides --port-deb-lock /home/yans/safelibs/pipeline/ports/port-libvips/validator/artifacts/libvips-safe-port-lock.json --record-casts`
+- Artifact root: validator/artifacts/libvips-safe-remaining
+- Matrix exit status: 0
+- Proof verification: `validator/.venv/bin/python tools/verify_proof_artifacts.py --config repositories.yml --tests-root tests --artifact-root artifacts/libvips-safe-remaining --proof-output proof/libvips-safe-validation-proof.json --mode port-04-test --library libvips --require-casts --min-source-cases 5 --min-usage-cases 80 --min-cases 85` passed and wrote validator/artifacts/libvips-safe-remaining/proof/libvips-safe-validation-proof.json.
+- Result JSON records: 85 testcase records plus summary.json
+- Cast records: 85
+- Passed: 85
+- Failed: 0
+- Summary: validator/artifacts/libvips-safe-remaining/port-04-test/results/libvips/summary.json reports 5 source cases and 80 usage cases, all passed.
+
 ## Remaining Open Failures
-- None. The phase 4 foreign I/O and buffer rerun passed all 85 validator cases, including the previously foreign-owned sample JPEG crop testcase.
+- None. The phase 5 unmodified validator run passed all 85 cases, and no approved validator-bug skip was used.
 
 ## Skipped Validator Checks
 - None
 
 ## Next Workflow Phases
-- `check_04_foreign_io_buffer_software_tester`
-- `check_04_foreign_io_buffer_senior_tester`
-- Next implement phase after checks: `impl_05_packaging_container_and_remaining_failures`
+- `check_05_packaging_container_software_tester`
+- `check_05_packaging_container_senior_tester`
+- Bounce target for both verifiers: `impl_05_packaging_container_and_remaining_failures`
