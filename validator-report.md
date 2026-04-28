@@ -4,7 +4,7 @@
 - Repository: https://github.com/safelibs/validator
 - Commit: 1319bb0374ef66428a42dd71e49553c6d057feaf
 - README invocation followed: local override root at validator-overrides/libvips with a generated port-04-test lock for proof-compatible override results
-- Validator Python: validator/.venv/bin/python with PyYAML; unit checks required this venv at the front of PATH because host python3 could not import yaml.
+- Validator Python: validator/.venv/bin/python with PyYAML; host python3 also imports PyYAML 6.0.3 from the user site so render-site unit subprocesses that invoke python3 directly pass under `PYTHON="$VALIDATOR_PY" make unit`.
 
 ## Safe Package Inputs
 - Safe commit before validator: 12543f951c24648d94d82e9809a02ed679602ef7
