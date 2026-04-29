@@ -132,8 +132,8 @@
 - Validator repository: https://github.com/safelibs/validator
 - Validator commit: 1319bb0374ef66428a42dd71e49553c6d057feaf
 - Safe source commit before first final run: 5688a1ddbe9289dea4ed85ebe6f913c542538e48
-- Final safe source commit used for package lock and final validator evidence: a79df635a1492781ca989ff31d9ef34942733cf3
-- Evidence provenance: the required final clean-run block refreshed `validator/artifacts/libvips-safe-port-lock.json` and `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json`; both record `a79df635a1492781ca989ff31d9ef34942733cf3` with release tag `build-a79df635a149`.
+- Final safe source commit used for package lock and final validator evidence: 85544f54375397407fdd3d7aeba76c26dab16068
+- Evidence provenance: the required final clean-run block refreshed `validator/artifacts/libvips-safe-port-lock.json` and `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json`; both record `85544f54375397407fdd3d7aeba76c26dab16068` with release tag `build-85544f543753`.
 - Final phase production changes: None.
 - Final phase safe test fix: `safe/tests/runtime_io.rs` now resets `vips_cache_set_max_files()` and `vips_cache_set_max_mem()` in `operation_cache_build_and_drop_all_are_stateful` before asserting cache size, preventing prior runtime tests' low cache limits from trimming the probe operation immediately.
 - Approved validator-bug skips: None.
@@ -219,7 +219,7 @@ scripts/run_release_gate.sh
 - Cast records: 85.
 - Local safe verification: `cargo test --all-features -- --nocapture` passed; `safe/scripts/run_release_gate.sh` passed, including Rust tests, Meson install/surface checks, upstream Meson suite (`9 passed, 1 skipped`), upstream Python suite (`203 passed, 49 skipped`), Debian package checks, extracted-package checks, and dependent application smokes.
 - Package lock verification: staged package names, architectures, sizes, and SHA-256 values match validator/artifacts/libvips-safe-port-lock.json.
-- Lock/proof provenance verification: after the final clean-run block, `validator/artifacts/libvips-safe-port-lock.json` `.libraries[0].commit` and `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json` `.libraries[0].port_commit` both match `a79df635a1492781ca989ff31d9ef34942733cf3`.
+- Lock/proof provenance verification: after the final clean-run block, `validator/artifacts/libvips-safe-port-lock.json` `.libraries[0].commit` and `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json` `.libraries[0].port_commit` both match `85544f54375397407fdd3d7aeba76c26dab16068`.
 
 ## Remaining Open Failures
 - None. The final no-skip validator run passed all 85 cases, and no approved validator-bug skip was used.
