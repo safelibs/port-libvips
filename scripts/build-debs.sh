@@ -4,20 +4,11 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-dist_dir="$repo_root/dist"
-
 # shellcheck source=/dev/null
-[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+. "$repo_root/scripts/lib/build-deb-common.sh"
 
-if [[ -d "$HOME/.cargo/bin" ]]; then
-  case ":$PATH:" in
-    *":$HOME/.cargo/bin:"*) ;;
-    *) export PATH="$HOME/.cargo/bin:$PATH" ;;
-  esac
-fi
-
-rm -rf -- "$dist_dir"
-mkdir -p -- "$dist_dir"
+prepare_rust_env
+prepare_dist_dir "$repo_root"
 
 cd "$repo_root/safe"
 sudo mk-build-deps -i -r -t "apt-get -y --no-install-recommends" debian/control
@@ -31,6 +22,7 @@ multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH)"
 cp -a "build-check-install/lib/$multiarch"/libvips*.so* build-check-install/lib/
 
 cd "$repo_root/safe"
+stamp_safelibs_changelog "$repo_root"
 export DEB_BUILD_OPTIONS="${DEB_BUILD_OPTIONS:+$DEB_BUILD_OPTIONS }nocheck"
 dpkg-buildpackage -us -uc -b
-cp -v ../*.deb "$dist_dir"/
+cp -v ../*.deb "$repo_root/dist"/
