@@ -69,6 +69,7 @@ pub struct PendingDecode {
     pub bytes: Vec<u8>,
     pub kind: ForeignKind,
     pub options: LoadOptions,
+    pub file_cache_key: Option<String>,
 }
 
 #[derive(Clone, Debug)]

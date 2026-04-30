@@ -155,8 +155,16 @@ fn parse_jpeg_header(bytes: &[u8], options: LoadOptions) -> Result<ForeignLoadRe
             bytes: bytes.to_vec(),
             kind: ForeignKind::Jpeg,
             options,
+            file_cache_key: None,
         }),
     ))
+}
+
+fn with_file_cache_key(mut result: ForeignLoadResult, cache_key: String) -> ForeignLoadResult {
+    if let Some(pending) = result.pending.as_mut() {
+        pending.file_cache_key = Some(cache_key);
+    }
+    result
 }
 
 fn parse_png(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
@@ -543,9 +551,39 @@ pub fn decode_pending(pending: &base::PendingDecode) -> Result<Vec<u8>, ()> {
         return loaders::container::extract_pixel_payload(&pending.bytes);
     }
     match pending.kind {
-        ForeignKind::Jpeg => loaders::jpeg::decode_pixels(&pending.bytes).map_err(|message| {
-            append_message_str("jpegload", &message);
-        }),
+        ForeignKind::Jpeg => match loaders::jpeg::decode_pixels(&pending.bytes) {
+            Ok(pixels) => Ok(pixels),
+            Err(message) if fail_on_level(&pending.options) == 0 => {
+                if let Some(cache_key) = pending.file_cache_key.as_deref() {
+                    remove_cached_file_load(cache_key);
+                }
+                match loaders::external::decode_with_convert(
+                    &pending.bytes,
+                    ForeignKind::Jpeg,
+                    &pending.options,
+                ) {
+                    Ok(result)
+                        if loaders::jpeg::converted_pixels_match_header(
+                            &pending.bytes,
+                            &result,
+                        ) =>
+                    {
+                        Ok(result.pixels.unwrap_or_default())
+                    }
+                    _ => {
+                        append_message_str("jpegload", &message);
+                        Err(())
+                    }
+                }
+            }
+            Err(message) => {
+                if let Some(cache_key) = pending.file_cache_key.as_deref() {
+                    remove_cached_file_load(cache_key);
+                }
+                append_message_str("jpegload", &message);
+                Err(())
+            }
+        },
         ForeignKind::Gif
         | ForeignKind::Tiff
         | ForeignKind::Webp
@@ -617,7 +655,7 @@ pub fn save_to_bytes(
 fn load_options_from_object(
     object: *mut crate::abi::object::VipsObject,
 ) -> Result<LoadOptions, ()> {
-    use crate::ops::{argument_assigned, get_bool, get_double, get_enum, get_int, get_string};
+    use crate::ops::{argument_assigned, get_bool, get_double, get_enum, get_int};
 
     let mut options = LoadOptions::default();
 
@@ -631,10 +669,7 @@ fn load_options_from_object(
         options.dpi = Some(unsafe { get_double(object, "dpi")? });
     }
     if unsafe { argument_assigned(object, "fail_on")? } {
-        options.fail_on = unsafe { get_string(object, "fail_on")? };
-        if options.fail_on.is_none() {
-            options.fail_on = Some(unsafe { get_enum(object, "fail_on")? }.to_string());
-        }
+        options.fail_on = Some(unsafe { get_enum(object, "fail_on")? }.to_string());
     }
     if unsafe { argument_assigned(object, "memory")? } {
         options.memory = unsafe { get_bool(object, "memory")? };
@@ -1071,6 +1106,7 @@ pub fn dispatch_operation(
                     let bytes = read_all_from_path(&cfilename).map_err(|_| ())?;
                     let result =
                         load_from_bytes_for_kind(&bytes, kind, InputKind::File, options.clone())?;
+                    let result = with_file_cache_key(result, cache_key.clone());
                     store_cached_file_load(cache_key, result.clone());
                     result
                 };

@@ -6,6 +6,7 @@ use crate::abi::image::{
     VIPS_INTERPRETATION_sRGB, VipsBandFormat, VipsInterpretation, VIPS_FORMAT_UCHAR,
     VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_B_W, VIPS_INTERPRETATION_CMYK,
 };
+use crate::foreign::base::ForeignLoadResult;
 
 #[derive(Clone, Copy, Debug)]
 pub struct JpegInfo {
@@ -83,4 +84,23 @@ pub fn decode_pixels(bytes: &[u8]) -> Result<Vec<u8>, String> {
     }
 
     Ok(pixels)
+}
+
+pub fn converted_pixels_match_header(bytes: &[u8], result: &ForeignLoadResult) -> bool {
+    let Ok(info) = read_info(bytes) else {
+        return false;
+    };
+    let expected = info.width.max(0) as usize
+        * info.height.max(0) as usize
+        * info.bands.max(0) as usize
+        * crate::runtime::image::format_sizeof(info.band_format);
+
+    result.width == info.width
+        && result.height == info.height
+        && result.bands == info.bands
+        && result.band_format == info.band_format
+        && result
+            .pixels
+            .as_ref()
+            .is_some_and(|pixels| pixels.len() == expected)
 }

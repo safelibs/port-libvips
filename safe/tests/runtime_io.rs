@@ -46,6 +46,16 @@ fn sample_jpg() -> PathBuf {
         .join("sample.jpg")
 }
 
+fn truncated_jpg() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("original")
+        .join("test")
+        .join("test-suite")
+        .join("images")
+        .join("truncated.jpg")
+}
+
 fn temp_vips_path() -> PathBuf {
     temp_runtime_path(".v")
 }
@@ -937,6 +947,37 @@ fn jpeg_file_buffer_source_and_explicit_load_materialize_without_convert() {
 }
 
 #[test]
+fn truncated_jpeg_default_materializes_but_fail_on_truncated_rejects_pixels() {
+    let _guard = guard();
+    init_vips();
+    vips_error_clear();
+
+    let path = truncated_jpg();
+    let path_c = CString::new(path.to_string_lossy().into_owned()).expect("truncated jpg path");
+
+    for _ in 0..2 {
+        let image = unsafe { vips_image_new_from_file(path_c.as_ptr(), ptr::null::<c_char>()) };
+        assert_materializes(image);
+        unsafe {
+            gobject_sys::g_object_unref(image.cast());
+        }
+    }
+
+    let strict_path = CString::new(format!("{}[fail_on=truncated]", path.to_string_lossy()))
+        .expect("strict truncated jpg path");
+    let strict = unsafe { vips_image_new_from_file(strict_path.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!strict.is_null());
+    let mut len = 0usize;
+    let pixels = vips_image_write_to_memory(strict, &mut len);
+    assert!(pixels.is_null());
+    assert_eq!(len, 0);
+    unsafe {
+        gobject_sys::g_object_unref(strict.cast());
+    }
+    vips_error_clear();
+}
+
+#[test]
 fn image_object_summary_reports_dimensions_for_vipsheader() {
     let _guard = guard();
     init_vips();
@@ -1538,6 +1579,8 @@ fn operation_cache_build_and_drop_all_are_stateful() {
 
     vips_cache_drop_all();
     vips_cache_set_max(8);
+    vips_cache_set_max_files(100);
+    vips_cache_set_max_mem(100 * 1024 * 1024);
     assert_eq!(vips_cache_get_size(), 0);
 
     let first = new_cache_probe_operation();
