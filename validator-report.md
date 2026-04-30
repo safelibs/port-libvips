@@ -143,3 +143,185 @@ PYTHON="/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/pyth
 - `impl_03_ruby_usage_operation_failures`: generated ruby-vips operation behavior failure fixed in phase 3.
 - `impl_04_foreign_io_buffer_failures`: file, buffer, loader, saver, lazy materialization, and external decoder fallback failures fixed in phase 4.
 - `impl_05_packaging_container_and_remaining_failures`: release-gate catch-all truncated JPEG compatibility fixed; no packaging or container setup failure remains; all override packages installed and the phase-5 matrix exit was 0.
+
+## Final Clean Run
+- Implement phase: `impl_06_final_report_and_clean_run`.
+- Validator URL: https://github.com/safelibs/validator.
+- remote main commit: dc9f47b6054e9a51afde8a437a2e5e5562cc946a.
+- active validator commit: 1319bb0374ef66428a42dd71e49553c6d057feaf.
+- active validator reason: remote main manifest unusable for libvips; using last known runnable validator commit.
+- Final package-source commit used for rebuild, override staging, lock refresh, and validator proof: 0b8b403eec9ad52e26e51b7f787e91917207c653. This phase's git commit is report-only and does not change `safe/**` package inputs.
+- Inventory counts: 5 source cases, 80 usage cases, 85 total cases.
+- checks executed: `cargo test --all-features -- --nocapture`, `safe/scripts/run_release_gate.sh`, `dpkg-buildpackage -b -uc -us`, canonical override staging, port lock refresh, final full unmodified validator matrix, clean-result assertion, `tools/verify_proof_artifacts.py --require-casts`, `tools/render_site.py`, `scripts/verify-site.sh`, and `git -C validator diff --exit-code -- tests repositories.yml README.md`.
+- failures found: none in the final clean run. Baseline failures were `vips-cli-load-save`, `thumbnail-behavior`, `usage-ruby-vips-crop-sample-jpeg`, `usage-ruby-vips-gravity-generated`, plus the phase-5 release-gate truncated JPEG compatibility failure recorded in the failure classification table.
+- fixes applied: none in `impl_06_final_report_and_clean_run`; earlier fixes remain the phase-3 `gravity` operation implementation, phase-4 native JPEG file/buffer/source materialization and CLI object summary compatibility, and phase-5 default truncated JPEG materialization compatibility while preserving strict `fail_on=truncated` rejection.
+- Regression tests retained: `safe/tests/ops_advanced.rs::gravity_crops_generated_image_from_centre`, `safe/tests/ops_advanced.rs::gravity_background_without_extend_uses_background_extend`, `safe/tests/ops_advanced.rs::gravity_mirror_extend_matches_libvips_tile_semantics`, `safe/tests/runtime_io.rs::jpeg_file_buffer_source_and_explicit_load_materialize_without_convert`, `safe/tests/runtime_io.rs::jpeg_public_save_paths_return_glib_owned_buffers_and_targets`, `safe/tests/runtime_io.rs::jpeg_thumbnail_materializes_and_saves_without_convert`, `safe/tests/runtime_io.rs::image_object_summary_reports_dimensions_for_vipsheader`, and `safe/tests/runtime_io.rs::truncated_jpeg_default_materializes_but_fail_on_truncated_rejects_pixels`.
+- Approved validator-bug skips: None.
+
+## Final Commands Executed
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+cd "$ROOT/safe"
+cargo test --all-features -- --nocapture
+scripts/run_release_gate.sh
+dpkg-buildpackage -b -uc -us
+
+cd "$ROOT"
+mkdir -p validator-overrides/libvips
+rm -f validator-overrides/libvips/*.deb
+version=$(dpkg-parsechangelog -l safe/debian/changelog -SVersion)
+arch=$(dpkg-architecture -qDEB_HOST_ARCH)
+for package in libvips42t64 libvips-dev libvips-tools gir1.2-vips-8.0; do
+  install -m 0644 "${package}_${version}_${arch}.deb" validator-overrides/libvips/
+done
+SAFE_SOURCE_COMMIT=$(git rev-parse HEAD)
+LOCK="$ROOT/validator/artifacts/libvips-safe-port-lock.json"
+python3 - "$ROOT" "$LOCK" "$SAFE_SOURCE_COMMIT" <<'PY'
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+lock_path = Path(sys.argv[2])
+commit = sys.argv[3].strip()
+canonical = ["libvips42t64", "libvips-dev", "libvips-tools", "gir1.2-vips-8.0"]
+debs = []
+for package in canonical:
+    matches = sorted((root / "validator-overrides/libvips").glob(f"{package}_*.deb"))
+    if len(matches) != 1:
+        raise SystemExit(f"expected exactly one staged deb for {package}, found {len(matches)}")
+    path = matches[0]
+    package_name = subprocess.check_output(["dpkg-deb", "--field", str(path), "Package"], text=True).strip()
+    architecture = subprocess.check_output(["dpkg-deb", "--field", str(path), "Architecture"], text=True).strip()
+    if package_name != package:
+        raise SystemExit(f"unexpected package name for {path}: {package_name}")
+    if architecture not in {"amd64", "all"}:
+        raise SystemExit(f"unexpected architecture for {path}: {architecture}")
+    data = path.read_bytes()
+    debs.append({
+        "package": package,
+        "filename": path.name,
+        "architecture": architecture,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "size": path.stat().st_size,
+    })
+lock = {
+    "schema_version": 1,
+    "mode": "port-04-test",
+    "generated_at": "1970-01-01T00:00:00Z",
+    "source_config": "repositories.yml",
+    "source_inventory": "local-validator-overrides",
+    "libraries": [{
+        "library": "libvips",
+        "repository": "safelibs/port-libvips-local",
+        "tag_ref": "refs/tags/libvips/local-validator",
+        "commit": commit,
+        "release_tag": f"build-{commit[:12]}",
+        "debs": debs,
+        "unported_original_packages": [],
+    }],
+}
+lock_path.parent.mkdir(parents=True, exist_ok=True)
+lock_path.write_text(json.dumps(lock, indent=2) + "\n")
+PY
+
+cd "$ROOT/validator"
+rm -rf artifacts/libvips-safe-final site/libvips-safe-final
+set +e
+PYTHON=/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/python RECORD_CASTS=1 bash test.sh \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root artifacts/libvips-safe-final \
+  --mode port-04-test \
+  --library libvips \
+  --override-deb-root /home/yans/safelibs/pipeline/ports/port-libvips/validator-overrides \
+  --port-deb-lock /home/yans/safelibs/pipeline/ports/port-libvips/validator/artifacts/libvips-safe-port-lock.json \
+  --record-casts
+MATRIX_EXIT=$?
+set -e
+mkdir -p artifacts/libvips-safe-final
+printf '%s\n' "$MATRIX_EXIT" > artifacts/libvips-safe-final/matrix-exit-code.txt
+RESULT_ARTIFACT_NAME=libvips-safe-final EXPECTED_SOURCE_CASES=5 EXPECTED_USAGE_CASES=80 EXPECTED_TOTAL_CASES=85 python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+root = Path("/home/yans/safelibs/pipeline/ports/port-libvips")
+artifact = os.environ["RESULT_ARTIFACT_NAME"]
+expected_source = int(os.environ["EXPECTED_SOURCE_CASES"])
+expected_usage = int(os.environ["EXPECTED_USAGE_CASES"])
+expected_total = int(os.environ["EXPECTED_TOTAL_CASES"])
+artifact_root = root / "validator/artifacts" / artifact
+exit_path = artifact_root / "matrix-exit-code.txt"
+matrix_exit = int(exit_path.read_text().strip())
+if matrix_exit != 0:
+    raise SystemExit(f"validator matrix exited {matrix_exit} for {artifact}")
+result_dir = artifact_root / "port-04-test/results/libvips"
+summary = json.loads((result_dir / "summary.json").read_text())
+if summary["source_cases"] != expected_source or summary["usage_cases"] != expected_usage or summary["cases"] != expected_total:
+    raise SystemExit(f"summary counts do not match expected counts: {summary}")
+if summary["failed"] != 0 or summary["passed"] != expected_total or summary["casts"] != expected_total:
+    raise SystemExit(f"validator run is not clean: {summary}")
+results = [path for path in sorted(result_dir.glob("*.json")) if path.name != "summary.json"]
+if len(results) != expected_total:
+    raise SystemExit(f"expected {expected_total} result JSON files, found {len(results)}")
+bad = []
+for path in results:
+    payload = json.loads(path.read_text())
+    testcase_id = payload.get("testcase_id", path.stem)
+    if payload.get("status") != "passed":
+        bad.append(f"{testcase_id}: status={payload.get('status')}")
+    if payload.get("override_debs_installed") is not True:
+        bad.append(f"{testcase_id}: override_debs_installed={payload.get('override_debs_installed')!r}")
+    if payload.get("cast_path") is None:
+        bad.append(f"{testcase_id}: missing cast")
+if bad:
+    raise SystemExit("clean validator assertion failed: " + "; ".join(bad))
+PY
+/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/python tools/verify_proof_artifacts.py \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root artifacts/libvips-safe-final \
+  --proof-output proof/libvips-safe-validation-proof.json \
+  --mode port-04-test \
+  --library libvips \
+  --require-casts \
+  --min-source-cases 5 \
+  --min-usage-cases 80 \
+  --min-cases 85
+/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/python tools/render_site.py \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root artifacts/libvips-safe-final \
+  --proof-path artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json \
+  --output-root site/libvips-safe-final
+bash scripts/verify-site.sh \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifacts-root artifacts/libvips-safe-final \
+  --proof-path artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json \
+  --site-root site/libvips-safe-final \
+  --library libvips
+git -C /home/yans/safelibs/pipeline/ports/port-libvips/validator diff --exit-code -- tests repositories.yml README.md
+```
+
+## Final Package Hashes
+| Package | Override path | Architecture | Size | SHA-256 |
+| --- | --- | --- | --- | --- |
+| libvips42t64 | validator-overrides/libvips/libvips42t64_8.15.1-1.1build4_amd64.deb | amd64 | 1430662 | ecda9f408ce52e33f3b65d20d844b821155af24c55973e13c3a51515bf3fd279 |
+| libvips-dev | validator-overrides/libvips/libvips-dev_8.15.1-1.1build4_amd64.deb | amd64 | 83304 | baa99134376d9bd7f0ebe33ab98a879a3c5555d6a57304c223871ec388e6ef98 |
+| libvips-tools | validator-overrides/libvips/libvips-tools_8.15.1-1.1build4_amd64.deb | amd64 | 27852 | c6d324c9d891bacd7b096d51052dcb88f467eb0f71ccac01e783fb43337a48be |
+| gir1.2-vips-8.0 | validator-overrides/libvips/gir1.2-vips-8.0_8.15.1-1.1build4_amd64.deb | amd64 | 5104 | 362d0824adb9f58e64c4d0932175ac976330db5fb0f74ddbf96a1020ac790c82 |
+
+## Final Evidence
+- Final unmodified artifact root: validator/artifacts/libvips-safe-final.
+- Matrix exit artifact: validator/artifacts/libvips-safe-final/matrix-exit-code.txt (`0`).
+- Summary artifact: validator/artifacts/libvips-safe-final/port-04-test/results/libvips/summary.json.
+- Final summary: 85 cases, 5 source cases, 80 usage cases, 85 passed, 0 failed, 85 casts, and all result JSON records have `override_debs_installed: true`.
+- Proof path: validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json.
+- Proof totals: 1 library, 85 cases, 5 source cases, 80 usage cases, 85 passed, 0 failed, 85 casts.
+- Rendered site: validator/site/libvips-safe-final.
+- Site files verified: validator/site/libvips-safe-final/index.html, validator/site/libvips-safe-final/library/libvips.html, validator/site/libvips-safe-final/site-data.json, validator/site/libvips-safe-final/assets/site.css, and validator/site/libvips-safe-final/assets/player.js.
+- Approved-skip adjusted artifact root: N/A; no approved validator-bug skip exists.
