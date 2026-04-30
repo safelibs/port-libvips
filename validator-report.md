@@ -60,6 +60,21 @@ PYTHON="/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/pyth
 - Usage cases: 80
 - Override package install failures: none
 
+## Phase 2 Source Surface Rerun
+- Implement phase: `impl_02_source_surface_failures`.
+- Root cause checked: no failing row is owned by this phase. The source-surface package/header/GIR/C ABI cases passed in both the baseline artifacts and the focused local rerun; the remaining source failures are JPEG load/save/thumbnail materialization through the foreign I/O path and stay owned by `impl_04_foreign_io_buffer_failures`.
+- Regression test path: no new regression test was added because no distinct `impl_02_source_surface_failures` root cause was found. Existing focused coverage rerun: `safe/tests/runtime_io.rs`, `safe/tests/abi_layout.rs`, `safe/tests/init_version_smoke.rs`, `safe/scripts/link_compat.sh`, and `safe/scripts/check_introspection.sh`.
+- Changed production files: none for this phase.
+- Package-source commit used for the phase-2 rebuild: ed9c36636e8d1b1cfb12e68306fcfa94b0032931.
+- Package rebuild command: `cd /home/yans/safelibs/pipeline/ports/port-libvips/safe && dpkg-buildpackage -b -uc -us`.
+- Refreshed local lock: validator/artifacts/libvips-safe-port-lock.json.
+- Phase-2 artifact root: validator/artifacts/libvips-safe-source.
+- Phase-2 matrix exit status: 0.
+- Phase-2 summary artifact: validator/artifacts/libvips-safe-source/port-04-test/results/libvips/summary.json.
+- Inventory-derived counts: source cases 5, usage cases 80, total cases 85.
+- Phase-2 results: 81 passed, 4 failed, 85 cast records, and no override package install failures.
+- Remaining failure ownership after phase 2: `usage-ruby-vips-gravity-generated` remains with `impl_03_ruby_usage_operation_failures`; `vips-cli-load-save`, `thumbnail-behavior`, and `usage-ruby-vips-crop-sample-jpeg` remain with `impl_04_foreign_io_buffer_failures`; no failure remains owned by `impl_02_source_surface_failures`.
+
 ## failure classification
 | Testcase ID | Kind | Status | Owner phase | First artifact | Root cause | Regression test | Resolution |
 | --- | --- | --- | --- | --- | --- | --- | --- |
