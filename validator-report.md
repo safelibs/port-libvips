@@ -13,15 +13,15 @@
 - Bootstrap note: origin/main was fetched and inspected first. Its libvips manifest no longer contains a non-empty `testcases` list, so the checkout was moved to the pinned fallback commit with 85 runnable libvips cases.
 
 ## Package Inputs
-- Package-source commit: 909571ec603b7c6e1e624aeef92f4d414180156c
-- Safe source edits in this phase: native JPEG header/decode support, foreign buffer wrapper ownership fixes, GLib-owned public buffers, and image object summaries with dimensions.
+- Package-source commit: 7251b2d7efbc4adf60b0a98ce84c380fcaf1f415
+- Safe source edits in this phase: default truncated JPEG materialization now falls back only when libvips defaults allow it, failed file-load cache entries are invalidated before fallback, strict `fail_on=truncated` still rejects pixels, and `fail_on` loader options are read through enum access without GLib critical warnings.
 - Package rebuild command: `cd /home/yans/safelibs/pipeline/ports/port-libvips/safe && dpkg-buildpackage -b -uc -us`
 - Package staging command: refreshed validator-overrides/libvips from the rebuilt root-level `.deb` files for the four canonical packages.
 - Port lock: validator/artifacts/libvips-safe-port-lock.json
 
 | Package | Override path | Architecture | Size | SHA-256 |
 | --- | --- | --- | --- | --- |
-| libvips42t64 | validator-overrides/libvips/libvips42t64_8.15.1-1.1build4_amd64.deb | amd64 | 1430036 | 097f7756514f31e6ca15ea147013e70190a2d2e31e69405c94b4379e863b168a |
+| libvips42t64 | validator-overrides/libvips/libvips42t64_8.15.1-1.1build4_amd64.deb | amd64 | 1430662 | ecda9f408ce52e33f3b65d20d844b821155af24c55973e13c3a51515bf3fd279 |
 | libvips-dev | validator-overrides/libvips/libvips-dev_8.15.1-1.1build4_amd64.deb | amd64 | 83304 | baa99134376d9bd7f0ebe33ab98a879a3c5555d6a57304c223871ec388e6ef98 |
 | libvips-tools | validator-overrides/libvips/libvips-tools_8.15.1-1.1build4_amd64.deb | amd64 | 27852 | c6d324c9d891bacd7b096d51052dcb88f467eb0f71ccac01e783fb43337a48be |
 | gir1.2-vips-8.0 | validator-overrides/libvips/gir1.2-vips-8.0_8.15.1-1.1build4_amd64.deb | amd64 | 5104 | 362d0824adb9f58e64c4d0932175ac976330db5fb0f74ddbf96a1020ac790c82 |
@@ -109,9 +109,30 @@ PYTHON="/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/pyth
 - Phase-4 fixed testcases: `vips-cli-load-save`, `thumbnail-behavior`, and `usage-ruby-vips-crop-sample-jpeg` passed in validator/artifacts/libvips-safe-foreign/port-04-test/results/libvips/.
 - Remaining failure ownership after phase 4: no failures remain owned by `impl_02_source_surface_failures`, `impl_03_ruby_usage_operation_failures`, or `impl_04_foreign_io_buffer_failures`; the phase-4 full validator rerun has no remaining failed libvips testcase records.
 
+## Phase 5 Packaging, Container, And Remaining Failures Rerun
+- Implement phase: `impl_05_packaging_container_and_remaining_failures`.
+- Release gate pre-change evidence: `safe/scripts/run_release_gate.sh` failed in upstream pytest `original/test/test-suite/test_foreign.py::TestForeign::test_truncated`; `im.avg()` on `original/test/test-suite/images/truncated.jpg` raised `jpegload: failed to fill whole buffer; avg: operation failed`.
+- Root cause checked: no validator package override or container installation defect was present. The remaining catch-all defect was libvips compatibility for default truncated JPEG materialization: header load succeeded, but lazy pixel decode returned an error even though default `fail_on` behavior should tolerate the truncated fixture; strict `fail_on=truncated` should still reject pixels.
+- Changed production files: `safe/src/foreign/base.rs`, `safe/src/foreign/loaders/jpeg.rs`, and `safe/src/foreign/mod.rs`.
+- Regression test path: `safe/tests/runtime_io.rs::truncated_jpeg_default_materializes_but_fail_on_truncated_rejects_pixels`.
+- Focused test passed: `cargo test --test runtime_io truncated_jpeg_default_materializes_but_fail_on_truncated_rejects_pixels -- --nocapture`.
+- Full Rust suite passed after isolating the operation-cache regression test from prior cache memory/file limit settings: `cargo test --all-features -- --nocapture`.
+- Release gate passed after the fix: `cd /home/yans/safelibs/pipeline/ports/port-libvips/safe && scripts/run_release_gate.sh`.
+- Package-source commit used for the phase-5 rebuild: 7251b2d7efbc4adf60b0a98ce84c380fcaf1f415.
+- Package rebuild command: `cd /home/yans/safelibs/pipeline/ports/port-libvips/safe && dpkg-buildpackage -b -uc -us`.
+- Refreshed local lock: validator/artifacts/libvips-safe-port-lock.json.
+- Phase-5 artifact root: validator/artifacts/libvips-safe-remaining.
+- Phase-5 matrix exit status: 0.
+- Phase-5 summary artifact: validator/artifacts/libvips-safe-remaining/port-04-test/results/libvips/summary.json.
+- Inventory-derived counts: source cases 5, usage cases 80, total cases 85.
+- Phase-5 results: 85 passed, 0 failed, 85 cast records, and all result JSON records report `override_debs_installed: true`.
+- Approved-skip artifacts: none.
+- Remaining failure ownership after phase 5: no libvips validator testcase failures remain.
+
 ## failure classification
 | Testcase ID | Kind | Status | Owner phase | First artifact | Root cause | Regression test | Resolution |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| __packaging_container_setup__ | packaging-container | fixed | `impl_05_packaging_container_and_remaining_failures` | pre-change `safe/scripts/run_release_gate.sh` upstream pytest `TestForeign::test_truncated` failure | Packaging/container override installation had no defect, but phase-5 release gate found the remaining catch-all default truncated JPEG materialization mismatch: native JPEG decode failed after header load when libvips default `fail_on` should tolerate truncated pixel decode. | `safe/tests/runtime_io.rs::truncated_jpeg_default_materializes_but_fail_on_truncated_rejects_pixels`. | Fixed by invalidating failed cached file loads and accepting ImageMagick fallback pixel decode only when it matches the JPEG header and `fail_on` is default; strict `fail_on=truncated` still fails. `safe/scripts/run_release_gate.sh` passed and validator/artifacts/libvips-safe-remaining/port-04-test/results/libvips/summary.json reports 85 passed, 0 failed, and all override packages installed. |
 | vips-cli-load-save | source | fixed | `impl_04_foreign_io_buffer_failures` | validator/artifacts/libvips-safe/port-04-test/results/libvips/vips-cli-load-save.json | JPEG load/save materialization fell back to external `convert` inside the validator container, which is absent; after copy succeeded, `vipsheader` also needed image object summaries to include dimensions. | `safe/tests/runtime_io.rs::jpeg_file_buffer_source_and_explicit_load_materialize_without_convert`, `safe/tests/runtime_io.rs::jpeg_public_save_paths_return_glib_owned_buffers_and_targets`, and `safe/tests/runtime_io.rs::image_object_summary_reports_dimensions_for_vipsheader`. | Fixed with native JPEG header/decode materialization, generated `VipsBlob`/`VipsArea` buffer wrapper ownership, GLib-owned returned buffers, and image summaries containing dimensions; passed in validator/artifacts/libvips-safe-foreign/port-04-test/results/libvips/vips-cli-load-save.json. |
 | thumbnail-behavior | source | fixed | `impl_04_foreign_io_buffer_failures` | validator/artifacts/libvips-safe/port-04-test/results/libvips/thumbnail-behavior.json | `vipsthumbnail` hit the same JPEG materialization path and failed when external `convert` was absent. | `safe/tests/runtime_io.rs::jpeg_thumbnail_materializes_and_saves_without_convert`. | Fixed by materializing JPEG pixels with the native Rust decoder before thumbnail/save paths need pixels; passed in validator/artifacts/libvips-safe-foreign/port-04-test/results/libvips/thumbnail-behavior.json. |
 | usage-ruby-vips-crop-sample-jpeg | usage | fixed | `impl_04_foreign_io_buffer_failures` | validator/artifacts/libvips-safe/port-04-test/results/libvips/usage-ruby-vips-crop-sample-jpeg.json | Ruby crop of a JPEG fixture failed during materialization through the missing external `convert` path before `extract_area` could complete. | `safe/tests/runtime_io.rs::jpeg_file_buffer_source_and_explicit_load_materialize_without_convert` covers JPEG fixture load/materialization through public file, buffer, source, and explicit loader APIs. | Fixed by replacing JPEG lazy materialization's external decoder fallback with native JPEG decode; passed in validator/artifacts/libvips-safe-foreign/port-04-test/results/libvips/usage-ruby-vips-crop-sample-jpeg.json. |
@@ -121,4 +142,4 @@ PYTHON="/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/pyth
 - `impl_02_source_surface_failures`: no baseline failure is assigned here because the source-case failures depend on JPEG decode, save, or materialization rather than command, header, package identity, or metadata surface alone.
 - `impl_03_ruby_usage_operation_failures`: generated ruby-vips operation behavior failure fixed in phase 3.
 - `impl_04_foreign_io_buffer_failures`: file, buffer, loader, saver, lazy materialization, and external decoder fallback failures fixed in phase 4.
-- `impl_05_packaging_container_and_remaining_failures`: no packaging or container setup failure remains; all override packages installed and the phase-4 matrix exit was 0.
+- `impl_05_packaging_container_and_remaining_failures`: release-gate catch-all truncated JPEG compatibility fixed; no packaging or container setup failure remains; all override packages installed and the phase-5 matrix exit was 0.
