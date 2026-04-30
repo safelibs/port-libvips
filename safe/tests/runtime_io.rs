@@ -151,6 +151,29 @@ fn assert_materializes(image: *mut VipsImage) {
     vips_image_free_buffer(image, ptr);
 }
 
+fn object_summary_text(object: *mut VipsObject) -> String {
+    let mut buf = VipsBuf {
+        base: ptr::null_mut(),
+        mx: 0,
+        i: 0,
+        full: glib_sys::GFALSE,
+        lasti: 0,
+        dynamic: glib_sys::GFALSE,
+    };
+    vips_buf_init_dynamic(&mut buf, 1024);
+    vips_object_summary(object, &mut buf);
+    let raw = vips_buf_all(&mut buf);
+    let text = if raw.is_null() {
+        String::new()
+    } else {
+        unsafe { CStr::from_ptr(raw) }
+            .to_string_lossy()
+            .into_owned()
+    };
+    vips_buf_destroy(&mut buf);
+    text
+}
+
 fn copy_blob(image: *mut VipsImage, name: &CStr) -> Option<Vec<u8>> {
     let mut data = std::ptr::null();
     let mut len = 0usize;
@@ -910,6 +933,31 @@ fn jpeg_file_buffer_source_and_explicit_load_materialize_without_convert() {
         gobject_sys::g_object_unref(source.cast());
         gobject_sys::g_object_unref(from_buffer.cast());
         gobject_sys::g_object_unref(from_file.cast());
+    }
+}
+
+#[test]
+fn image_object_summary_reports_dimensions_for_vipsheader() {
+    let _guard = guard();
+    init_vips();
+
+    let path = CString::new(sample_jpg().to_string_lossy().into_owned()).expect("jpg path");
+    let image = unsafe { vips_image_new_from_file(path.as_ptr(), ptr::null::<c_char>()) };
+    assert_materializes(image);
+    let dimensions = unsafe { format!("{}x{}", (*image).Xsize, (*image).Ysize) };
+
+    let summary = object_summary_text(image.cast());
+    assert!(
+        summary.contains(&dimensions),
+        "summary did not include dimensions {dimensions}: {summary}"
+    );
+    assert!(
+        summary.contains("uchar"),
+        "summary did not include band format: {summary}"
+    );
+
+    unsafe {
+        gobject_sys::g_object_unref(image.cast());
     }
 }
 

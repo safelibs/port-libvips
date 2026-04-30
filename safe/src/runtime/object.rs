@@ -13,7 +13,7 @@ use crate::abi::connection::{
     VipsSourceCustom, VipsSourceCustomClass, VipsTarget, VipsTargetClass, VipsTargetCustom,
     VipsTargetCustomClass,
 };
-use crate::abi::image::{VipsImage, VipsImageClass};
+use crate::abi::image::*;
 use crate::abi::object::{
     VipsArgument, VipsArgumentClass, VipsArgumentClassMapFn, VipsArgumentFlags,
     VipsArgumentInstance, VipsArgumentMapFn, VipsArgumentTable, VipsClassMapFn, VipsObject,
@@ -956,6 +956,85 @@ unsafe fn append_text(buf: *mut VipsBuf, text: String) {
     }
 }
 
+fn band_format_name(format: VipsBandFormat) -> &'static str {
+    match format {
+        VIPS_FORMAT_UCHAR => "uchar",
+        VIPS_FORMAT_CHAR => "char",
+        VIPS_FORMAT_USHORT => "ushort",
+        VIPS_FORMAT_SHORT => "short",
+        VIPS_FORMAT_UINT => "uint",
+        VIPS_FORMAT_INT => "int",
+        VIPS_FORMAT_FLOAT => "float",
+        VIPS_FORMAT_COMPLEX => "complex",
+        VIPS_FORMAT_DOUBLE => "double",
+        VIPS_FORMAT_DPCOMPLEX => "dpcomplex",
+        _ => "notset",
+    }
+}
+
+fn coding_name(coding: VipsCoding) -> Option<&'static str> {
+    match coding {
+        VIPS_CODING_NONE => None,
+        VIPS_CODING_LABQ => Some("labq"),
+        VIPS_CODING_RAD => Some("rad"),
+        _ => Some("unknown-coding"),
+    }
+}
+
+fn interpretation_name(interpretation: VipsInterpretation) -> &'static str {
+    match interpretation {
+        VIPS_INTERPRETATION_B_W => "b-w",
+        VIPS_INTERPRETATION_HISTOGRAM => "histogram",
+        VIPS_INTERPRETATION_XYZ => "xyz",
+        VIPS_INTERPRETATION_LAB => "lab",
+        VIPS_INTERPRETATION_CMYK => "cmyk",
+        VIPS_INTERPRETATION_LABQ => "labq",
+        VIPS_INTERPRETATION_RGB => "rgb",
+        VIPS_INTERPRETATION_CMC => "cmc",
+        VIPS_INTERPRETATION_LCH => "lch",
+        VIPS_INTERPRETATION_LABS => "labs",
+        VIPS_INTERPRETATION_sRGB => "srgb",
+        VIPS_INTERPRETATION_YXY => "yxy",
+        VIPS_INTERPRETATION_FOURIER => "fourier",
+        VIPS_INTERPRETATION_RGB16 => "rgb16",
+        VIPS_INTERPRETATION_GREY16 => "grey16",
+        VIPS_INTERPRETATION_MATRIX => "matrix",
+        VIPS_INTERPRETATION_scRGB => "scrgb",
+        VIPS_INTERPRETATION_HSV => "hsv",
+        VIPS_INTERPRETATION_MULTIBAND => "multiband",
+        _ => "unknown",
+    }
+}
+
+unsafe fn image_summary_suffix(object: *mut VipsObject) -> Option<String> {
+    if unsafe { gobject_sys::g_type_check_instance_is_a(object.cast(), vips_image_get_type()) }
+        == glib_sys::GFALSE
+    {
+        return None;
+    }
+
+    let image = unsafe { object.cast::<VipsImage>().as_ref() }?;
+    if image.Xsize <= 0 || image.Ysize <= 0 {
+        return None;
+    }
+
+    let plural = if image.Bands == 1 { "" } else { "s" };
+    let mut text = format!(
+        "{}x{} {}, {} band{}, {}",
+        image.Xsize,
+        image.Ysize,
+        band_format_name(image.BandFmt),
+        image.Bands,
+        plural,
+        interpretation_name(image.Type)
+    );
+    if let Some(coding) = coding_name(image.Coding) {
+        text.push_str(", ");
+        text.push_str(coding);
+    }
+    Some(text)
+}
+
 unsafe fn check_required_inputs(object: *mut VipsObject) -> bool {
     let class = unsafe { object_class(object) };
     if class.is_null() {
@@ -1114,7 +1193,11 @@ unsafe extern "C" fn vips_object_real_summary(object: *mut VipsObject, buf: *mut
         .to_string_lossy()
         .into_owned()
     };
-    unsafe { append_text(buf, text) };
+    if let Some(suffix) = unsafe { image_summary_suffix(object) } {
+        unsafe { append_text(buf, format!("{text} {suffix}")) };
+    } else {
+        unsafe { append_text(buf, text) };
+    }
 }
 
 unsafe extern "C" fn vips_object_real_dump(object: *mut VipsObject, buf: *mut VipsBuf) {
