@@ -410,6 +410,25 @@ fn apply_embed_background(
     out
 }
 
+unsafe fn embed_extend_and_background(
+    object: *mut VipsObject,
+) -> Result<(VipsExtend, Vec<f64>), ()> {
+    let background_assigned = unsafe { argument_assigned(object, "background")? };
+    let background = if background_assigned {
+        unsafe { get_array_double(object, "background")? }
+    } else {
+        Vec::new()
+    };
+    let extend = if unsafe { argument_assigned(object, "extend")? } {
+        unsafe { get_enum(object, "extend")? as VipsExtend }
+    } else if background_assigned {
+        VIPS_EXTEND_BACKGROUND
+    } else {
+        VIPS_EXTEND_BLACK
+    };
+    Ok((extend, background))
+}
+
 fn extract_area_buffer(
     input: &ImageBuffer,
     left: usize,
@@ -895,16 +914,7 @@ unsafe fn op_embed(object: *mut VipsObject) -> Result<(), ()> {
     let y = unsafe { get_int(object, "y")? } as isize;
     let width = usize::try_from(unsafe { get_int(object, "width")? }).map_err(|_| ())?;
     let height = usize::try_from(unsafe { get_int(object, "height")? }).map_err(|_| ())?;
-    let extend = if unsafe { argument_assigned(object, "extend")? } {
-        unsafe { get_enum(object, "extend")? as VipsExtend }
-    } else {
-        VIPS_EXTEND_BLACK
-    };
-    let background = if unsafe { argument_assigned(object, "background")? } {
-        unsafe { get_array_double(object, "background")? }
-    } else {
-        Vec::new()
-    };
+    let (extend, background) = unsafe { embed_extend_and_background(object)? };
     let out = apply_embed_background(&input, width, height, x, y, extend, &background);
     let image = unsafe { get_image_ref(object, "in")? };
     let result = unsafe { set_output_image_like(object, "out", out, image) };
@@ -941,16 +951,7 @@ unsafe fn op_gravity(object: *mut VipsObject) -> Result<(), ()> {
         VIPS_COMPASS_DIRECTION_NORTH_WEST => (0, 0),
         _ => return Err(()),
     };
-    let extend = if unsafe { argument_assigned(object, "extend")? } {
-        unsafe { get_enum(object, "extend")? as VipsExtend }
-    } else {
-        VIPS_EXTEND_BLACK
-    };
-    let background = if unsafe { argument_assigned(object, "background")? } {
-        unsafe { get_array_double(object, "background")? }
-    } else {
-        Vec::new()
-    };
+    let (extend, background) = unsafe { embed_extend_and_background(object)? };
     let out = apply_embed_background(&input, width, height, x, y, extend, &background);
     let image = unsafe { get_image_ref(object, "in")? };
     let result = unsafe { set_output_image_like(object, "out", out, image) };

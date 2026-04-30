@@ -226,6 +226,61 @@ fn gravity_crops_generated_image_from_centre() {
 }
 
 #[test]
+fn gravity_background_without_extend_uses_background_extend() {
+    let _guard = guard();
+    init_vips();
+
+    let input = image_from_uchar(1, 1, 1, &[50]);
+    let background_value = [7.0];
+    let background =
+        vips_array_double_new(background_value.as_ptr(), background_value.len() as i32);
+    assert!(!background.is_null());
+
+    let mut out = ptr::null_mut();
+    let result = unsafe {
+        vips_gravity(
+            input,
+            &mut out,
+            VIPS_COMPASS_DIRECTION_CENTRE,
+            3,
+            3,
+            c"background".as_ptr(),
+            background,
+            ptr::null::<c_char>(),
+        )
+    };
+    vips_area_unref(background.cast());
+    assert_eq!(result, 0, "{}", error_text());
+    assert_eq!(read_u8(out), vec![7, 7, 7, 7, 50, 7, 7, 7, 7]);
+
+    let black_background =
+        vips_array_double_new(background_value.as_ptr(), background_value.len() as i32);
+    assert!(!black_background.is_null());
+    let mut explicit_black = ptr::null_mut();
+    let explicit_result = unsafe {
+        vips_gravity(
+            input,
+            &mut explicit_black,
+            VIPS_COMPASS_DIRECTION_CENTRE,
+            3,
+            3,
+            c"extend".as_ptr(),
+            VIPS_EXTEND_BLACK,
+            c"background".as_ptr(),
+            black_background,
+            ptr::null::<c_char>(),
+        )
+    };
+    vips_area_unref(black_background.cast());
+    assert_eq!(explicit_result, 0, "{}", error_text());
+    assert_eq!(read_u8(explicit_black), vec![0, 0, 0, 0, 50, 0, 0, 0, 0]);
+
+    unref_image(explicit_black);
+    unref_image(out);
+    unref_image(input);
+}
+
+#[test]
 fn resample_and_thumbnail_flow() {
     let _guard = guard();
     init_vips();
