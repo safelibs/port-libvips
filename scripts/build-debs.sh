@@ -23,18 +23,6 @@ cp -a "build-check-install/lib/$multiarch"/libvips*.so* build-check-install/lib/
 
 cd "$repo_root/safe"
 stamp_safelibs_changelog "$repo_root"
-_synthesize_orig_tarball_if_needed
 export DEB_BUILD_OPTIONS="${DEB_BUILD_OPTIONS:+$DEB_BUILD_OPTIONS }nocheck"
-dpkg-buildpackage -us -uc
-
-shopt -s nullglob
-artifacts=(
-  ../*.deb
-  ../*.ddeb
-  ../*.dsc
-  ../*.tar.gz ../*.tar.xz ../*.tar.bz2 ../*.tar.zst
-  ../*.buildinfo
-  ../*.changes
-)
-shopt -u nullglob
-cp -v "${artifacts[@]}" "$repo_root/dist"/
+dpkg-buildpackage -us -uc -b
+cp -v ../*.deb "$repo_root/dist"/
