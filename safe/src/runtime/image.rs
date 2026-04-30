@@ -757,7 +757,7 @@ pub extern "C" fn vips_image_write_to_memory(
 pub extern "C" fn vips_image_free_buffer(_image: *mut VipsImage, buffer: *mut c_void) {
     if !buffer.is_null() {
         unsafe {
-            libc::free(buffer);
+            glib_sys::g_free(buffer);
         }
     }
 }

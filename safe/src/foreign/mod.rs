@@ -12,7 +12,7 @@ use std::ptr;
 use std::sync::{Mutex, OnceLock};
 
 use crate::abi::connection::{VipsSource, VipsTarget};
-use crate::abi::image::{VIPS_INTERPRETATION_sRGB, VipsImage, VIPS_INTERPRETATION_B_W};
+use crate::abi::image::VipsImage;
 use crate::foreign::base::{
     buffer_save_name, build_load_result, file_save_name, loader_name, options_from_map,
     parse_option_string, save_options_from_map, target_save_name, ForeignKind, ForeignLoadResult,
@@ -138,79 +138,25 @@ fn load_from_bytes_for_kind(
 }
 
 fn parse_jpeg_header(bytes: &[u8], options: LoadOptions) -> Result<ForeignLoadResult, ()> {
-    if bytes.len() < 4 || !bytes.starts_with(&[0xff, 0xd8]) {
-        append_message_str("jpegload", "invalid jpeg stream");
-        return Err(());
-    }
-
-    let mut offset = 2usize;
-    while offset + 4 <= bytes.len() {
-        if bytes[offset] != 0xff {
-            append_message_str("jpegload", "invalid jpeg marker");
-            return Err(());
-        }
-        let marker = bytes[offset + 1];
-        offset += 2;
-        if marker == 0xd9 || marker == 0xda {
-            break;
-        }
-        let segment_len = u16::from_be_bytes([bytes[offset], bytes[offset + 1]]) as usize;
-        offset += 2;
-        if segment_len < 2 || offset + segment_len - 2 > bytes.len() {
-            append_message_str("jpegload", "truncated jpeg header");
-            return Err(());
-        }
-        if matches!(
-            marker,
-            0xc0 | 0xc1
-                | 0xc2
-                | 0xc3
-                | 0xc5
-                | 0xc6
-                | 0xc7
-                | 0xc9
-                | 0xca
-                | 0xcb
-                | 0xcd
-                | 0xce
-                | 0xcf
-        ) {
-            let precision = bytes[offset];
-            let height = u16::from_be_bytes([bytes[offset + 1], bytes[offset + 2]]) as i32;
-            let width = u16::from_be_bytes([bytes[offset + 3], bytes[offset + 4]]) as i32;
-            let bands = bytes[offset + 5] as i32;
-            let interpretation = if bands == 1 {
-                VIPS_INTERPRETATION_B_W
-            } else {
-                VIPS_INTERPRETATION_sRGB
-            };
-            let metadata =
-                metadata::extract_jpeg_metadata(bytes).with_string("vips-loader", "jpegload");
-            return Ok(build_load_result(
-                width,
-                height,
-                bands,
-                if precision > 8 {
-                    crate::abi::image::VIPS_FORMAT_USHORT
-                } else {
-                    crate::abi::image::VIPS_FORMAT_UCHAR
-                },
-                interpretation,
-                "jpegload",
-                None,
-                metadata,
-                Some(base::PendingDecode {
-                    bytes: bytes.to_vec(),
-                    kind: ForeignKind::Jpeg,
-                    options,
-                }),
-            ));
-        }
-        offset += segment_len - 2;
-    }
-
-    append_message_str("jpegload", "missing jpeg frame header");
-    Err(())
+    let info = loaders::jpeg::read_info(bytes).map_err(|message| {
+        append_message_str("jpegload", &message);
+    })?;
+    let metadata = metadata::extract_jpeg_metadata(bytes).with_string("vips-loader", "jpegload");
+    Ok(build_load_result(
+        info.width,
+        info.height,
+        info.bands,
+        info.band_format,
+        info.interpretation,
+        "jpegload",
+        None,
+        metadata,
+        Some(base::PendingDecode {
+            bytes: bytes.to_vec(),
+            kind: ForeignKind::Jpeg,
+            options,
+        }),
+    ))
 }
 
 fn parse_png(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
@@ -597,8 +543,10 @@ pub fn decode_pending(pending: &base::PendingDecode) -> Result<Vec<u8>, ()> {
         return loaders::container::extract_pixel_payload(&pending.bytes);
     }
     match pending.kind {
-        ForeignKind::Jpeg
-        | ForeignKind::Gif
+        ForeignKind::Jpeg => loaders::jpeg::decode_pixels(&pending.bytes).map_err(|message| {
+            append_message_str("jpegload", &message);
+        }),
+        ForeignKind::Gif
         | ForeignKind::Tiff
         | ForeignKind::Webp
         | ForeignKind::Heif
@@ -911,12 +859,8 @@ pub fn new_image_from_source(
             options,
         );
     }
-    let result = load_from_bytes_inner(
-        &bytes,
-        filename_hint.as_deref(),
-        InputKind::Source,
-        options,
-    );
+    let result =
+        load_from_bytes_inner(&bytes, filename_hint.as_deref(), InputKind::Source, options);
     match result {
         Ok(result) => {
             if let Some(state) = unsafe { image_state(image) } {
