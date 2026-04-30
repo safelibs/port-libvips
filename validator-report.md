@@ -75,16 +75,33 @@ PYTHON="/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/pyth
 - Phase-2 results: 81 passed, 4 failed, 85 cast records, and no override package install failures.
 - Remaining failure ownership after phase 2: `usage-ruby-vips-gravity-generated` remains with `impl_03_ruby_usage_operation_failures`; `vips-cli-load-save`, `thumbnail-behavior`, and `usage-ruby-vips-crop-sample-jpeg` remain with `impl_04_foreign_io_buffer_failures`; no failure remains owned by `impl_02_source_surface_failures`.
 
+## Phase 3 Ruby Usage Operation Rerun
+- Implement phase: `impl_03_ruby_usage_operation_failures`.
+- Root cause checked: the remaining phase-3 usage failure was `usage-ruby-vips-gravity-generated`; it mapped to libvips nickname `gravity` and generated wrapper `vips_gravity(VipsImage *in, VipsImage **out, VipsCompassDirection direction, int width, int height, ...)`.
+- Changed production files: `safe/src/ops/mod.rs` and `safe/src/ops/conversion.rs` now expose and dispatch `gravity`, using the existing embed pixel path for output pixels, extend/background handling, and metadata copying.
+- Regression test path: `safe/tests/ops_advanced.rs::gravity_crops_generated_image_from_centre` calls the exported C ABI with the same generated 3x3 grayscale to 2x2 centre crop shape as the Ruby validator case.
+- Focused tests passed: `cargo test --all-features --test ops_core -- --nocapture`, `cargo test --all-features --test ops_advanced -- --nocapture`, `cargo test --all-features --test operation_registry -- --nocapture`, and `cargo test --all-features --test security -- --nocapture`.
+- Package-source commit used for the phase-3 rebuild: 92fdb5a6a409d57b68ee022d5bb0074a83f997d9.
+- Package rebuild command: `cd /home/yans/safelibs/pipeline/ports/port-libvips/safe && dpkg-buildpackage -b -uc -us`.
+- Refreshed local lock: validator/artifacts/libvips-safe-port-lock.json.
+- Phase-3 artifact root: validator/artifacts/libvips-safe-ops.
+- Phase-3 matrix exit status: 0.
+- Phase-3 summary artifact: validator/artifacts/libvips-safe-ops/port-04-test/results/libvips/summary.json.
+- Inventory-derived counts: source cases 5, usage cases 80, total cases 85.
+- Phase-3 results: 82 passed, 3 failed, 85 cast records, and no override package install failures.
+- Phase-3 fixed testcase: `usage-ruby-vips-gravity-generated` passed in validator/artifacts/libvips-safe-ops/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json.
+- Remaining failure ownership after phase 3: `vips-cli-load-save`, `thumbnail-behavior`, and `usage-ruby-vips-crop-sample-jpeg` remain with `impl_04_foreign_io_buffer_failures`; no failure remains owned by `impl_02_source_surface_failures` or `impl_03_ruby_usage_operation_failures`.
+
 ## failure classification
 | Testcase ID | Kind | Status | Owner phase | First artifact | Root cause | Regression test | Resolution |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | vips-cli-load-save | source | open | `impl_04_foreign_io_buffer_failures` | validator/artifacts/libvips-safe/port-04-test/results/libvips/vips-cli-load-save.json | JPEG load/save materialization falls back to external `convert` inside the validator container, which is absent; `copy` fails before PNG output. | Add phase 4 coverage for JPEG file load and save materialization without external decoder fallback. | Open for `impl_04_foreign_io_buffer_failures`. |
 | thumbnail-behavior | source | open | `impl_04_foreign_io_buffer_failures` | validator/artifacts/libvips-safe/port-04-test/results/libvips/thumbnail-behavior.json | `vipsthumbnail` hits the same JPEG materialization path and fails when external `convert` is absent. | Add phase 4 coverage for thumbnailing a JPEG fixture without external decoder fallback. | Open for `impl_04_foreign_io_buffer_failures`. |
 | usage-ruby-vips-crop-sample-jpeg | usage | open | `impl_04_foreign_io_buffer_failures` | validator/artifacts/libvips-safe/port-04-test/results/libvips/usage-ruby-vips-crop-sample-jpeg.json | Ruby crop of a JPEG fixture fails during materialization through the missing external `convert` path before `extract_area` can complete. | Add phase 4 coverage for ruby-vips JPEG fixture load, crop, and materialization through file or buffer APIs. | Open for `impl_04_foreign_io_buffer_failures`. |
-| usage-ruby-vips-gravity-generated | usage | open | `impl_03_ruby_usage_operation_failures` | validator/artifacts/libvips-safe/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json | Generated-image `gravity` dispatch reaches ruby-vips but the safe operation implementation returns `gravity: operation not implemented`. | Add phase 3 coverage for generated-image gravity crop behavior and centered pixel payload. | Open for `impl_03_ruby_usage_operation_failures`. |
+| usage-ruby-vips-gravity-generated | usage | fixed | `impl_03_ruby_usage_operation_failures` | validator/artifacts/libvips-safe/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json | Generated-image `gravity` dispatch reached ruby-vips but the safe operation implementation returned `gravity: operation not implemented`. | `safe/tests/ops_advanced.rs::gravity_crops_generated_image_from_centre` covers the generated-image gravity centre crop through the exported C ABI. | Fixed by implementing `gravity` support in `safe/src/ops/conversion.rs` and routing it from `safe/src/ops/mod.rs`; passed in validator/artifacts/libvips-safe-ops/port-04-test/results/libvips/usage-ruby-vips-gravity-generated.json. |
 
 ## Later Owner Phases
 - `impl_02_source_surface_failures`: no baseline failure is assigned here because the source-case failures depend on JPEG decode, save, or materialization rather than command, header, package identity, or metadata surface alone.
-- `impl_03_ruby_usage_operation_failures`: owns generated ruby-vips operation behavior failures.
+- `impl_03_ruby_usage_operation_failures`: generated ruby-vips operation behavior failure fixed in phase 3.
 - `impl_04_foreign_io_buffer_failures`: owns file, buffer, loader, saver, lazy materialization, and external decoder fallback failures.
 - `impl_05_packaging_container_and_remaining_failures`: no baseline packaging or container setup failure was observed; all override packages installed and matrix exit was 0.
