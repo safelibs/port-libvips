@@ -16,6 +16,14 @@ unsafe extern "C" {
         ...
     ) -> i32;
     fn vips_draw_image(image: *mut VipsImage, sub: *mut VipsImage, x: i32, y: i32, ...) -> i32;
+    fn vips_gravity(
+        input: *mut VipsImage,
+        out: *mut *mut VipsImage,
+        direction: VipsCompassDirection,
+        width: i32,
+        height: i32,
+        ...
+    ) -> i32;
     fn vips_match(
         reference: *mut VipsImage,
         secondary: *mut VipsImage,
@@ -187,6 +195,33 @@ fn colour_and_profile_flow() {
     unref_image(lab);
     unref_image(srgb);
     unref_image(hsv);
+    unref_image(input);
+}
+
+#[test]
+fn gravity_crops_generated_image_from_centre() {
+    let _guard = guard();
+    init_vips();
+
+    let input = image_from_uchar(3, 3, 1, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+    let mut out = ptr::null_mut();
+    let result = unsafe {
+        vips_gravity(
+            input,
+            &mut out,
+            VIPS_COMPASS_DIRECTION_CENTRE,
+            2,
+            2,
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_eq!(result, 0, "{}", error_text());
+    assert_eq!(vips_image_get_width(out), 2);
+    assert_eq!(vips_image_get_height(out), 2);
+    assert_eq!(read_u8(out), vec![1, 2, 4, 5]);
+
+    unref_image(out);
     unref_image(input);
 }
 
