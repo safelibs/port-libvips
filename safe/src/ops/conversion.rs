@@ -386,10 +386,10 @@ fn apply_embed_background(
                                 if size <= 1 {
                                     return 0;
                                 }
-                                let period = (size * 2 - 2) as isize;
+                                let period = (size * 2) as isize;
                                 let mut value = coord.rem_euclid(period);
                                 if value >= size as isize {
-                                    value = period - value;
+                                    value = period - 1 - value;
                                 }
                                 value as usize
                             };

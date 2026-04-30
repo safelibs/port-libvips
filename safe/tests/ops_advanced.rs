@@ -281,6 +281,36 @@ fn gravity_background_without_extend_uses_background_extend() {
 }
 
 #[test]
+fn gravity_mirror_extend_matches_libvips_tile_semantics() {
+    let _guard = guard();
+    init_vips();
+
+    let input = image_from_uchar(2, 2, 1, &[1, 2, 3, 4]);
+
+    let mut out = ptr::null_mut();
+    let result = unsafe {
+        vips_gravity(
+            input,
+            &mut out,
+            VIPS_COMPASS_DIRECTION_CENTRE,
+            4,
+            4,
+            c"extend".as_ptr(),
+            VIPS_EXTEND_MIRROR,
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_eq!(result, 0, "{}", error_text());
+    assert_eq!(
+        read_u8(out),
+        vec![1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4, 4]
+    );
+
+    unref_image(out);
+    unref_image(input);
+}
+
+#[test]
 fn resample_and_thumbnail_flow() {
     let _guard = guard();
     init_vips();
