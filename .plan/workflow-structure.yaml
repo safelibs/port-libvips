@@ -3,301 +3,244 @@ yaml_source_mode: inline-only
 verifier_encoding: explicit-phases
 phases:
   - order: 1
-    id: impl_01_real_library_handoff
+    id: impl_01_validator_bootstrap_baseline
     type: implement
     bounce_target: null
     required_preexisting_inputs:
-      - safe/meson.build
-      - safe/debian/rules
-      - safe/Cargo.toml
-      - safe/build.rs
-      - safe/reference/abi/core-bootstrap.symbols
-      - build-check/libvips/libvips.so
-      - build-check-install/lib/libvips.so.42.17.1
-  - order: 2
-    id: check_01_real_library_handoff
-    type: check
-    bounce_target: impl_01_real_library_handoff
-    required_preexisting_inputs:
-      - safe/Cargo.toml
-      - safe/meson.build
-      - safe/reference/abi/core-bootstrap.symbols
-      - safe/scripts/assert_not_reference_binary.py
-      - safe/scripts/compare_symbols.py
-      - build-check-install/lib/libvips.so.42.17.1
-  - order: 3
-    id: impl_02_abi_bootstrap
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - safe/build.rs
-      - safe/include/vips/
-      - safe/src/abi/
-      - safe/src/runtime/init.rs
-      - safe/src/runtime/error.rs
-      - safe/reference/abi/libvips.symbols
-      - safe/reference/headers/public-files.txt
-      - safe/reference/headers/public-api-decls.txt
-      - safe/reference/pkgconfig/vips.pc
-      - build-check-install/include/vips/
-  - order: 4
-    id: check_02_abi_bootstrap
-    type: check
-    bounce_target: impl_02_abi_bootstrap
-    required_preexisting_inputs:
-      - safe/Cargo.toml
-      - safe/tests/abi_layout.rs
-      - safe/tests/init_version_smoke.rs
-      - safe/reference/abi/libvips.symbols
-      - safe/reference/headers/public-files.txt
-      - safe/reference/headers/public-api-decls.txt
-      - safe/reference/pkgconfig/vips.pc
-      - safe/scripts/assert_not_reference_binary.py
-      - safe/scripts/compare_symbols.py
-      - safe/scripts/compare_headers.py
-      - safe/scripts/compare_pkgconfig.py
-      - build-check-install/lib/libvips.so.42.17.1
-  - order: 5
-    id: impl_03_runtime_registry
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - safe/src/runtime/
-      - safe/src/generated/operations_registry.rs
-      - safe/src/generated/operation_wrappers.rs
-      - safe/scripts/generate_operation_registry.py
-      - safe/reference/operations.json
-      - safe/reference/types.json
-      - original/libvips/iofuncs/
-      - original/test/test_connections.c
-      - original/test/test_descriptors.c
-      - original/tools/vips.c
-  - order: 6
-    id: check_03_runtime_registry
-    type: check
-    bounce_target: impl_03_runtime_registry
-    required_preexisting_inputs:
-      - safe/meson.build
-      - safe/tests/runtime_io.rs
-      - safe/tests/operation_registry.rs
-      - safe/reference/operations.json
-      - safe/src/generated/operations.json
-      - safe/scripts/compare_operations.py
-      - safe/scripts/assert_not_reference_binary.py
-      - original/test/test_connections.c
-      - original/test/test_descriptors.c
-      - original/tools/vips.c
-      - build-check-install/lib/libvips.so.42.17.1
-  - order: 7
-    id: impl_04_link_compat_cpp
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - safe/reference/abi/libvips-cpp.symbols
-      - safe/reference/objects/link-compat-manifest.json
-      - safe/scripts/link_compat.sh
-      - safe/tests/link_compat/vips_cpp_smoke.cpp
-      - original/cplusplus/meson.build
-      - original/cplusplus/VImage.cpp
-      - original/cplusplus/VInterpolate.cpp
-      - original/cplusplus/VRegion.cpp
-      - original/cplusplus/VConnection.cpp
-      - original/cplusplus/VError.cpp
-      - original/tools/
-      - original/examples/
-      - original/fuzz/
-  - order: 8
-    id: check_04_link_compat_cpp
-    type: check
-    bounce_target: impl_04_link_compat_cpp
-    required_preexisting_inputs:
-      - safe/meson.build
-      - safe/reference/abi/libvips-cpp.symbols
-      - safe/reference/objects/link-compat-manifest.json
-      - safe/scripts/assert_not_reference_binary.py
-      - safe/scripts/compare_symbols.py
-      - safe/scripts/link_compat.sh
-      - safe/tests/link_compat/vips_cpp_smoke.cpp
+      - original/
+      - safe/
       - build-check/
       - build-check-install/
-      - original/test/test-suite/images/sample.jpg
-  - order: 9
-    id: impl_05_core_compute_ops
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - safe/src/pixels/
-      - safe/src/ops/mod.rs
-      - original/libvips/arithmetic/
-      - original/libvips/conversion/
-      - original/libvips/convolution/
-      - original/libvips/create/
-      - original/libvips/histogram/
-      - original/libvips/morphology/
-      - original/libvips/freqfilt/
-  - order: 10
-    id: check_05_core_compute_ops
-    type: check
-    bounce_target: impl_05_core_compute_ops
-    required_preexisting_inputs:
-      - safe/Cargo.toml
-      - safe/tests/ops_core.rs
-      - safe/tests/security.rs
-      - safe/tests/security/cve_2021_27847.rs
-      - safe/tests/security/cve_2026_3284.rs
-  - order: 11
-    id: impl_06_advanced_ops
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - safe/src/ops/colour.rs
-      - safe/src/ops/resample.rs
-      - safe/src/ops/draw.rs
-      - safe/src/ops/mosaicing.rs
-      - original/libvips/colour/
-      - original/libvips/resample/
-      - original/libvips/draw/
-      - original/libvips/mosaicing/
-      - original/libvips/iofuncs/vector.cpp
-      - original/libvips/resample/reduceh_hwy.cpp
-      - original/libvips/resample/reducev_hwy.cpp
-  - order: 12
-    id: check_06_advanced_ops
-    type: check
-    bounce_target: impl_06_advanced_ops
-    required_preexisting_inputs:
-      - safe/Cargo.toml
-      - safe/tests/ops_advanced.rs
-      - safe/tests/threading.rs
-      - safe/tests/security/cve_2018_7998.rs
-  - order: 13
-    id: impl_07_foreign_stack
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - safe/src/foreign/
-      - safe/reference/modules/module-dir.txt
-      - safe/reference/modules/installed-modules.txt
-      - safe/reference/modules/module-registry.json
-      - safe/reference/tests/
+      - all_cves.json
+      - relevant_cves.json
+      - dependents.json
+      - test-original.sh
+      - safe/reference/
       - safe/tests/upstream/
+      - safe/tests/dependents/
       - safe/vendor/pyvips-3.1.1/
-      - original/libvips/foreign/
-      - original/libvips/module/
-      - original/fuzz/
-      - original/test/
-      - original/test/test-suite/
-  - order: 14
-    id: check_07_foreign_stack
+      - validator/
+      - validator-overrides/libvips/
+      - validator/artifacts/
+      - validator-report.md
+      - .plan/
+  - order: 2
+    id: check_01_validator_bootstrap_software_tester
     type: check
-    bounce_target: impl_07_foreign_stack
+    bounce_target: impl_01_validator_bootstrap_baseline
     required_preexisting_inputs:
+      - validator/
+      - validator/README.md
+      - validator/repositories.yml
+      - validator/tests/libvips/testcases.yml
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator/artifacts/libvips-safe-port-lock.json
+      - validator-overrides/libvips/
+      - validator/artifacts/libvips-safe/
+      - validator-report.md
+  - order: 3
+    id: check_01_validator_bootstrap_senior_tester
+    type: check
+    bounce_target: impl_01_validator_bootstrap_baseline
+    required_preexisting_inputs:
+      - validator/
+      - validator/tests/libvips/testcases.yml
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator/artifacts/libvips-safe-port-lock.json
+      - validator/artifacts/libvips-safe/
+      - validator-report.md
+  - order: 4
+    id: impl_02_source_surface_failures
+    type: implement
+    bounce_target: null
+    required_preexisting_inputs:
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator/artifacts/libvips-safe-port-lock.json
+      - validator/artifacts/libvips-safe/
+      - validator/tests/libvips/tests/cases/source/
+      - validator-report.md
+      - safe/src/runtime/
+      - safe/src/abi/
+      - safe/include/vips/
+      - safe/build_support/
+      - safe/build.rs
+      - safe/Cargo.toml
       - safe/meson.build
-      - safe/reference/modules/module-registry.json
-      - safe/scripts/assert_not_reference_binary.py
-      - safe/scripts/compare_modules.py
-      - safe/scripts/compare_module_registry.py
-      - safe/scripts/check_introspection.sh
-      - safe/tests/upstream/
-      - safe/tests/security/cve_2019_6976.rs
-      - safe/tests/security/cve_2023_40032.rs
-      - safe/tests/security/cve_2026_3146.rs
-      - safe/vendor/pyvips-3.1.1/
-      - build-check-install/lib/libvips.so.42.17.1
-  - order: 15
-    id: impl_08_packaging_dependents
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - safe/debian/control
-      - safe/debian/rules
-      - safe/debian/*.install
-      - safe/debian/libvips42t64.shlibs
-      - safe/reference/abi/libvips.symbols
-      - safe/reference/abi/libvips-cpp.symbols
-      - safe/reference/headers/public-files.txt
-      - safe/reference/headers/public-api-decls.txt
-      - safe/reference/pkgconfig/vips.pc
-      - safe/reference/pkgconfig/vips-cpp.pc
-      - safe/reference/modules/installed-modules.txt
-      - safe/reference/modules/module-registry.json
-      - safe/scripts/assert_not_reference_binary.py
-      - safe/scripts/compare_symbols.py
-      - safe/scripts/compare_headers.py
-      - safe/scripts/compare_pkgconfig.py
-      - safe/scripts/compare_modules.py
-      - safe/scripts/compare_module_registry.py
-      - safe/scripts/check_introspection.sh
-      - safe/src/generated/deprecated_im.rs
-      - safe/src/generated/deprecated_vips7.rs
-      - build-check-install/include/vips/
-      - build-check-install/lib/pkgconfig/vips.pc
-      - dependents.json
-      - test-original.sh
-      - safe/vendor/pyvips-3.1.1/
-      - original/debian/
-      - original/debian/gir1.2-vips-8.0.install
-      - existing dependent smoke helpers embedded in test-original.sh
-  - order: 16
-    id: check_08_packaging_dependents
-    type: check
-    bounce_target: impl_08_packaging_dependents
-    required_preexisting_inputs:
+      - safe/meson_options.txt
       - safe/debian/
-      - safe/reference/abi/libvips.symbols
-      - safe/reference/abi/deprecated-im.symbols
-      - safe/reference/abi/libvips-cpp.symbols
-      - safe/reference/headers/public-files.txt
-      - safe/reference/headers/public-api-decls.txt
-      - safe/reference/pkgconfig/vips.pc
-      - safe/reference/pkgconfig/vips-cpp.pc
-      - safe/reference/modules
-      - safe/scripts/assert_not_reference_binary.py
-      - safe/scripts/compare_symbols.py
-      - safe/scripts/compare_headers.py
-      - safe/scripts/compare_pkgconfig.py
-      - safe/scripts/compare_modules.py
-      - safe/scripts/compare_module_registry.py
+      - safe/tests/runtime_io.rs
+      - safe/tests/init_version_smoke.rs
+      - safe/tests/abi_layout.rs
+      - safe/tests/introspection/
+      - safe/tests/link_compat/
       - safe/scripts/check_introspection.sh
-      - safe/tests/link_compat/deprecated_c_api_smoke.c
-      - safe/tests/dependents/apps.json
-      - safe/vendor/pyvips-3.1.1/
-      - build-check-install/include/vips/
-      - build-check-install/lib/pkgconfig/vips.pc
-      - dependents.json
-      - test-original.sh
-  - order: 17
-    id: impl_09_final_fixups
+      - safe/scripts/link_compat.sh
+      - build-check/
+      - build-check-install/
+  - order: 5
+    id: check_02_source_surface_software_tester
+    type: check
+    bounce_target: impl_02_source_surface_failures
+    required_preexisting_inputs:
+      - safe/
+      - validator/
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator-report.md
+      - build-check/
+      - build-check-install/
+  - order: 6
+    id: check_02_source_surface_senior_tester
+    type: check
+    bounce_target: impl_02_source_surface_failures
+    required_preexisting_inputs:
+      - safe/
+      - validator/
+      - validator-report.md
+  - order: 7
+    id: impl_03_ruby_usage_operation_failures
     type: implement
     bounce_target: null
     required_preexisting_inputs:
-      - Everything produced or updated by phases 1 through 8.
-      - safe/scripts/run_release_gate.sh
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator/artifacts/libvips-safe/
+      - validator/artifacts/libvips-safe-source/
+      - validator/tests/libvips/tests/cases/usage/
+      - validator-report.md
+      - safe/src/ops/mod.rs
+      - safe/src/ops/
+      - safe/src/generated/
+      - safe/src/pixels/
+      - safe/src/runtime/
+      - safe/tests/ops_core.rs
+      - safe/tests/ops_advanced.rs
+      - safe/tests/operation_registry.rs
+      - safe/tests/security.rs
+  - order: 8
+    id: check_03_ruby_usage_operation_software_tester
+    type: check
+    bounce_target: impl_03_ruby_usage_operation_failures
+    required_preexisting_inputs:
+      - safe/
+      - validator/
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator-report.md
+  - order: 9
+    id: check_03_ruby_usage_operation_senior_tester
+    type: check
+    bounce_target: impl_03_ruby_usage_operation_failures
+    required_preexisting_inputs:
+      - safe/
+      - validator-report.md
+  - order: 10
+    id: impl_04_foreign_io_buffer_failures
+    type: implement
+    bounce_target: null
+    required_preexisting_inputs:
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator/artifacts/libvips-safe/
+      - validator/artifacts/libvips-safe-source/
+      - validator/artifacts/libvips-safe-ops/
+      - validator/tests/libvips/tests/cases/source/
+      - validator/tests/libvips/tests/cases/usage/
+      - validator-report.md
+      - safe/src/foreign/
+      - safe/src/runtime/source.rs
+      - safe/src/runtime/target.rs
+      - safe/src/runtime/image.rs
+      - safe/build_support/api_shim.c
+      - safe/build.rs
+      - safe/tests/runtime_io.rs
+      - safe/tests/security.rs
+      - safe/tests/upstream/
+      - original/test/test-suite/images/
+      - safe/src/foreign/loaders/jpeg.rs
+  - order: 11
+    id: check_04_foreign_io_buffer_software_tester
+    type: check
+    bounce_target: impl_04_foreign_io_buffer_failures
+    required_preexisting_inputs:
+      - safe/
+      - validator/
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator-report.md
+      - original/test/test-suite/images/
+  - order: 12
+    id: check_04_foreign_io_buffer_senior_tester
+    type: check
+    bounce_target: impl_04_foreign_io_buffer_failures
+    required_preexisting_inputs:
+      - safe/
+      - validator-report.md
+  - order: 13
+    id: impl_05_packaging_container_and_remaining_failures
+    type: implement
+    bounce_target: null
+    required_preexisting_inputs:
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator/artifacts/libvips-safe-port-lock.json
+      - validator/artifacts/libvips-safe/
+      - validator/artifacts/libvips-safe-source/
+      - validator/artifacts/libvips-safe-ops/
+      - validator/artifacts/libvips-safe-foreign/
+      - validator/tests/libvips/
+      - validator-report.md
+      - safe/debian/
+      - safe/meson.build
+      - safe/build_support/
+      - safe/scripts/
       - safe/tests/dependents/
+      - safe/tests/upstream/
       - dependents.json
       - test-original.sh
+  - order: 14
+    id: check_05_packaging_container_software_tester
+    type: check
+    bounce_target: impl_05_packaging_container_and_remaining_failures
+    required_preexisting_inputs:
+      - safe/
+      - safe/scripts/run_release_gate.sh
+      - validator/
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator-report.md
+  - order: 15
+    id: check_05_packaging_container_senior_tester
+    type: check
+    bounce_target: impl_05_packaging_container_and_remaining_failures
+    required_preexisting_inputs:
+      - safe/
+      - validator/
+      - validator/artifacts/libvips-safe-port-lock.json
+      - validator-report.md
+  - order: 16
+    id: impl_06_final_report_and_clean_run
+    type: implement
+    bounce_target: null
+    required_preexisting_inputs:
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator/artifacts/libvips-safe-port-lock.json
+      - validator/artifacts/libvips-safe-remaining/
+      - validator-overrides/libvips/
+      - validator-report.md
+      - safe/
+      - safe/scripts/run_release_gate.sh
+  - order: 17
+    id: check_06_final_software_tester
+    type: check
+    bounce_target: impl_06_final_report_and_clean_run
+    required_preexisting_inputs:
+      - safe/
+      - safe/scripts/run_release_gate.sh
+      - validator/
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator/artifacts/libvips-safe-port-lock.json
+      - validator-report.md
   - order: 18
-    id: check_09_release_gate
+    id: check_06_final_senior_tester
     type: check
-    bounce_target: impl_09_final_fixups
+    bounce_target: impl_06_final_report_and_clean_run
     required_preexisting_inputs:
-      - safe/scripts/run_release_gate.sh
-      - safe/tests/dependents/
-      - dependents.json
-      - test-original.sh
-  - order: 19
-    id: check_09_tester_review
-    type: check
-    bounce_target: impl_09_final_fixups
-    required_preexisting_inputs:
-      - .git/
-      - safe/src/
-      - safe/tests/
-  - order: 20
-    id: check_09_senior_review
-    type: check
-    bounce_target: impl_09_final_fixups
-    required_preexisting_inputs:
-      - safe/Cargo.toml
-      - safe/src/
-      - safe/tests/
+      - validator/
+      - validator/artifacts/libvips-safe-inventory.json
+      - validator/artifacts/libvips-safe-port-lock.json
+      - validator/artifacts/libvips-safe-final/
+      - validator-report.md
