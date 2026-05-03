@@ -508,3 +508,170 @@ Date: 2026-05-03. Phase: `impl_04_foreign_io_buffer_failures`. Repo HEAD before 
 ## Phase 5 Packaging, Container, And Remaining Failures Rerun (Baseline-Clean No-Op)
 
 Date: 2026-05-03. Phase: `impl_05_packaging_container_and_remaining_failures`. Repo HEAD before this phase: `4abcf87` (`impl_04 record no foreign io and buffer failures`). No failure of this class exists in the current Phase 1 baseline: `validator/artifacts/libvips-safe-baseline/port-04-test/results/libvips/summary.json` reports `cases: 85`, `source_cases: 5`, `usage_cases: 80`, `passed: 85`, `failed: 0`, `casts: 85`, and programmatic inspection of all 85 per-case JSONs under `validator/artifacts/libvips-safe-baseline/port-04-test/results/libvips/*.json` (excluding `summary.json`) confirms `passed=85 failed=0 override_true=85`, so the explicit `override_debs_installed: true` assertion holds across all 85 result records and no override-package install failure or container setup failure is observed in any per-case record. The Phase 1 failure classification table records "none — baseline is clean", explicitly stating that no failures are routed to `impl_05_packaging_container_and_remaining_failures`. The packaging/container-class concerns owned by this phase (override `.deb` install on the validator container, cross-cutting compatibility defects surfaced by `safe/scripts/run_release_gate.sh` such as the canonical `original/test/test-suite/test_foreign.py::TestForeign::test_truncated` shape, and any residual catch-all testcase) all carry `status: passed` and `override_debs_installed: true` in this baseline; in particular the prior session's release-gate catch-all defect (default truncated JPEG materialization) was already fixed in `safe/src/foreign/base.rs`, `safe/src/foreign/loaders/jpeg.rs`, and `safe/src/foreign/mod.rs` and remains covered by the regression test `safe/tests/runtime_io.rs::truncated_jpeg_default_materializes_but_fail_on_truncated_rejects_pixels` per the prior session's `## Phase 5 Packaging, Container, And Remaining Failures Rerun` section above and the failure-classification row for `__packaging_container_setup__`. The four canonical override packages (`libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`) staged under `validator-overrides/libvips/` at `8.15.1-1.1build4_amd64` are recorded in `validator/artifacts/libvips-safe-baseline-port-lock.json` and were installed without error in every Phase 1 baseline per-case record (`override_debs_installed: true` on all 85), so no container-side dependency mismatch in `safe/debian/control`, no `.install` glob gap in `safe/debian/*.install`, no `safe/meson.build`/`safe/debian/rules` packaging defect, and no `packaging/package.env` mismatch is owned here. Per the phase contract, when Phase 1 owns zero failures for this phase the implementer skips the pre-change `safe/scripts/run_release_gate.sh` evidence rerun, no `safe/src/**`, `safe/build.rs`, `safe/meson.build`, `safe/debian/**`, or `safe/Cargo.toml`/`safe/Cargo.lock` changes are made, no `safe/tests/runtime_io.rs` or other `safe/tests/<area>.rs` regression test is added (existing truncated-JPEG and packaging coverage is retained), no `validator-overrides/libvips/*.deb` rebuild is performed, no `validator/artifacts/libvips-safe-remaining-port-lock.json` is synthesized, no focused `validator/artifacts/libvips-safe-remaining/` rerun is produced (the existing artifacts from the prior session — 85 per-case JSONs all `status: passed` and `override_debs_installed: true`, `matrix-exit-code.txt` `0`, summary `passed: 85, failed: 0` — are retained in place and not regenerated), and no approved-skip `validator/artifacts/libvips-safe-remaining-approved/` rerun is needed (no validator-bug verdict applies, so no transient `--tests-root` override copy of `validator/tests/libvips/tests/cases/` with a failing per-case script removed is created and no `excluded testcase id` is recorded here). The validator working tree is unchanged: `git -C validator diff --exit-code -- tests repositories.yml README.md` exits zero. The remaining-ownership row for this phase therefore stays "no failure remains owned by `impl_05_packaging_container_and_remaining_failures`", consistent with the prior session's Phase 5 and Final Clean Run sections above. Commit recorded as `impl_05 record no remaining failures`.
+
+
+## Final Clean Run
+
+- Date: 2026-05-03. Phase: `impl_06_final_report_and_clean_run`. Repo HEAD before this phase: `195188bbc6417e2d0fff9e9e59e2dce3ce68a41b` (`impl_05 record no remaining failures`).
+- Validator URL: https://github.com/safelibs/validator.
+- Recorded `origin/main` after `git -C validator fetch origin`: `87b321fe728340d6fc6dd2f638583cca82c667c3` (manifest collapsed to apt-package metadata only — `grep -c '^testcases:'` against the upstream blob returns `0`).
+- Active validator commit: `1319bb0374ef66428a42dd71e49553c6d057feaf` (preserves the inline 85-testcase manifest this run depends on; `sha256(validator/tests/libvips/testcases.yml) = c44346195fbfa8dd5de2c29b14ac9474eb3b91802d4fc2e7a5325141f9ee6140`).
+- Final package-source commit recorded in the lock: `195188bbc6417e2d0fff9e9e59e2dce3ce68a41b` (parent of this session's impl_06 commit). The widened-scope `safe/` regression fix recorded in this section is folded into the impl_06 commit itself; the rebuild, override staging, and validator proof were performed against `safe/` working tree carrying that fix on top of `195188b`.
+- Inventory counts: 5 source cases, 80 usage cases, 85 total cases.
+- checks executed: `cargo test --all-features -- --nocapture`, `safe/scripts/run_release_gate.sh`, `dpkg-buildpackage -b -uc -us`, canonical override staging, port lock refresh, final full unmodified validator matrix, clean-result assertion, `tools/verify_proof_artifacts.py --require-casts`, `tools/render_site.py`, `scripts/verify-site.sh`, and `git -C validator diff --exit-code -- tests repositories.yml README.md`.
+- Senior-reviewer bounce and widened scope: the senior reviewer of the first impl_06 attempt FAILed `check_06_final_clean_run_senior_reviewer` because `cd safe && cargo test --all-features -- --nocapture` and `safe/scripts/run_release_gate.sh` both exited `101` against `safe/rust-toolchain.toml` `channel = "1.78"` while `safe/Cargo.lock` carries `indexmap@2.13.1` (requires `rustc >= 1.82`), breaking two named success criteria. Per the phase contract this triggered a substantive `safe/**` regression bounce; impl_06 widened scope and applied the minimum fix necessary to unblock both checks while keeping the canonical export surface intact.
+- Widened-scope `safe/` regression fix (this session, post-bounce):
+  - `safe/rust-toolchain.toml`: bumped `channel` from `"1.78"` to `"1.82.0"` so the `cargo` toolchain matches the actual MSRV of the in-tree code (`unsafe extern "C" {}` blocks in `src/runtime/error.rs`, `src/runtime/object.rs`, `src/foreign/loaders/legacy_vips.rs`, and `Option::is_none_or` in `src/ops/morphology.rs` — all stabilized in `rustc 1.82`) and resolves `indexmap@2.13.1` from `safe/Cargo.lock`.
+  - `safe/build.rs`: stopped emitting `cargo:rustc-cdylib-link-arg=-Wl,--version-script=...` for the cdylib output. Starting with `rustc 1.82` the compiler emits its own anonymous `--version-script` to `cc` for `cdylib` crate types, and GNU `ld` refuses to combine an anonymous version tag with our tagged `VIPS_42 { ... }` script (`anonymous version tag cannot be combined with other version tags`). The canonical `.so` shipped in the `.deb` is the meson-built one, which manually relinks the static archive against the same `selected_export_map` (see `safe/meson.build:192`); cargo's intermediate `target/<profile>/libvips.so` exports only the symbols rustc tracks, which is sufficient for the `cargo test` target binaries (they link against the rlib, not the cdylib) and for downstream `meson compile -C build-release` which rewrites that path with the full export-map-respecting `.so`. The `VIPS_42` tag is preserved in the generated `safe/generated/{export.map,export-full.map}` and in meson's link line, so the packaged `libvips.so.42.17.1` still carries the tagged version node.
+- `cd safe && cargo test --all-features -- --nocapture` now exits `0` (test summary across all binaries: every test passed; no panic, no `unsafe` rule violation, no failure across `tests/{abi_layout,init_version_smoke,operation_registry,ops_advanced,ops_core,runtime_io,security,threading}.rs` and the embedded unit tests in `src/`).
+- `cd safe && scripts/run_release_gate.sh` now exits `0` (cargo build + cargo test + meson setup + meson compile + meson install + introspection + upstream meson/shell/pytest/fuzz suites + link-compat + dpkg-buildpackage + packaged-prefix symbol/header/pkg-config/module checks + tool xml contract + deprecated C API smoke + dependent harness via `LIBVIPS_USE_EXISTING_DEBS=1 ./test-original.sh`).
+- `dpkg-buildpackage -b -uc -us` (driven by `dh --buildsystem=meson`) succeeded and produced the four canonical binary packages refreshed under `validator-overrides/libvips/`. The four `.deb` files are byte-identical to this session's Phase 1 baseline build (same sha256 for each canonical package), confirming a deterministic rebuild — the meson-driven `.deb` ABI is invariant under the cargo toolchain bump because the build flow goes through `cargo_static_artifact` and an explicit `cc -shared … -Wl,--version-script=…` link that does not depend on rustc's emitted version-script.
+- failures found: none in the final clean run. Baseline failures from prior sessions were `vips-cli-load-save`, `thumbnail-behavior`, `usage-ruby-vips-crop-sample-jpeg`, `usage-ruby-vips-gravity-generated`, plus the prior phase-5 release-gate truncated JPEG compatibility failure recorded in the failure classification table; the current Phase 1 baseline (`validator/artifacts/libvips-safe-baseline/port-04-test/results/libvips/summary.json`) and the final clean run (`validator/artifacts/libvips-safe-final/port-04-test/results/libvips/summary.json`) both report `cases == passed == 85`, `failed == 0`, `casts == 85`, `source_cases == 5`, `usage_cases == 80`, with every per-case JSON carrying `status == "passed"`, `override_debs_installed == true`, and a non-null `cast_path`.
+- Earlier package-input fixes retained from Phases 2–5 of the prior session: phase-3 `gravity` operation implementation in `safe/src/ops/conversion.rs` and `safe/src/ops/mod.rs`; phase-4 native JPEG file/buffer/source materialization, GLib-owned `VipsBlob`/`VipsArea` save-buffer ownership, and `vipsheader`-compatible image object summary in `safe/src/foreign/loaders/jpeg.rs`, `safe/src/foreign/loaders/mod.rs`, `safe/src/foreign/mod.rs`, `safe/build.rs`, `safe/src/runtime/image.rs`, `safe/src/runtime/object.rs`, `safe/Cargo.toml`, and `safe/Cargo.lock`; phase-5 default truncated JPEG materialization compatibility in `safe/src/foreign/base.rs`, `safe/src/foreign/loaders/jpeg.rs`, and `safe/src/foreign/mod.rs` while preserving strict `fail_on=truncated` rejection.
+- Regression tests retained: `safe/tests/ops_advanced.rs::gravity_crops_generated_image_from_centre`, `safe/tests/ops_advanced.rs::gravity_background_without_extend_uses_background_extend`, `safe/tests/ops_advanced.rs::gravity_mirror_extend_matches_libvips_tile_semantics`, `safe/tests/runtime_io.rs::jpeg_file_buffer_source_and_explicit_load_materialize_without_convert`, `safe/tests/runtime_io.rs::jpeg_public_save_paths_return_glib_owned_buffers_and_targets`, `safe/tests/runtime_io.rs::jpeg_thumbnail_materializes_and_saves_without_convert`, `safe/tests/runtime_io.rs::image_object_summary_reports_dimensions_for_vipsheader`, and `safe/tests/runtime_io.rs::truncated_jpeg_default_materializes_but_fail_on_truncated_rejects_pixels`. All are exercised by the now-passing `cargo test --all-features` run and by the upstream meson/shell/pytest/fuzz suites the release-gate drives.
+- Approved validator-bug skips: None.
+- Validator working tree assertion: `git -C validator diff --exit-code -- tests repositories.yml README.md` exits zero (validator working tree unchanged; `git -C validator rev-parse HEAD` equals `1319bb0374ef66428a42dd71e49553c6d057feaf`).
+
+### Final Commands Executed (this session, post-bounce)
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+cd "$ROOT/safe"
+# Apply widened-scope safe/ regression fix:
+#   rust-toolchain.toml: channel "1.78" -> "1.82.0"
+#   build.rs: stop emitting cargo:rustc-cdylib-link-arg=-Wl,--version-script=...
+cargo test --all-features -- --nocapture       # exits 0
+scripts/run_release_gate.sh                    # exits 0
+dpkg-buildpackage -b -uc -us                   # exits 0; produces .deb in $ROOT
+
+cd "$ROOT"
+mkdir -p validator-overrides/libvips
+rm -f validator-overrides/libvips/*.deb
+version=$(dpkg-parsechangelog -l safe/debian/changelog -SVersion)
+arch=$(dpkg-architecture -qDEB_HOST_ARCH)
+for package in libvips42t64 libvips-dev libvips-tools gir1.2-vips-8.0; do
+  install -m 0644 "${package}_${version}_${arch}.deb" validator-overrides/libvips/
+done
+SAFE_SOURCE_COMMIT=$(git rev-parse HEAD)  # 195188bbc6417e2d0fff9e9e59e2dce3ce68a41b (lock parent)
+LOCK="$ROOT/validator/artifacts/libvips-safe-port-lock.json"
+python3 - "$ROOT" "$LOCK" "$SAFE_SOURCE_COMMIT" <<'PY'
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+lock_path = Path(sys.argv[2])
+commit = sys.argv[3].strip()
+canonical = ["libvips42t64", "libvips-dev", "libvips-tools", "gir1.2-vips-8.0"]
+debs = []
+for package in canonical:
+    matches = sorted((root / "validator-overrides/libvips").glob(f"{package}_*.deb"))
+    if len(matches) != 1:
+        raise SystemExit(f"expected exactly one staged deb for {package}, found {len(matches)}")
+    path = matches[0]
+    package_name = subprocess.check_output(["dpkg-deb", "--field", str(path), "Package"], text=True).strip()
+    architecture = subprocess.check_output(["dpkg-deb", "--field", str(path), "Architecture"], text=True).strip()
+    if package_name != package:
+        raise SystemExit(f"unexpected package name for {path}: {package_name}")
+    if architecture not in {"amd64", "all"}:
+        raise SystemExit(f"unexpected architecture for {path}: {architecture}")
+    data = path.read_bytes()
+    debs.append({
+        "package": package,
+        "filename": path.name,
+        "architecture": architecture,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "size": path.stat().st_size,
+    })
+lock = {
+    "schema_version": 1,
+    "mode": "port-04-test",
+    "generated_at": "1970-01-01T00:00:00Z",
+    "source_config": "repositories.yml",
+    "source_inventory": "local-validator-overrides",
+    "libraries": [{
+        "library": "libvips",
+        "repository": "safelibs/port-libvips-local",
+        "tag_ref": "refs/tags/libvips/local-validator",
+        "commit": commit,
+        "release_tag": f"build-{commit[:12]}",
+        "debs": debs,
+        "unported_original_packages": [],
+    }],
+}
+lock_path.parent.mkdir(parents=True, exist_ok=True)
+lock_path.write_text(json.dumps(lock, indent=2) + "\n")
+PY
+
+cd "$ROOT/validator"
+rm -rf artifacts/libvips-safe-final site/libvips-safe-final
+set +e
+PYTHON=/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/python \
+bash test.sh \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root artifacts/libvips-safe-final \
+  --mode port-04-test \
+  --library libvips \
+  --override-deb-root /home/yans/safelibs/pipeline/ports/port-libvips/validator-overrides \
+  --port-deb-lock /home/yans/safelibs/pipeline/ports/port-libvips/validator/artifacts/libvips-safe-port-lock.json \
+  --record-casts
+MATRIX_EXIT=$?
+set -e
+mkdir -p artifacts/libvips-safe-final
+printf '%s\n' "$MATRIX_EXIT" > artifacts/libvips-safe-final/matrix-exit-code.txt
+
+/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/python tools/verify_proof_artifacts.py \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root artifacts/libvips-safe-final \
+  --proof-output artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json \
+  --mode port-04-test \
+  --library libvips \
+  --require-casts \
+  --min-source-cases 5 \
+  --min-usage-cases 80 \
+  --min-cases 85
+/home/yans/safelibs/pipeline/ports/port-libvips/validator/.venv/bin/python tools/render_site.py \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root artifacts/libvips-safe-final \
+  --proof-path artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json \
+  --output-root site/libvips-safe-final
+bash scripts/verify-site.sh \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifacts-root artifacts/libvips-safe-final \
+  --proof-path artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json \
+  --site-root site/libvips-safe-final \
+  --library libvips
+git -C /home/yans/safelibs/pipeline/ports/port-libvips/validator diff --exit-code -- tests repositories.yml README.md
+```
+
+## Final Package Hashes
+
+This session's package-source commit recorded in the lock: `195188bbc6417e2d0fff9e9e59e2dce3ce68a41b` (parent of this session's impl_06 commit). The widened-scope `safe/` regression fix is folded into impl_06's own commit on top of that parent. All four `.deb` files are byte-identical to this session's Phase 1 baseline build (each sha256 matches the corresponding entry in `validator/artifacts/libvips-safe-baseline-port-lock.json`); the cargo toolchain bump and the cdylib version-script removal in `safe/build.rs` do not affect the meson-driven `.deb` ABI because meson manually links the canonical `libvips.so.42.17.1` from `cargo_static_artifact` with an explicit `cc -shared … -Wl,--version-script=…`.
+
+| Package | Override path | Architecture | Size | SHA-256 |
+| --- | --- | --- | --- | --- |
+| libvips42t64 | validator-overrides/libvips/libvips42t64_8.15.1-1.1build4_amd64.deb | amd64 | 1388394 | b67dca304501cfabc5131c7e7f40888386078110c3115dee8dbdfe59d3e19e2c |
+| libvips-dev | validator-overrides/libvips/libvips-dev_8.15.1-1.1build4_amd64.deb | amd64 | 83304 | baa99134376d9bd7f0ebe33ab98a879a3c5555d6a57304c223871ec388e6ef98 |
+| libvips-tools | validator-overrides/libvips/libvips-tools_8.15.1-1.1build4_amd64.deb | amd64 | 27852 | c6d324c9d891bacd7b096d51052dcb88f467eb0f71ccac01e783fb43337a48be |
+| gir1.2-vips-8.0 | validator-overrides/libvips/gir1.2-vips-8.0_8.15.1-1.1build4_amd64.deb | amd64 | 5104 | 362d0824adb9f58e64c4d0932175ac976330db5fb0f74ddbf96a1020ac790c82 |
+
+## Final Evidence
+
+- This session's package-source commit recorded in the lock: `195188bbc6417e2d0fff9e9e59e2dce3ce68a41b` (parent of this session's impl_06 commit; the impl_06 commit folds the widened-scope `safe/` regression fix on top of that parent).
+- Final unmodified artifact root: `validator/artifacts/libvips-safe-final`.
+- Matrix exit artifact: `validator/artifacts/libvips-safe-final/matrix-exit-code.txt` (`0`).
+- Summary artifact: `validator/artifacts/libvips-safe-final/port-04-test/results/libvips/summary.json`.
+- Final summary: 85 cases, 5 source cases, 80 usage cases, 85 passed, 0 failed, 85 casts, and all 85 result JSON records have `status == "passed"`, `override_debs_installed == true`, and non-null `cast_path`.
+- Proof path: `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json`.
+- Proof totals: 1 library, 85 cases, 5 source cases, 80 usage cases, 85 passed, 0 failed, 85 casts.
+- Rendered site: `validator/site/libvips-safe-final`.
+- Site files verified: `validator/site/libvips-safe-final/index.html`, `validator/site/libvips-safe-final/library/libvips.html`, `validator/site/libvips-safe-final/site-data.json`, `validator/site/libvips-safe-final/assets/site.css`, and `validator/site/libvips-safe-final/assets/player.js`.
+- Port lock used: `validator/artifacts/libvips-safe-port-lock.json` (canonical lock filename; schema_version 1, mode `port-04-test`, source_inventory `local-validator-overrides`, commit `195188bbc6417e2d0fff9e9e59e2dce3ce68a41b`, release_tag `build-195188bbc641`; each `debs[].sha256` matches the on-disk `validator-overrides/libvips/*.deb`).
+- Sanity-check status (Pre-Final, this session, post-bounce): `cd safe && cargo test --all-features -- --nocapture` exits `0`; `cd safe && scripts/run_release_gate.sh` exits `0`. Both checks were unblocked by the widened-scope `safe/` regression fix described in the `## Final Clean Run` section above.
+- Approved-skip adjusted artifact root: N/A; no approved validator-bug skip exists.

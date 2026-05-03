@@ -76,10 +76,17 @@ fn main() {
     };
 
     println!("cargo:rustc-cdylib-link-arg=-Wl,-soname,{SONAME}");
-    println!(
-        "cargo:rustc-cdylib-link-arg=-Wl,--version-script={}",
-        selected_export_map.display()
-    );
+    // The version script in `selected_export_map` is consumed by meson at
+    // link time (see `safe/meson.build`), which manually relinks the
+    // `cdylib` against the static archive that cargo builds. We do not
+    // pass it through `cargo:rustc-cdylib-link-arg` because rustc 1.82+
+    // already emits its own anonymous `--version-script` to the linker
+    // for `cdylib` outputs, and ld refuses to combine an anonymous tag
+    // with our tagged `VIPS_42 { … }` script. Cargo's intermediate
+    // `target/<profile>/libvips.so` therefore exports only the symbols
+    // rustc tracks; the canonical `.so` shipped in the .deb is the
+    // meson-built one which respects the full export map.
+    let _ = selected_export_map;
     println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");
 }
 
