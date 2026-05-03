@@ -325,3 +325,79 @@ git -C /home/yans/safelibs/pipeline/ports/port-libvips/validator diff --exit-cod
 - Rendered site: validator/site/libvips-safe-final.
 - Site files verified: validator/site/libvips-safe-final/index.html, validator/site/libvips-safe-final/library/libvips.html, validator/site/libvips-safe-final/site-data.json, validator/site/libvips-safe-final/assets/site.css, and validator/site/libvips-safe-final/assets/player.js.
 - Approved-skip adjusted artifact root: N/A; no approved validator-bug skip exists.
+
+## Phase 1 Baseline Run
+
+Date: 2026-05-02. Phase: `impl_01_validator_baseline_run`. Repo HEAD: `3e6ad46e8bf603936ea074e3e2d102bd23132cbf` (`fix(libvips): drop duplicate op_gravity from merge`).
+
+### Validator Pinning
+
+- Pinned validator commit: `1319bb0374ef66428a42dd71e49553c6d057feaf` (already checked out before this phase; `git -C validator rev-parse HEAD` confirmed).
+- Recorded `origin/main` after `git -C validator fetch origin`: `87b321fe728340d6fc6dd2f638583cca82c667c3` (`pages: trigger downstream apt, docker, website deploys after deploy`).
+- Manifest divergence: `git -C validator show origin/main:tests/libvips/testcases.yml` shows the upstream manifest has been collapsed to apt-package metadata only (no `testcases:` key); the pinned commit still carries the 85 inline testcases. `grep -c '^testcases:'` against the upstream blob returns `0`. Decision: stayed at `1319bb0374ef66428a42dd71e49553c6d057feaf` to preserve the inline testcase suite this baseline run depends on.
+- Pinned manifest sha256: `c44346195fbfa8dd5de2c29b14ac9474eb3b91802d4fc2e7a5325141f9ee6140  validator/tests/libvips/testcases.yml`.
+- `validator/.venv/bin/python -c 'import yaml'` → PyYAML 6.0.3 (no reinstall needed).
+
+### Sanity-Check Status (Pre-Baseline)
+
+Both repository sanity checks fail in the current `safe/` state and are not blocking for the validator matrix because the .deb build is driven by `dh --buildsystem=meson` rather than the Rust `cargo` crate.
+
+- `cd safe && cargo test --all-features -- --nocapture` → fails immediately. The pinned toolchain in `safe/rust-toolchain.toml` (`channel = "1.78"`) cannot resolve `indexmap@2.13.1` from `safe/Cargo.lock`, which requires `rustc >= 1.82`. Root cause: the Apr 30 → May 2 merge (`6124a7f`) brought in the upstream-template `safe/rust-toolchain.toml` while keeping the local `safe/Cargo.lock` carrying `indexmap 2.13.1`, and the local `safe/src/**` already requires Rust 1.82+ features (`unsafe extern "C" {}` blocks in `runtime/error.rs`, `runtime/object.rs`, `foreign/loaders/legacy_vips.rs`; `Option::is_none_or` in `ops/morphology.rs`). Out of scope for this phase: instructions explicitly forbid `safe/**` changes.
+- `cd safe && scripts/run_release_gate.sh` → fails at `[release-gate] cargo` for the same `indexmap@2.13.1` requirement.
+- Attempted workaround with `RUSTUP_TOOLCHAIN=1.82.0 cargo build --release`: source compiles, but linking the cdylib fails with `/usr/bin/ld: anonymous version tag cannot be combined with other version tags`. Rustc ≥1.81 emits its own anonymous `--version-script` for cdylibs; `safe/build.rs` separately injects `-Wl,--version-script=safe/generated/export-full.map` (a named `VIPS_42 { ... }` map). Modern `ld` (binutils 2.42 here) refuses the combination. Out of scope to fix in this phase.
+
+### Built .deb Artifacts (Refreshed via dpkg-buildpackage)
+
+Build path: `cd safe && dpkg-buildpackage -b -uc -us`. Despite the cargo failures above, `dh --buildsystem=meson` still produced the four canonical binary packages (debian/rules sets `RUSTUP_TOOLCHAIN ?= stable-x86_64-unknown-linux-gnu` and the meson driver linked successfully under that toolchain). Staged via `install -m 0644 …` into `validator-overrides/libvips/`.
+
+| Package | Filename | Architecture | Size (bytes) | sha256 |
+|---|---|---|---|---|
+| libvips42t64 | libvips42t64_8.15.1-1.1build4_amd64.deb | amd64 | 1388394 | `b67dca304501cfabc5131c7e7f40888386078110c3115dee8dbdfe59d3e19e2c` |
+| libvips-dev | libvips-dev_8.15.1-1.1build4_amd64.deb | amd64 | 83304 | `baa99134376d9bd7f0ebe33ab98a879a3c5555d6a57304c223871ec388e6ef98` |
+| libvips-tools | libvips-tools_8.15.1-1.1build4_amd64.deb | amd64 | 27852 | `c6d324c9d891bacd7b096d51052dcb88f467eb0f71ccac01e783fb43337a48be` |
+| gir1.2-vips-8.0 | gir1.2-vips-8.0_8.15.1-1.1build4_amd64.deb | amd64 | 5104 | `362d0824adb9f58e64c4d0932175ac976330db5fb0f74ddbf96a1020ac790c82` |
+
+Three of four .deb files are byte-identical to the prior `validator/artifacts/libvips-safe-port-lock.json` entries (libvips-dev, libvips-tools, gir1.2-vips-8.0). `libvips42t64` rebuilt deterministically against the current `safe/` source tree, producing a different sha256 (prior `ecda9f408ce5…`, new `b67dca304501…`) and a smaller package (prior 1430662 bytes → new 1388394 bytes). `validator-overrides/` is gitignored (`.gitignore` line 10) and `*.deb` is gitignored (line 31), so no `.deb` files are tracked in git history; the refresh is recorded by sha256 in this report and in the port-deb-lock JSON instead.
+
+### Port-Deb-Lock JSON
+
+Path: `validator/artifacts/libvips-safe-baseline-port-lock.json` (schema_version 1, mode `port-04-test`, source_inventory `local-validator-overrides`, commit `3e6ad46e8bf603936ea074e3e2d102bd23132cbf`, release_tag `build-3e6ad46e8bf6`). Each `debs[].sha256` matches the on-disk file shown in the table above. Canonical order: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`. `unported_original_packages: []`.
+
+### Matrix Invocation
+
+```
+PYTHON=validator/.venv/bin/python bash test.sh \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root artifacts/libvips-safe-baseline \
+  --mode port-04-test \
+  --library libvips \
+  --override-deb-root /home/yans/safelibs/pipeline/ports/port-libvips/validator-overrides \
+  --port-deb-lock /home/yans/safelibs/pipeline/ports/port-libvips/validator/artifacts/libvips-safe-baseline-port-lock.json \
+  --record-casts
+```
+
+Matrix exit code: `0` (recorded at `validator/artifacts/libvips-safe-baseline/matrix-exit-code.txt`).
+
+### Result Summary
+
+`validator/artifacts/libvips-safe-baseline/port-04-test/results/libvips/summary.json`:
+
+- schema_version: 2
+- library: libvips
+- mode: port-04-test
+- cases: 85
+- source_cases: 5
+- usage_cases: 80
+- passed: 85
+- failed: 0
+- casts: 85
+- duration_seconds: 0.0
+
+Casts captured under `validator/artifacts/libvips-safe-baseline/port-04-test/casts/libvips/` (85 `.cast` files, one per testcase).
+
+### Failure Classification
+
+Failure classification: none — baseline is clean.
+
+All 85 cases passed. There are no failures to route to `impl_02_source_surface_failures`, `impl_03_ruby_usage_operation_failures`, `impl_04_foreign_io_buffer_failures`, or `impl_05_packaging_container_and_remaining_failures`.
