@@ -3,244 +3,72 @@ yaml_source_mode: inline-only
 verifier_encoding: explicit-phases
 phases:
   - order: 1
-    id: impl_01_validator_bootstrap_baseline
+    id: impl_01_document_port
     type: implement
     bounce_target: null
     required_preexisting_inputs:
-      - original/
-      - safe/
-      - build-check/
-      - build-check-install/
-      - all_cves.json
-      - relevant_cves.json
-      - dependents.json
-      - test-original.sh
-      - safe/reference/
-      - safe/tests/upstream/
-      - safe/tests/dependents/
-      - safe/vendor/pyvips-3.1.1/
-      - validator/
-      - validator-overrides/libvips/
-      - validator/artifacts/
-      - validator-report.md
-      - .plan/
+      - /home/yans/safelibs/pipeline/ports/port-libvips/original/
+      - /home/yans/safelibs/pipeline/ports/port-libvips/original/libvips/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/original/cplusplus/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/original/tools/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/original/test/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/original/fuzz/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/Cargo.toml
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/Cargo.lock
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/src/lib.rs
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/src/abi/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/src/runtime/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/src/ops/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/src/foreign/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/src/pixels/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/src/simd/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/src/generated/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/include/vips/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/build.rs
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/build_support/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/meson.build
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/meson_options.txt
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/tools/meson.build
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/debian/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/reference/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/tests/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/tests/upstream/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/tests/upstream/python-files.txt
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/tests/dependents/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/tests/dependents/apps.json
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/vendor/pyvips-3.1.1/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/scripts/**
+      - /home/yans/safelibs/pipeline/ports/port-libvips/build-check/
+      - /home/yans/safelibs/pipeline/ports/port-libvips/build-check-install/
+      - /home/yans/safelibs/pipeline/ports/port-libvips/dependents.json
+      - /home/yans/safelibs/pipeline/ports/port-libvips/relevant_cves.json
+      - /home/yans/safelibs/pipeline/ports/port-libvips/all_cves.json
+      - /home/yans/safelibs/pipeline/ports/port-libvips/validator-report.md
+      - /home/yans/safelibs/pipeline/ports/port-libvips/.plan/plan.md
   - order: 2
-    id: check_01_validator_bootstrap_software_tester
+    id: check_01_port_evidence_software_tester
     type: check
-    bounce_target: impl_01_validator_bootstrap_baseline
+    bounce_target: impl_01_document_port
     required_preexisting_inputs:
-      - validator/
-      - validator/README.md
-      - validator/repositories.yml
-      - validator/tests/libvips/testcases.yml
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator/artifacts/libvips-safe-port-lock.json
-      - validator-overrides/libvips/
-      - validator/artifacts/libvips-safe/
-      - validator-report.md
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/PORT.md
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/
+      - /home/yans/safelibs/pipeline/ports/port-libvips/original/
+      - /home/yans/safelibs/pipeline/ports/port-libvips/dependents.json
+      - /home/yans/safelibs/pipeline/ports/port-libvips/relevant_cves.json
+      - /home/yans/safelibs/pipeline/ports/port-libvips/all_cves.json
+      - /home/yans/safelibs/pipeline/ports/port-libvips/validator-report.md
+      - git HEAD containing the single documentation commit
   - order: 3
-    id: check_01_validator_bootstrap_senior_tester
+    id: check_01_port_senior_reviewer
     type: check
-    bounce_target: impl_01_validator_bootstrap_baseline
+    bounce_target: impl_01_document_port
     required_preexisting_inputs:
-      - validator/
-      - validator/tests/libvips/testcases.yml
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator/artifacts/libvips-safe-port-lock.json
-      - validator/artifacts/libvips-safe/
-      - validator-report.md
-  - order: 4
-    id: impl_02_source_surface_failures
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator/artifacts/libvips-safe-port-lock.json
-      - validator/artifacts/libvips-safe/
-      - validator/tests/libvips/tests/cases/source/
-      - validator-report.md
-      - safe/src/runtime/
-      - safe/src/abi/
-      - safe/include/vips/
-      - safe/build_support/
-      - safe/build.rs
-      - safe/Cargo.toml
-      - safe/meson.build
-      - safe/meson_options.txt
-      - safe/debian/
-      - safe/tests/runtime_io.rs
-      - safe/tests/init_version_smoke.rs
-      - safe/tests/abi_layout.rs
-      - safe/tests/introspection/
-      - safe/tests/link_compat/
-      - safe/scripts/check_introspection.sh
-      - safe/scripts/link_compat.sh
-      - build-check/
-      - build-check-install/
-  - order: 5
-    id: check_02_source_surface_software_tester
-    type: check
-    bounce_target: impl_02_source_surface_failures
-    required_preexisting_inputs:
-      - safe/
-      - validator/
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator-report.md
-      - build-check/
-      - build-check-install/
-  - order: 6
-    id: check_02_source_surface_senior_tester
-    type: check
-    bounce_target: impl_02_source_surface_failures
-    required_preexisting_inputs:
-      - safe/
-      - validator/
-      - validator-report.md
-  - order: 7
-    id: impl_03_ruby_usage_operation_failures
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator/artifacts/libvips-safe/
-      - validator/artifacts/libvips-safe-source/
-      - validator/tests/libvips/tests/cases/usage/
-      - validator-report.md
-      - safe/src/ops/mod.rs
-      - safe/src/ops/
-      - safe/src/generated/
-      - safe/src/pixels/
-      - safe/src/runtime/
-      - safe/tests/ops_core.rs
-      - safe/tests/ops_advanced.rs
-      - safe/tests/operation_registry.rs
-      - safe/tests/security.rs
-  - order: 8
-    id: check_03_ruby_usage_operation_software_tester
-    type: check
-    bounce_target: impl_03_ruby_usage_operation_failures
-    required_preexisting_inputs:
-      - safe/
-      - validator/
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator-report.md
-  - order: 9
-    id: check_03_ruby_usage_operation_senior_tester
-    type: check
-    bounce_target: impl_03_ruby_usage_operation_failures
-    required_preexisting_inputs:
-      - safe/
-      - validator-report.md
-  - order: 10
-    id: impl_04_foreign_io_buffer_failures
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator/artifacts/libvips-safe/
-      - validator/artifacts/libvips-safe-source/
-      - validator/artifacts/libvips-safe-ops/
-      - validator/tests/libvips/tests/cases/source/
-      - validator/tests/libvips/tests/cases/usage/
-      - validator-report.md
-      - safe/src/foreign/
-      - safe/src/runtime/source.rs
-      - safe/src/runtime/target.rs
-      - safe/src/runtime/image.rs
-      - safe/build_support/api_shim.c
-      - safe/build.rs
-      - safe/tests/runtime_io.rs
-      - safe/tests/security.rs
-      - safe/tests/upstream/
-      - original/test/test-suite/images/
-      - safe/src/foreign/loaders/jpeg.rs
-  - order: 11
-    id: check_04_foreign_io_buffer_software_tester
-    type: check
-    bounce_target: impl_04_foreign_io_buffer_failures
-    required_preexisting_inputs:
-      - safe/
-      - validator/
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator-report.md
-      - original/test/test-suite/images/
-  - order: 12
-    id: check_04_foreign_io_buffer_senior_tester
-    type: check
-    bounce_target: impl_04_foreign_io_buffer_failures
-    required_preexisting_inputs:
-      - safe/
-      - validator-report.md
-  - order: 13
-    id: impl_05_packaging_container_and_remaining_failures
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator/artifacts/libvips-safe-port-lock.json
-      - validator/artifacts/libvips-safe/
-      - validator/artifacts/libvips-safe-source/
-      - validator/artifacts/libvips-safe-ops/
-      - validator/artifacts/libvips-safe-foreign/
-      - validator/tests/libvips/
-      - validator-report.md
-      - safe/debian/
-      - safe/meson.build
-      - safe/build_support/
-      - safe/scripts/
-      - safe/tests/dependents/
-      - safe/tests/upstream/
-      - dependents.json
-      - test-original.sh
-  - order: 14
-    id: check_05_packaging_container_software_tester
-    type: check
-    bounce_target: impl_05_packaging_container_and_remaining_failures
-    required_preexisting_inputs:
-      - safe/
-      - safe/scripts/run_release_gate.sh
-      - validator/
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator-report.md
-  - order: 15
-    id: check_05_packaging_container_senior_tester
-    type: check
-    bounce_target: impl_05_packaging_container_and_remaining_failures
-    required_preexisting_inputs:
-      - safe/
-      - validator/
-      - validator/artifacts/libvips-safe-port-lock.json
-      - validator-report.md
-  - order: 16
-    id: impl_06_final_report_and_clean_run
-    type: implement
-    bounce_target: null
-    required_preexisting_inputs:
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator/artifacts/libvips-safe-port-lock.json
-      - validator/artifacts/libvips-safe-remaining/
-      - validator-overrides/libvips/
-      - validator-report.md
-      - safe/
-      - safe/scripts/run_release_gate.sh
-  - order: 17
-    id: check_06_final_software_tester
-    type: check
-    bounce_target: impl_06_final_report_and_clean_run
-    required_preexisting_inputs:
-      - safe/
-      - safe/scripts/run_release_gate.sh
-      - validator/
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator/artifacts/libvips-safe-port-lock.json
-      - validator-report.md
-  - order: 18
-    id: check_06_final_senior_tester
-    type: check
-    bounce_target: impl_06_final_report_and_clean_run
-    required_preexisting_inputs:
-      - validator/
-      - validator/artifacts/libvips-safe-inventory.json
-      - validator/artifacts/libvips-safe-port-lock.json
-      - validator/artifacts/libvips-safe-final/
-      - validator-report.md
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/PORT.md
+      - /home/yans/safelibs/pipeline/ports/port-libvips/safe/
+      - /home/yans/safelibs/pipeline/ports/port-libvips/original/
+      - /home/yans/safelibs/pipeline/ports/port-libvips/dependents.json
+      - /home/yans/safelibs/pipeline/ports/port-libvips/relevant_cves.json
+      - /home/yans/safelibs/pipeline/ports/port-libvips/all_cves.json
+      - /home/yans/safelibs/pipeline/ports/port-libvips/validator-report.md
+      - git HEAD containing the single documentation commit
