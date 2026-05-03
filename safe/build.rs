@@ -568,6 +568,8 @@ fn manual_wrapper(function: &str) -> bool {
             | "vips_case"
             | "vips_crop"
             | "vips_getpoint"
+            | "vips_jpegload_buffer"
+            | "vips_jpegsave_buffer"
             | "vips_linear"
             | "vips_pngload_buffer"
             | "vips_pngsave_buffer"
