@@ -129,3 +129,80 @@ PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash test.sh \
 ### Build Note
 
 The first local build attempted to produce a source package after generating binary build products under `safe/build-validator-source/`; `scripts/build-debs.sh` was narrowed to `dpkg-buildpackage -us -uc -b` so the hook matches the port contract and emits binary package artifacts only.
+
+## Phase 2 Source API Surface Rerun
+
+Baseline classification assigned zero failures to `impl_02_source_api_surface_failures`, so this phase made no `safe/**` source, header, ABI, Meson, pkg-config, GIR, or Debian packaging edits. The five source-facing validator cases already passed in the Phase 1 baseline and passed again in this rerun.
+
+### Zero-Owned-Failure Decision
+
+- Phase ID: `impl_02_source_api_surface_failures`
+- Baseline owned failures: `0`
+- Fixed testcase IDs: none
+- Regression tests added: none; no phase-owned failure existed to regress
+- Changed files intended for commit: `validator-report.md`
+- Validator checkout commit used: `87b321fe728340d6fc6dd2f638583cca82c667c3`
+- Port commit used for synthetic release tag and package lock: `ba422968ea1e3a89e2dd58503380e32ab2d58e76`
+- Release tag: `build-ba422968ea1e`
+
+### Focused Source-Surface Tests
+
+```bash
+bash scripts/check-layout.sh
+cd safe && cargo test --all-features --test abi_layout --test init_version_smoke --test operation_registry --test runtime_io -- --nocapture
+```
+
+Result: passed. The Cargo test run covered `abi_layout`, `init_version_smoke`, `operation_registry`, and `runtime_io`; all 23 Rust tests passed.
+
+### Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-source-api-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Build output root: `dist/`
+
+| Package | Architecture | Size | SHA256 | Filename |
+| --- | --- | ---: | --- | --- |
+| `libvips42t64` | `amd64` | 1388590 | `3e58c0d9f7755fef8bc3a0f89c3801d955351650e953838e7f62724da9cb84a3` | `libvips42t64_8.15.1-1.1build4+safelibs1777955291_amd64.deb` |
+| `libvips-dev` | `amd64` | 83420 | `0b0bdcee728c63b228feb25408aedb921673748f2f504d74735ba3141054831a` | `libvips-dev_8.15.1-1.1build4+safelibs1777955291_amd64.deb` |
+| `libvips-tools` | `amd64` | 27942 | `dc7347c407bc0ca993eb339ce5ce71cfa0a47b27f6d8351b6d9190bed8d95837` | `libvips-tools_8.15.1-1.1build4+safelibs1777955291_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5202 | `31ff23d31e4d3a1dbb80ac13d1af7d08c59007e106fbcfb212da8ce0a1e5893b` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1777955291_amd64.deb` |
+
+### Validator Rerun
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash test.sh \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root artifacts/libvips-safe-source-api \
+  --mode port \
+  --library libvips \
+  --override-deb-root "$ROOT/validator-overrides" \
+  --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-source-api-port-lock.json" \
+  --record-casts
+```
+
+- Artifact root: `validator/artifacts/libvips-safe-source-api/`
+- Matrix exit code: `0`
+- Summary path: `validator/artifacts/libvips-safe-source-api/port/results/libvips/summary.json`
+- Passed: `116`
+- Failed: `59`
+- Source cases passed: `5 / 5`
+- Usage cases: `170`
+- Casts recorded: `175`
+
+Source-facing testcase statuses:
+
+| Testcase ID | Status |
+| --- | --- |
+| `c-api-compile-smoke` | `passed` |
+| `gir-introspection-smoke` | `passed` |
+| `metadata-header-checks` | `passed` |
+| `thumbnail-behavior` | `passed` |
+| `vips-cli-load-save` | `passed` |
+
+Remaining failures are unchanged non-phase-2 failures from the baseline: `7` assigned to `impl_03_operation_semantics_failures` and `52` assigned to `impl_04_foreign_io_media_failures`.
+
+Remaining failed testcase IDs:
+
+`usage-ruby-vips-abs-of-signed-image`, `usage-ruby-vips-affine-rotation`, `usage-ruby-vips-affine-shear`, `usage-ruby-vips-arithmetic-multiply-divide`, `usage-ruby-vips-arrayjoin-grid`, `usage-ruby-vips-arrayjoin-vertical-stack`, `usage-ruby-vips-autorot-no-orientation`, `usage-ruby-vips-bandfold-roundtrip`, `usage-ruby-vips-bandjoin-extract-roundtrip`, `usage-ruby-vips-canny-edges`, `usage-ruby-vips-colourspace-bw`, `usage-ruby-vips-colourspace-hsv-roundtrip`, `usage-ruby-vips-composite-over`, `usage-ruby-vips-conv-custom-kernel`, `usage-ruby-vips-dilate-cross-mask`, `usage-ruby-vips-draw-circle-mutable`, `usage-ruby-vips-draw-line-mutable`, `usage-ruby-vips-draw-rect-mutable`, `usage-ruby-vips-embed-extend-background-color`, `usage-ruby-vips-embed-extend-modes`, `usage-ruby-vips-erode-cross-mask`, `usage-ruby-vips-extract-band-two-at-offset`, `usage-ruby-vips-falsecolour-grayscale`, `usage-ruby-vips-find-trim-bbox`, `usage-ruby-vips-find-trim-custom-threshold`, `usage-ruby-vips-gamma-explicit-exponent`, `usage-ruby-vips-gaussnoise-generator`, `usage-ruby-vips-gravity-east-west`, `usage-ruby-vips-gravity-placement`, `usage-ruby-vips-grid-tile-layout`, `usage-ruby-vips-hist-equal-histogram`, `usage-ruby-vips-hist-local-equalisation`, `usage-ruby-vips-hist-norm-stretch`, `usage-ruby-vips-ifthenelse-comparison-mask`, `usage-ruby-vips-ifthenelse-multiband-sources`, `usage-ruby-vips-invert-roundtrip-identity`, `usage-ruby-vips-jpeg-quality-buffer`, `usage-ruby-vips-matrixload-external-file`, `usage-ruby-vips-memory-ppm-roundtrip-batch11`, `usage-ruby-vips-new-from-array-pixels`, `usage-ruby-vips-premultiply-roundtrip`, `usage-ruby-vips-recomb-color-matrix`, `usage-ruby-vips-reduce-xfac-yfac`, `usage-ruby-vips-relational-more`, `usage-ruby-vips-resize-kernel-cubic`, `usage-ruby-vips-resize-kernel-linear`, `usage-ruby-vips-rint-banker`, `usage-ruby-vips-scharr-edges`, `usage-ruby-vips-sharpen-roundtrip`, `usage-ruby-vips-similarity-rotate-30`, `usage-ruby-vips-similarity-with-translation`, `usage-ruby-vips-sines-generator`, `usage-ruby-vips-smartcrop-attention`, `usage-ruby-vips-sobel-edges`, `usage-ruby-vips-thumbnail-centre-crop`, `usage-ruby-vips-tiff-buffer-roundtrip`, `usage-ruby-vips-tilecache-roundtrip`, `usage-ruby-vips-webp-buffer-roundtrip`, `usage-ruby-vips-wrap-translation`.
