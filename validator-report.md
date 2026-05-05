@@ -462,3 +462,66 @@ python3 - <<'PY'
 # has override_debs_installed is true.
 PY
 ```
+
+## Final Clean Run
+
+Phase ID `impl_06_final_clean_run_and_report` produced the final unmodified clean evidence set for libvips. The validator checkout was not fetched or pulled and remained clean at `87b321fe728340d6fc6dd2f638583cca82c667c3`, matching `origin/main`. The safe source/package commit used for the final package lock was `e9ef9bca3883b600b53efd499bb80962eef64ba1`.
+
+### Checks Executed
+
+```bash
+git -C validator status --porcelain --untracked-files=no
+test "$(git -C validator rev-parse HEAD)" = "87b321fe728340d6fc6dd2f638583cca82c667c3"
+test "$(git -C validator rev-parse HEAD)" = "$(git -C validator rev-parse origin/main)"
+bash scripts/check-layout.sh
+cd safe && cargo test --all-features -- --nocapture
+cd safe && scripts/run_release_gate.sh
+bash scripts/build-debs.sh
+SAFELIBS_VALIDATOR_DIR="$PWD/validator" SAFELIBS_RECORD_CASTS=1 bash scripts/run-validation-tests.sh
+PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash validator/test.sh --config repositories.yml --tests-root tests --artifact-root "$ROOT/validator/artifacts/libvips-safe-final" --mode port --library libvips --override-deb-root "$ROOT/validator-overrides" --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-final-port-lock.json" --record-casts
+validator/.venv/bin/python validator/tools/verify_proof_artifacts.py --require-casts --min-source-cases 5 --min-usage-cases 170 --min-cases 175
+validator/.venv/bin/python validator/tools/render_site.py --artifact-root validator/artifacts/libvips-safe-final --proof-path validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json --output-root validator/site/libvips-safe-final
+PATH="$ROOT/validator/.venv/bin:$PATH" bash validator/scripts/verify-site.sh --library libvips
+```
+
+Result: all checks passed. The release gate included Rust tests, Meson install/package checks, upstream shell and pytest suites (`204 passed, 48 skipped`), fuzz corpus runs, link compatibility, packaged deprecated C API smoke, package payload checks, and all dependent application smokes.
+
+### Final Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-final-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Build output root: `dist/`
+- Release tag: `build-e9ef9bca3883`
+- Canonical packages ported: `4 / 4`
+- Unported original packages: none
+
+| Package | Architecture | Size | SHA256 | Filename |
+| --- | --- | ---: | --- | --- |
+| `libvips42t64` | `amd64` | 1439840 | `a3540fea05a9db2912f492ee98d106584a1ab47ecd6f6f65abecb8754dced54d` | `libvips42t64_8.15.1-1.1build4+safelibs1777971044_amd64.deb` |
+| `libvips-dev` | `amd64` | 83436 | `d1521843a4593bf30be10af60f65e332bfa74e2f03d69613350217002ded4f32` | `libvips-dev_8.15.1-1.1build4+safelibs1777971044_amd64.deb` |
+| `libvips-tools` | `amd64` | 27940 | `21f57d34d2ce2380e58dde81f072b4ac67aa7b220b929544fab7ebe1104963af` | `libvips-tools_8.15.1-1.1build4+safelibs1777971044_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5194 | `4cbd53608fd458b39bd014408515801bf28e9d7fd377d39da2de42cc69890614` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1777971044_amd64.deb` |
+
+### Final Validator Evidence
+
+- CI-parity hook artifact: `.work/validation/artifacts/`
+- CI-parity summary: `175` cases, `175` passed, `0` failed, `5` source, `170` usage, `175` casts.
+- Final matrix artifact: `validator/artifacts/libvips-safe-final/`
+- Final matrix exit code: `0`
+- Final summary path: `validator/artifacts/libvips-safe-final/port/results/libvips/summary.json`
+- Final summary: `175` cases, `175` passed, `0` failed, `5` source, `170` usage, `175` casts.
+- Per-testcase assertion: all `175` final testcase result JSON files reported `override_debs_installed: true`.
+- Proof path: `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json`
+- Proof totals: `175` cases, `175` passed, `0` failed, `5` source, `170` usage, `175` casts.
+- Site path: `validator/site/libvips-safe-final/`
+- Site data path: `validator/site/libvips-safe-final/site-data.json`
+
+### Session Traceability
+
+- Baseline failures found in Phase 1: `59` total, with `7` operation semantics failures and `52` foreign I/O/media failures.
+- Phase 2 source API surface: no owned failures; focused source/API tests and validator rerun confirmed no source-case regressions.
+- Phase 3 fixes: operation support and semantics for `autorot`, `canny`, `composite`, `find_trim`, `hist_norm`, `rint`, and narrow PNG/TIFF file-save paths; regression coverage added in `safe/tests/ops_core.rs::operation_semantics_ruby_failure_regressions`.
+- Phase 4 fixes: PPM buffer loading, TIFF/JPEG/WebP/native media roundtrips, matrix text compatibility, and generic buffer fallback; regression coverage added in `safe/tests/runtime_io.rs::foreign_media_buffer_and_text_roundtrips_match_validator_paths` plus the updated matrix security expectation.
+- Phase 5 fixes: stale package artifact cleanup, release-gate pkg-config lookup, generated operation manifest sync for `ppmload_buffer`, metadata/container preservation behavior, PFM/CMYK/PNG bit-depth compatibility, and composite band promotion; regression coverage added in `safe/tests/runtime_io.rs` and `safe/tests/ops_core.rs`, with full release-gate and dependent-smoke coverage.
+- Approved validator-bug skips: none.
+- Remaining failures: none.
