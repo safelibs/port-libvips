@@ -25,7 +25,7 @@ cd "$repo_root/safe"
 stamp_safelibs_changelog "$repo_root"
 _synthesize_orig_tarball_if_needed
 export DEB_BUILD_OPTIONS="${DEB_BUILD_OPTIONS:+$DEB_BUILD_OPTIONS }nocheck"
-dpkg-buildpackage -us -uc
+dpkg-buildpackage -us -uc -b
 
 shopt -s nullglob
 artifacts=(
