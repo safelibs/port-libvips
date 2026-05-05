@@ -226,12 +226,15 @@ Phase ID `impl_03_operation_semantics_failures` fixed the seven baseline operati
 ### Implementation Notes
 
 - Added operation support for `autorot`, `canny`, `composite`, and `find_trim`.
-- Updated `hist_norm` to preserve input dimensions/bands while stretching the value range.
+- Updated `hist_norm` to preserve input dimensions/bands while using upstream's per-band `N_PELS - 1` max scaling rather than min-max contrast stretching.
 - Changed `rint` rounding to ties-to-even.
+- Updated `find_trim` to match the upstream option path: default background from `vips_interpretation_max_alpha()`, alpha flattening before detection, 3x3 median filtering by default, and `line_art` support to disable that filter.
+- Updated `canny` to follow the upstream operation stages more closely: Gaussian blur with `sigma`/`precision`, 2x2 gradient, polar magnitude/direction calculation, per-band non-max suppression, and documented output band/format preservation.
 - Regenerated operation registry metadata after adding real `composite` / `composite2` arguments.
 - Added a manual C shim for `vips_composite`.
 - Added narrow file-save support for real PNG/TIFF bytes when the phase-owned Ruby operation scripts write UCHAR/USHORT raster outputs, with the previous container fallback preserved for unsupported save shapes.
 - Added `safe/tests/ops_core.rs::operation_semantics_ruby_failure_regressions`, which calls exported C ABI wrappers and checks dimensions, formats, pixel values, output scalars, and PNG/TIFF file magic.
+- Tightened the operation regression test after senior review so it fails on min-max `hist_norm`, single-band/luma-only `canny`, and `find_trim` implementations that ignore default background or `line_art` median behavior.
 
 Changed files intended for commit: `safe/build.rs`, `safe/build_support/api_shim.c`, `safe/src/generated/operations.json`, `safe/src/generated/operations_registry.rs`, `safe/src/foreign/mod.rs`, `safe/src/foreign/savers/mod.rs`, `safe/src/foreign/savers/raster.rs`, `safe/src/ops/arithmetic.rs`, `safe/src/ops/conversion.rs`, `safe/src/ops/convolution.rs`, `safe/src/ops/histogram.rs`, `safe/src/ops/mod.rs`, `safe/tests/ops_core.rs`, and `validator-report.md`.
 
@@ -250,15 +253,7 @@ Result: passed. The required focused run covered `operation_registry`, `ops_adva
 - Lock path: `validator/artifacts/libvips-safe-ops-port-lock.json`
 - Override root: `validator-overrides/libvips/`
 - Build output root: `dist/`
-- Port commit used for synthetic release tag and package lock: `c59cd651fb442c84e91630d72ac59be38ca692d1`
-- Release tag: `build-c59cd651fb44`
-
-| Package | Architecture | Size | SHA256 | Filename |
-| --- | --- | ---: | --- | --- |
-| `libvips42t64` | `amd64` | 1393412 | `b4e4c25c9859cab6ff6437c1c237ccfe330b9eb44fc7c748d736cd2b3d09297b` | `libvips42t64_8.15.1-1.1build4+safelibs1777956335_amd64.deb` |
-| `libvips-dev` | `amd64` | 83428 | `5661e75488f701914dd6f2e70ae6ddcce9b6a1592d4139b77cc8c7edead86d77` | `libvips-dev_8.15.1-1.1build4+safelibs1777956335_amd64.deb` |
-| `libvips-tools` | `amd64` | 27944 | `412fc72a8d16736b474347cc032ef7745c3b52207b5e84c29a23301ced393993` | `libvips-tools_8.15.1-1.1build4+safelibs1777956335_amd64.deb` |
-| `gir1.2-vips-8.0` | `amd64` | 5190 | `4ce2d5de4f2968687b764b125983203e2db598e8d743c4e5e42bb1a007ac3207` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1777956335_amd64.deb` |
+- The canonical package commit, release tag, filenames, sizes, and SHA256s are intentionally not duplicated here. The package artifacts are stamped from the final git commit, while this report is part of that same commit, so copying those volatile values into the tracked report would make the report stale as soon as it is committed. The authoritative current values are the entries in `validator/artifacts/libvips-safe-ops-port-lock.json`, generated after the final report/source commit and used for the `validator/artifacts/libvips-safe-ops/` rerun.
 
 ### Validator Rerun
 

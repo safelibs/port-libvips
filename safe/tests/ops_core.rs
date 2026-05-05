@@ -318,6 +318,34 @@ fn operation_semantics_ruby_failure_regressions() {
     assert!(canny_values[3 + 4 * 8] + canny_values[4 + 4 * 8] > 1.0);
     assert_write_file_magic(canny, ".tif", b"II*\0");
 
+    let mut canny_rgb_pixels = Vec::new();
+    for _ in 0..8 {
+        for x in 0..8 {
+            let value = if x < 4 { 0 } else { 255 };
+            canny_rgb_pixels.extend([value, value / 2, 255 - value]);
+        }
+    }
+    let canny_rgb_input = image_from_uchar(8, 8, 3, &canny_rgb_pixels);
+    let mut canny_rgb = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_canny(
+                canny_rgb_input,
+                &mut canny_rgb,
+                c"sigma".as_ptr(),
+                0.7f64,
+                c"precision".as_ptr(),
+                VIPS_PRECISION_FLOAT,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(vips_image_get_width(canny_rgb), 8);
+    assert_eq!(vips_image_get_height(canny_rgb), 8);
+    assert_eq!(vips_image_get_bands(canny_rgb), 3);
+    assert_eq!(vips_image_get_format(canny_rgb), VIPS_FORMAT_UCHAR);
+
     let trim_input = image_from_uchar(
         6,
         5,
@@ -375,26 +403,93 @@ fn operation_semantics_ruby_failure_regressions() {
     assert_eq!((width, height), (0, 0));
     vips_area_unref(background_array.cast());
 
-    let hist_pixels = [
-        120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 120, 121, 122, 123, 124,
-    ];
-    let hist_input = image_from_uchar(4, 4, 1, &hist_pixels);
+    let default_trim_input = image_from_uchar(
+        5,
+        5,
+        1,
+        &[
+            0, 0, 0, 255, 255, 0, 0, 0, 255, 255, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255,
+        ],
+    );
+    left = -1;
+    top = -1;
+    width = -1;
+    height = -1;
+    assert_eq!(
+        unsafe {
+            vips_find_trim(
+                default_trim_input,
+                &mut left,
+                &mut top,
+                &mut width,
+                &mut height,
+                c"line_art".as_ptr(),
+                1i32,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!((left, top, width, height), (0, 0, 3, 3));
+
+    let line_art_input = image_from_uchar(
+        5,
+        5,
+        1,
+        &[
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255,
+        ],
+    );
+    left = -1;
+    top = -1;
+    width = -1;
+    height = -1;
+    assert_eq!(
+        unsafe {
+            vips_find_trim(
+                line_art_input,
+                &mut left,
+                &mut top,
+                &mut width,
+                &mut height,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!((width, height), (0, 0));
+    assert_eq!(
+        unsafe {
+            vips_find_trim(
+                line_art_input,
+                &mut left,
+                &mut top,
+                &mut width,
+                &mut height,
+                c"line_art".as_ptr(),
+                1i32,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!((left, top, width, height), (2, 2, 1, 1));
+
+    let hist_pixels = [20, 30, 40, 80];
+    let hist_input = image_from_uchar(2, 2, 1, &hist_pixels);
     let mut hist_norm = ptr::null_mut();
     assert_eq!(
         unsafe { vips_hist_norm(hist_input, &mut hist_norm, ptr::null::<c_char>()) },
         0
     );
-    assert_eq!(vips_image_get_width(hist_norm), 4);
-    assert_eq!(vips_image_get_height(hist_norm), 4);
+    assert_eq!(vips_image_get_width(hist_norm), 2);
+    assert_eq!(vips_image_get_height(hist_norm), 2);
     assert_eq!(vips_image_get_bands(hist_norm), 1);
     assert_eq!(vips_image_get_format(hist_norm), VIPS_FORMAT_UCHAR);
     let hist_values = read_samples(hist_norm);
-    let hist_min = hist_values.iter().copied().fold(f64::INFINITY, f64::min);
-    let hist_max = hist_values
-        .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max);
-    assert!(hist_max - hist_min > 10.0);
+    assert_eq!(hist_values, vec![0.0, 1.0, 1.0, 3.0]);
     assert_write_file_magic(hist_norm, ".png", b"\x89PNG\r\n\x1a\n");
 
     let round_input = image_from_double(6, 1, 1, &[-1.4, -0.5, 0.5, 1.5, 2.5, 2.6]);
@@ -466,7 +561,11 @@ fn operation_semantics_ruby_failure_regressions() {
     unref_image(round_input);
     unref_image(hist_norm);
     unref_image(hist_input);
+    unref_image(line_art_input);
+    unref_image(default_trim_input);
     unref_image(trim_input);
+    unref_image(canny_rgb);
+    unref_image(canny_rgb_input);
     unref_image(canny);
     unref_image(canny_input);
     unref_image(autorot);

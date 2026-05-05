@@ -1,7 +1,8 @@
 use crate::abi::basic::{
     VipsAngle45, VipsCombine, VipsPrecision, VIPS_ANGLE45_D0, VIPS_ANGLE45_D135, VIPS_ANGLE45_D180,
     VIPS_ANGLE45_D225, VIPS_ANGLE45_D270, VIPS_ANGLE45_D315, VIPS_ANGLE45_D45, VIPS_ANGLE45_D90,
-    VIPS_COMBINE_MAX, VIPS_COMBINE_MIN, VIPS_COMBINE_SUM, VIPS_PRECISION_INTEGER,
+    VIPS_COMBINE_MAX, VIPS_COMBINE_MIN, VIPS_COMBINE_SUM, VIPS_PRECISION_FLOAT,
+    VIPS_PRECISION_INTEGER,
 };
 use crate::abi::image::{
     VipsBandFormat, VIPS_DEMAND_STYLE_SMALLTILE, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT,
@@ -291,24 +292,114 @@ unsafe fn edge_pair(object: *mut VipsObject, gx: Kernel, gy: Kernel) -> Result<(
     result
 }
 
-fn luma_clamped(input: &ImageBuffer, x: isize, y: isize) -> f64 {
-    if input.spec.bands == 0 {
-        return 0.0;
+fn canny_output_format(format: VipsBandFormat) -> VipsBandFormat {
+    if format == VIPS_FORMAT_UCHAR {
+        VIPS_FORMAT_UCHAR
+    } else if format == VIPS_FORMAT_DOUBLE {
+        VIPS_FORMAT_DOUBLE
+    } else {
+        VIPS_FORMAT_FLOAT
     }
-    let mut sum = 0.0;
-    for band in 0..input.spec.bands {
-        sum += input.sample_clamped(x, y, band);
+}
+
+fn canny_blur(
+    input: &ImageBuffer,
+    sigma: f64,
+    precision: VipsPrecision,
+) -> Result<ImageBuffer, ()> {
+    if !(sigma.is_finite() && sigma >= 0.01) {
+        return Err(());
     }
-    sum / input.spec.bands as f64
+    if sigma < 0.2 {
+        return Ok(input.clone());
+    }
+
+    let kernel = gaussian_kernel(sigma, 0.2, true, precision)?;
+    apply_separable(input, &kernel, precision)
+}
+
+fn canny_index(width: usize, bands: usize, x: usize, y: usize, band: usize) -> usize {
+    (y * width + x) * bands + band
+}
+
+fn canny_direction_offset(direction: usize) -> (isize, isize) {
+    match direction & 7 {
+        0 => (0, -1),
+        1 => (-1, -1),
+        2 => (-1, 0),
+        3 => (-1, 1),
+        4 => (0, 1),
+        5 => (1, 1),
+        6 => (1, 0),
+        _ => (1, -1),
+    }
+}
+
+fn canny_magnitude_at(
+    magnitudes: &[f64],
+    width: usize,
+    height: usize,
+    bands: usize,
+    x: usize,
+    y: usize,
+    band: usize,
+    direction: usize,
+) -> f64 {
+    let (dx, dy) = canny_direction_offset(direction);
+    let sx = (x as isize + dx).clamp(0, width.saturating_sub(1) as isize) as usize;
+    let sy = (y as isize + dy).clamp(0, height.saturating_sub(1) as isize) as usize;
+    magnitudes[canny_index(width, bands, sx, sy, band)]
 }
 
 unsafe fn op_canny(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
+    if input.spec.bands == 0 {
+        return Err(());
+    }
+    let sigma = if unsafe { argument_assigned(object, "sigma")? } {
+        unsafe { get_double(object, "sigma")? }
+    } else {
+        1.4
+    };
+    let precision = if unsafe { argument_assigned(object, "precision")? } {
+        unsafe { get_enum(object, "precision")? as VipsPrecision }
+    } else {
+        VIPS_PRECISION_FLOAT
+    };
+    let blurred = canny_blur(&input, sigma, precision)?;
+    let width = input.spec.width;
+    let height = input.spec.height;
+    let bands = input.spec.bands;
+    let mut magnitudes = vec![0.0; width.saturating_mul(height).saturating_mul(bands)];
+    let mut directions = magnitudes.clone();
+
+    for y in 0..height {
+        for x in 0..width {
+            let ix = x as isize;
+            let iy = y as isize;
+            for band in 0..bands {
+                let gx = -blurred.sample_clamped(ix - 1, iy - 1, band)
+                    + blurred.sample_clamped(ix, iy - 1, band)
+                    - blurred.sample_clamped(ix - 1, iy, band)
+                    + blurred.sample_clamped(ix, iy, band);
+                let gy = -blurred.sample_clamped(ix - 1, iy - 1, band)
+                    - blurred.sample_clamped(ix, iy - 1, band)
+                    + blurred.sample_clamped(ix - 1, iy, band)
+                    + blurred.sample_clamped(ix, iy, band);
+                let index = canny_index(width, bands, x, y, band);
+                magnitudes[index] = (gx * gx + gy * gy + 256.0) / 512.0;
+                directions[index] =
+                    256.0 * (gx.atan2(gy).to_degrees() + 360.0).rem_euclid(360.0) / 360.0;
+            }
+        }
+    }
+
+    let output_format = canny_output_format(input.spec.format);
     let mut out = ImageBuffer::new(
-        input.spec.width,
-        input.spec.height,
-        1,
-        VIPS_FORMAT_UCHAR,
+        width,
+        height,
+        bands,
+        output_format,
         input.spec.coding,
         input.spec.interpretation,
     );
@@ -318,28 +409,48 @@ unsafe fn op_canny(object: *mut VipsObject) -> Result<(), ()> {
     out.spec.yoffset = input.spec.yoffset;
     out.spec.dhint = input.spec.dhint;
 
-    for y in 0..input.spec.height {
-        for x in 0..input.spec.width {
-            let x = x as isize;
-            let y = y as isize;
-            let gx = -luma_clamped(&input, x - 1, y - 1) + luma_clamped(&input, x + 1, y - 1)
-                - 2.0 * luma_clamped(&input, x - 1, y)
-                + 2.0 * luma_clamped(&input, x + 1, y)
-                - luma_clamped(&input, x - 1, y + 1)
-                + luma_clamped(&input, x + 1, y + 1);
-            let gy = -luma_clamped(&input, x - 1, y - 1)
-                - 2.0 * luma_clamped(&input, x, y - 1)
-                - luma_clamped(&input, x + 1, y - 1)
-                + luma_clamped(&input, x - 1, y + 1)
-                + 2.0 * luma_clamped(&input, x, y + 1)
-                + luma_clamped(&input, x + 1, y + 1);
-            let magnitude = (gx * gx + gy * gy).sqrt();
-            out.set(
-                x as usize,
-                y as usize,
-                0,
-                clamp_for_format(magnitude, VIPS_FORMAT_UCHAR),
-            );
+    for y in 0..height {
+        for x in 0..width {
+            for band in 0..bands {
+                let index = canny_index(width, bands, x, y, band);
+                let magnitude = magnitudes[index];
+                let theta = directions[index];
+                let low_theta = ((theta / 32.0) as usize) & 7;
+                let high_theta = (low_theta + 1) & 7;
+                let residual = theta - (low_theta as f64 * 32.0);
+                let low_a =
+                    canny_magnitude_at(&magnitudes, width, height, bands, x, y, band, low_theta);
+                let low_b =
+                    canny_magnitude_at(&magnitudes, width, height, bands, x, y, band, high_theta);
+                let low = (low_a * (32.0 - residual) + low_b * residual) / 32.0;
+                let high_a = canny_magnitude_at(
+                    &magnitudes,
+                    width,
+                    height,
+                    bands,
+                    x,
+                    y,
+                    band,
+                    (low_theta + 4) & 7,
+                );
+                let high_b = canny_magnitude_at(
+                    &magnitudes,
+                    width,
+                    height,
+                    bands,
+                    x,
+                    y,
+                    band,
+                    (high_theta + 4) & 7,
+                );
+                let high = (high_a * (32.0 - residual) + high_b * residual) / 32.0;
+                let value = if magnitude <= low || magnitude < high {
+                    0.0
+                } else {
+                    magnitude
+                };
+                out.set(x, y, band, clamp_for_format(value, output_format));
+            }
         }
     }
 

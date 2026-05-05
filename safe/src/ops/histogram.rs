@@ -272,28 +272,37 @@ unsafe fn op_hist_norm(object: *mut VipsObject) -> Result<(), ()> {
         return Err(());
     }
 
-    let mut out = input.clone();
-    let target_max = format_max(input.spec.format).unwrap_or(255.0).max(1.0);
+    let new_max = input
+        .spec
+        .width
+        .saturating_mul(input.spec.height)
+        .saturating_sub(1) as f64;
+    let output_format = if new_max <= u8::MAX as f64 {
+        VIPS_FORMAT_UCHAR
+    } else if new_max <= u16::MAX as f64 {
+        VIPS_FORMAT_USHORT
+    } else {
+        VIPS_FORMAT_UINT
+    };
+
+    let mut out = input.with_format(output_format);
     for band in 0..input.spec.bands {
-        let mut band_min = f64::INFINITY;
-        let mut band_max = f64::NEG_INFINITY;
+        let mut band_max = 0.0f64;
         for y in 0..input.spec.height {
             for x in 0..input.spec.width {
-                let value = input.get(x, y, band);
-                band_min = band_min.min(value);
-                band_max = band_max.max(value);
+                band_max = band_max.max(input.get(x, y, band));
             }
         }
 
-        let span = band_max - band_min;
+        let scale = if band_max.abs() > f64::EPSILON {
+            new_max / band_max
+        } else {
+            0.0
+        };
         for y in 0..input.spec.height {
             for x in 0..input.spec.width {
-                let value = if span > f64::EPSILON {
-                    (input.get(x, y, band) - band_min) * target_max / span
-                } else {
-                    0.0
-                };
-                out.set(x, y, band, clamp_for_format(value, input.spec.format));
+                let value = input.get(x, y, band) * scale;
+                out.set(x, y, band, clamp_for_format(value, output_format));
             }
         }
     }

@@ -29,11 +29,12 @@ use crate::pixels::{
     complex_from_buffer, complex_image_from_samples, read_complex_image, ComplexSample,
     ImageBuffer, ImageSpec,
 };
+use crate::runtime::header::vips_interpretation_max_alpha;
 use crate::runtime::image::{ensure_pixels, image_state};
 
 use super::{
-    get_array_double, get_array_images, get_enum, get_image_buffer, get_image_ref, get_int,
-    set_output_array_double, set_output_double, set_output_image, set_output_image_like,
+    get_array_double, get_array_images, get_bool, get_enum, get_image_buffer, get_image_ref,
+    get_int, set_output_array_double, set_output_double, set_output_image, set_output_image_like,
     set_output_int,
 };
 
@@ -710,12 +711,86 @@ fn trim_background(input: &ImageBuffer, background: Vec<f64>) -> Vec<f64> {
     if !background.is_empty() {
         return background;
     }
-    if input.spec.width == 0 || input.spec.height == 0 || input.spec.bands == 0 {
-        return vec![0.0];
+    vec![vips_interpretation_max_alpha(input.spec.interpretation)]
+}
+
+#[allow(non_upper_case_globals)]
+fn trim_has_alpha(input: &ImageBuffer) -> bool {
+    use crate::abi::image::{
+        VIPS_INTERPRETATION_sRGB, VIPS_INTERPRETATION_scRGB, VIPS_INTERPRETATION_B_W,
+        VIPS_INTERPRETATION_CMC, VIPS_INTERPRETATION_CMYK, VIPS_INTERPRETATION_GREY16,
+        VIPS_INTERPRETATION_HSV, VIPS_INTERPRETATION_LAB, VIPS_INTERPRETATION_LABS,
+        VIPS_INTERPRETATION_LCH, VIPS_INTERPRETATION_RGB, VIPS_INTERPRETATION_RGB16,
+        VIPS_INTERPRETATION_XYZ, VIPS_INTERPRETATION_YXY,
+    };
+
+    match input.spec.interpretation {
+        VIPS_INTERPRETATION_B_W | VIPS_INTERPRETATION_GREY16 => input.spec.bands > 1,
+        VIPS_INTERPRETATION_RGB
+        | VIPS_INTERPRETATION_CMC
+        | VIPS_INTERPRETATION_LCH
+        | VIPS_INTERPRETATION_LABS
+        | VIPS_INTERPRETATION_sRGB
+        | VIPS_INTERPRETATION_YXY
+        | VIPS_INTERPRETATION_XYZ
+        | VIPS_INTERPRETATION_LAB
+        | VIPS_INTERPRETATION_RGB16
+        | VIPS_INTERPRETATION_scRGB
+        | VIPS_INTERPRETATION_HSV => input.spec.bands > 3,
+        VIPS_INTERPRETATION_CMYK => input.spec.bands > 4,
+        _ => false,
     }
-    (0..input.spec.bands)
-        .map(|band| input.get(0, 0, band))
+}
+
+fn trim_background_values(background: &[f64], bands: usize) -> Vec<f64> {
+    let fallback = background.last().copied().unwrap_or(0.0);
+    (0..bands)
+        .map(|band| background.get(band).copied().unwrap_or(fallback))
         .collect()
+}
+
+fn trim_flatten_alpha(input: &ImageBuffer, background: &[f64]) -> ImageBuffer {
+    if !trim_has_alpha(input) || input.spec.bands <= 1 {
+        return input.clone();
+    }
+
+    let alpha_band = input.spec.bands - 1;
+    let bg = trim_background_values(background, alpha_band);
+    let max_alpha = vips_interpretation_max_alpha(input.spec.interpretation).max(f64::EPSILON);
+    let mut out = input.with_shape(input.spec.width, input.spec.height, alpha_band);
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            let alpha = input.get(x, y, alpha_band).clamp(0.0, max_alpha);
+            let inverse = max_alpha - alpha;
+            for band in 0..alpha_band {
+                let value = (input.get(x, y, band) * alpha + bg[band] * inverse) / max_alpha;
+                out.set(x, y, band, value);
+            }
+        }
+    }
+    out
+}
+
+fn trim_median3(input: &ImageBuffer) -> ImageBuffer {
+    let mut out = input.clone();
+    let mut window = [0.0f64; 9];
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            for band in 0..input.spec.bands {
+                let mut index = 0usize;
+                for dy in -1..=1 {
+                    for dx in -1..=1 {
+                        window[index] =
+                            input.sample_clamped(x as isize + dx, y as isize + dy, band);
+                        index += 1;
+                    }
+                }
+                window.sort_by(|left, right| left.total_cmp(right));
+                out.set(x, y, band, window[4]);
+            }
+        }
+    }
+    out
 }
 
 fn trim_pixel_differs(
@@ -736,6 +811,9 @@ fn trim_pixel_differs(
 
 unsafe fn op_find_trim(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
+    if input.spec.width < 3 || input.spec.height < 3 || input.spec.bands == 0 {
+        return Err(());
+    }
     let threshold = if unsafe { super::argument_assigned(object, "threshold")? } {
         unsafe { super::get_double(object, "threshold")? }
     } else {
@@ -747,6 +825,17 @@ unsafe fn op_find_trim(object: *mut VipsObject) -> Result<(), ()> {
         Vec::new()
     };
     let background = trim_background(&input, background);
+    let line_art = if unsafe { super::argument_assigned(object, "line_art")? } {
+        unsafe { get_bool(object, "line_art")? }
+    } else {
+        false
+    };
+    let input = trim_flatten_alpha(&input, &background);
+    let input = if line_art {
+        input
+    } else {
+        trim_median3(&input)
+    };
 
     let mut min_x = input.spec.width;
     let mut min_y = input.spec.height;
