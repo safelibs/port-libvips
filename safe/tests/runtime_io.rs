@@ -95,6 +95,7 @@ unsafe extern "C" {
         target: *mut VipsTarget,
         ...
     ) -> libc::c_int;
+    fn vips_foreign_find_load_buffer(buf: *const c_void, len: usize) -> *const c_char;
     fn vips_jpegload_buffer(
         buf: *mut c_void,
         len: usize,
@@ -159,6 +160,65 @@ fn assert_materializes(image: *mut VipsImage) {
         * test_format_sizeof(image_ref.BandFmt);
     assert_eq!(len, expected, "materialized pixel length mismatch");
     vips_image_free_buffer(image, ptr);
+}
+
+fn image_from_uchar(width: i32, height: i32, bands: i32, pixels: &[u8]) -> *mut VipsImage {
+    vips_image_new_from_memory_copy(
+        pixels.as_ptr().cast(),
+        pixels.len(),
+        width,
+        height,
+        bands,
+        VIPS_FORMAT_UCHAR,
+    )
+}
+
+fn image_from_f32(width: i32, height: i32, bands: i32, pixels: &[f32]) -> *mut VipsImage {
+    let bytes = pixels
+        .iter()
+        .flat_map(|value| value.to_ne_bytes())
+        .collect::<Vec<_>>();
+    vips_image_new_from_memory_copy(
+        bytes.as_ptr().cast(),
+        bytes.len(),
+        width,
+        height,
+        bands,
+        VIPS_FORMAT_FLOAT,
+    )
+}
+
+fn image_memory_bytes(image: *mut VipsImage) -> Vec<u8> {
+    let mut len = 0usize;
+    let ptr = vips_image_write_to_memory(image, &mut len);
+    assert!(!ptr.is_null());
+    let bytes = unsafe { slice::from_raw_parts(ptr.cast::<u8>(), len) }.to_vec();
+    vips_image_free_buffer(image, ptr);
+    bytes
+}
+
+fn write_image_buffer(image: *mut VipsImage, suffix: &CStr) -> Vec<u8> {
+    let mut buffer = ptr::null_mut();
+    let mut len = 0usize;
+    assert_eq!(
+        unsafe {
+            vips_image_write_to_buffer(
+                image,
+                suffix.as_ptr(),
+                &mut buffer,
+                &mut len,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert!(!buffer.is_null());
+    assert!(len > 0);
+    let bytes = unsafe { slice::from_raw_parts(buffer.cast::<u8>(), len) }.to_vec();
+    unsafe {
+        glib_sys::g_free(buffer);
+    }
+    bytes
 }
 
 fn object_summary_text(object: *mut VipsObject) -> String {
@@ -1111,7 +1171,7 @@ fn jpeg_public_save_paths_return_glib_owned_buffers_and_targets() {
     assert!(!jpeg_buffer.is_null());
     assert!(jpeg_len > 0);
     let jpeg_bytes = unsafe { slice::from_raw_parts(jpeg_buffer.cast::<u8>(), jpeg_len) };
-    assert!(jpeg_bytes.starts_with(b"SVIPSC01\x01"));
+    assert!(jpeg_bytes.starts_with(&[0xff, 0xd8]));
     let jpeg_reopened = unsafe {
         vips_image_new_from_buffer(
             jpeg_buffer.cast::<c_void>(),
@@ -1130,6 +1190,178 @@ fn jpeg_public_save_paths_return_glib_owned_buffers_and_targets() {
         gobject_sys::g_object_unref(image.cast());
     }
     std::fs::remove_file(png_path).expect("remove temp png");
+}
+
+#[test]
+fn foreign_media_buffer_and_text_roundtrips_match_validator_paths() {
+    let _guard = guard();
+    init_vips();
+
+    let ppm_pixels = [10, 20, 30, 40, 50, 60];
+    let ppm = image_from_uchar(1, 2, 3, &ppm_pixels);
+    let ppm_bytes = write_image_buffer(ppm, c".ppm");
+    assert!(ppm_bytes.starts_with(b"P6\n1 2\n255\n"));
+    let ppm_loader =
+        unsafe { vips_foreign_find_load_buffer(ppm_bytes.as_ptr().cast(), ppm_bytes.len()) };
+    assert_eq!(
+        unsafe { CStr::from_ptr(ppm_loader) }.to_bytes(),
+        b"ppmload_buffer"
+    );
+    let ppm_reload = unsafe {
+        vips_image_new_from_buffer(
+            ppm_bytes.as_ptr().cast(),
+            ppm_bytes.len(),
+            c"".as_ptr(),
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_eq!(image_memory_bytes(ppm_reload), ppm_pixels);
+
+    let gray_pixels = [10, 20, 30, 40, 50, 60, 70, 80, 90];
+    let gray = image_from_uchar(3, 3, 1, &gray_pixels);
+    let tiff_bytes = write_image_buffer(gray, c".tif");
+    assert!(tiff_bytes.starts_with(b"II*\0"));
+    let tiff_reload = unsafe {
+        vips_image_new_from_buffer(
+            tiff_bytes.as_ptr().cast(),
+            tiff_bytes.len(),
+            ptr::null(),
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_eq!(image_memory_bytes(tiff_reload), gray_pixels);
+
+    let two_band_pixels = [22, 33, 44, 55, 66, 77, 88, 99];
+    let two_band = image_from_uchar(2, 2, 2, &two_band_pixels);
+    let two_band_path = temp_runtime_path(".tif");
+    let two_band_c =
+        CString::new(two_band_path.to_string_lossy().into_owned()).expect("two-band tif path");
+    assert_eq!(
+        unsafe { vips_image_write_to_file(two_band, two_band_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    let two_band_tiff = std::fs::read(&two_band_path).expect("two-band tiff file");
+    assert!(two_band_tiff.starts_with(b"II*\0"));
+    let two_band_reload =
+        unsafe { vips_image_new_from_file(two_band_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!two_band_reload.is_null());
+    assert_eq!(unsafe { (*two_band_reload).Bands }, 2);
+    assert_eq!(image_memory_bytes(two_band_reload), two_band_pixels);
+
+    let float_pixels = [1.0f32, 0.0, -1.0, 0.5];
+    let float_image = image_from_f32(2, 2, 1, &float_pixels);
+    let float_path = temp_runtime_path(".tif");
+    let float_c = CString::new(float_path.to_string_lossy().into_owned()).expect("float tif path");
+    assert_eq!(
+        unsafe { vips_image_write_to_file(float_image, float_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    let float_tiff = std::fs::read(&float_path).expect("float tiff file");
+    assert!(float_tiff.starts_with(b"II*\0"));
+    let float_reload = unsafe { vips_image_new_from_file(float_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!float_reload.is_null());
+    assert_eq!(unsafe { (*float_reload).BandFmt }, VIPS_FORMAT_FLOAT);
+    let float_reload_values = image_memory_bytes(float_reload)
+        .chunks_exact(4)
+        .map(|chunk| f32::from_ne_bytes(chunk.try_into().unwrap()))
+        .collect::<Vec<_>>();
+    assert_eq!(float_reload_values, float_pixels);
+
+    let rgb_pixels = (0..64 * 64)
+        .flat_map(|i| {
+            let x = (i % 64) as u8;
+            let y = (i / 64) as u8;
+            [
+                x.wrapping_mul(17),
+                y.wrapping_mul(23),
+                x.wrapping_add(y).wrapping_mul(11),
+            ]
+        })
+        .collect::<Vec<_>>();
+    let rgb = image_from_uchar(64, 64, 3, &rgb_pixels);
+    let low_jpeg = write_image_buffer(rgb, c".jpg[Q=20]");
+    let high_jpeg = write_image_buffer(rgb, c".jpg[Q=95]");
+    assert!(low_jpeg.starts_with(&[0xff, 0xd8]));
+    assert!(high_jpeg.starts_with(&[0xff, 0xd8]));
+    assert!(
+        high_jpeg.len() > low_jpeg.len(),
+        "expected high quality jpeg to be larger: {} vs {}",
+        high_jpeg.len(),
+        low_jpeg.len()
+    );
+    let jpeg_reload = unsafe {
+        vips_image_new_from_buffer(
+            high_jpeg.as_ptr().cast(),
+            high_jpeg.len(),
+            ptr::null(),
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_materializes(jpeg_reload);
+    assert_eq!(unsafe { (*jpeg_reload).Xsize }, 64);
+    assert_eq!(unsafe { (*jpeg_reload).Ysize }, 64);
+
+    let webp = image_from_uchar(4, 4, 3, &rgb_pixels[..4 * 4 * 3]);
+    let webp_bytes = write_image_buffer(webp, c".webp");
+    assert_eq!(&webp_bytes[..4], b"RIFF");
+    assert_eq!(&webp_bytes[8..12], b"WEBP");
+    let webp_reload = unsafe {
+        vips_image_new_from_buffer(
+            webp_bytes.as_ptr().cast(),
+            webp_bytes.len(),
+            ptr::null(),
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_materializes(webp_reload);
+    assert_eq!(unsafe { (*webp_reload).Xsize }, 4);
+    assert_eq!(unsafe { (*webp_reload).Ysize }, 4);
+    assert_eq!(unsafe { (*webp_reload).Bands }, 3);
+
+    let matrix_path = temp_runtime_path(".mat");
+    std::fs::write(&matrix_path, b"3 2\n1.0 2.0 3.0\n4.0 5.0 6.0\n").expect("matrix input");
+    let matrix_c = CString::new(matrix_path.to_string_lossy().into_owned()).expect("matrix path");
+    let matrix = unsafe { vips_image_new_from_file(matrix_c.as_ptr(), ptr::null::<c_char>()) };
+    assert!(!matrix.is_null());
+    assert_eq!(unsafe { (*matrix).Xsize }, 3);
+    assert_eq!(unsafe { (*matrix).Ysize }, 2);
+    let matrix_values = image_memory_bytes(matrix)
+        .chunks_exact(4)
+        .map(|chunk| f32::from_ne_bytes(chunk.try_into().unwrap()))
+        .collect::<Vec<_>>();
+    assert_eq!(matrix_values, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+    let matrix_out = temp_runtime_path(".mat");
+    let matrix_out_c =
+        CString::new(matrix_out.to_string_lossy().into_owned()).expect("matrix output path");
+    assert_eq!(
+        unsafe { vips_image_write_to_file(matrix, matrix_out_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    let matrix_text = std::fs::read_to_string(&matrix_out).expect("matrix output");
+    assert!(
+        matrix_text.starts_with("3 2\n"),
+        "unexpected matrix header: {matrix_text:?}"
+    );
+
+    unsafe {
+        gobject_sys::g_object_unref(matrix.cast());
+        gobject_sys::g_object_unref(webp_reload.cast());
+        gobject_sys::g_object_unref(webp.cast());
+        gobject_sys::g_object_unref(jpeg_reload.cast());
+        gobject_sys::g_object_unref(rgb.cast());
+        gobject_sys::g_object_unref(float_reload.cast());
+        gobject_sys::g_object_unref(float_image.cast());
+        gobject_sys::g_object_unref(two_band_reload.cast());
+        gobject_sys::g_object_unref(two_band.cast());
+        gobject_sys::g_object_unref(tiff_reload.cast());
+        gobject_sys::g_object_unref(gray.cast());
+        gobject_sys::g_object_unref(ppm_reload.cast());
+        gobject_sys::g_object_unref(ppm.cast());
+    }
+    std::fs::remove_file(float_path).expect("remove float tiff");
+    std::fs::remove_file(two_band_path).expect("remove two-band tiff");
+    std::fs::remove_file(matrix_path).expect("remove matrix input");
+    std::fs::remove_file(matrix_out).expect("remove matrix output");
 }
 
 #[test]

@@ -138,6 +138,7 @@ pub fn is_public_operation(name: &str) -> bool {
             | "jpegsave_buffer"
             | "rawload"
             | "rawsave"
+            | "ppmload_buffer"
             | "csvload_source"
             | "csvsave_target"
             | "matrixload_source"

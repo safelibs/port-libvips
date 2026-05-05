@@ -14163,6 +14163,13 @@ static OPERATION_VIPSFOREIGNLOADPPMFILE: GeneratedOperationMetadata = GeneratedO
     wrapper_function: Some("vips_ppmload"),
 };
 
+static OPERATION_VIPSFOREIGNLOADPPMBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_UNTRUSTED,
+    supported: true,
+    arguments: &[&ARGS_VIPSFOREIGNLOADPNGBUFFER_BUFFER],
+    wrapper_function: None,
+};
+
 static OPERATION_VIPSFOREIGNLOADPPMSOURCE: GeneratedOperationMetadata = GeneratedOperationMetadata {
     flags: crate::abi::operation::VIPS_OPERATION_NOCACHE,
     supported: false,
@@ -17034,6 +17041,16 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         abstract_: false,
         source_file: Some("original/libvips/foreign/ppmload.c"),
         operation: Some(&OPERATION_VIPSFOREIGNLOADPPMFILE),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadPpmBuffer",
+        parent_type_name: Some("VipsForeignLoadPpm"),
+        nickname: "ppmload_buffer",
+        description: "load ppm from buffer (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted, is_a_buffer, header, load",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/ppmload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADPPMBUFFER),
     },
     GeneratedTypeMetadata {
         type_name: "VipsForeignLoadPpmSource",

@@ -93,6 +93,10 @@ fn load_from_kind(
         ForeignKind::Ppm | ForeignKind::Pfm => parse_ppm(bytes),
         ForeignKind::Csv => parse_csv(bytes, &options),
         ForeignKind::Matrix => parse_matrix(bytes),
+        ForeignKind::Tiff => loaders::raster::parse_tiff(bytes)
+            .or_else(|_| loaders::external::decode_with_convert(bytes, kind, &options)),
+        ForeignKind::Webp => loaders::raster::parse_webp_compat(bytes)
+            .or_else(|_| loaders::external::decode_with_convert(bytes, kind, &options)),
         ForeignKind::Vips => {
             if loaders::container::is_container(bytes) {
                 loaders::container::parse_container(bytes, options)
@@ -102,8 +106,6 @@ fn load_from_kind(
             }
         }
         ForeignKind::Gif
-        | ForeignKind::Tiff
-        | ForeignKind::Webp
         | ForeignKind::Heif
         | ForeignKind::Svg
         | ForeignKind::Pdf
@@ -237,7 +239,9 @@ fn parse_ppm(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
     let scale = read_ppm_token(bytes, &mut offset).map_err(|_| {
         append_message_str("ppmload", "invalid ppm scale");
     })?;
-    skip_ppm_space(bytes, &mut offset);
+    if offset < bytes.len() && bytes[offset].is_ascii_whitespace() {
+        offset += 1;
+    }
     let payload = &bytes[offset..];
 
     if pfm {
@@ -413,11 +417,8 @@ fn parse_matrix(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
         append_message_str("matrixload", "matrix header missing");
     })?;
     let header = header.split_whitespace().collect::<Vec<_>>();
-    if header.len() < 4 {
-        append_message_str(
-            "matrixload",
-            "matrix header requires width height scale offset",
-        );
+    if header.len() != 2 && header.len() < 4 {
+        append_message_str("matrixload", "matrix header requires width height");
         return Err(());
     }
     let width = header[0].parse::<usize>().map_err(|_| {
@@ -638,12 +639,22 @@ pub fn save_to_bytes(
         ForeignKind::Csv => savers::text::save_csv(image),
         ForeignKind::Matrix => savers::text::save_matrix(image),
         ForeignKind::Raw => savers::text::save_raw(image),
-        ForeignKind::Jpeg
-        | ForeignKind::Png
-        | ForeignKind::Tiff
-        | ForeignKind::Webp
-        | ForeignKind::Heif
-        | ForeignKind::Radiance => savers::container::write_container(image, kind, options),
+        ForeignKind::Jpeg => match savers::raster::save_jpeg_if_supported(image, options)? {
+            Some(bytes) => Ok(bytes),
+            None => savers::container::write_container(image, kind, options),
+        },
+        ForeignKind::Png => savers::container::write_container(image, kind, options),
+        ForeignKind::Tiff => match savers::raster::save_tiff_file_if_supported(image)? {
+            Some(bytes) => Ok(bytes),
+            None => savers::container::write_container(image, kind, options),
+        },
+        ForeignKind::Webp => match savers::raster::save_webp_compat_if_supported(image)? {
+            Some(bytes) => Ok(bytes),
+            None => savers::container::write_container(image, kind, options),
+        },
+        ForeignKind::Heif | ForeignKind::Radiance => {
+            savers::container::write_container(image, kind, options)
+        }
         ForeignKind::Vips => loaders::legacy_vips::save_bytes(image),
         _ => {
             append_message_str("foreignsave", "unsupported saver");
@@ -748,6 +759,9 @@ fn save_options_from_object(
     if unsafe { argument_assigned(object, "profile")? } {
         options.profile = unsafe { get_string(object, "profile")? };
     }
+    if unsafe { argument_assigned(object, "Q")? } {
+        options.q = Some(unsafe { get_int(object, "Q")? });
+    }
 
     Ok(options)
 }
@@ -784,6 +798,7 @@ fn buffer_load_kind(nickname: &str) -> Option<ForeignKind> {
         "pdfload_buffer" => Some(ForeignKind::Pdf),
         "webpload_buffer" => Some(ForeignKind::Webp),
         "heifload_buffer" => Some(ForeignKind::Heif),
+        "ppmload_buffer" => Some(ForeignKind::Ppm),
         "radload_buffer" => Some(ForeignKind::Radiance),
         _ => None,
     }
@@ -1131,6 +1146,7 @@ pub fn dispatch_operation(
                 | "pdfload_buffer"
                 | "webpload_buffer"
                 | "heifload_buffer"
+                | "ppmload_buffer"
                 | "radload_buffer"
         ) =>
         {

@@ -54,6 +54,7 @@ pub struct SaveOptions {
     pub bitdepth: Option<i32>,
     pub keep: Option<String>,
     pub profile: Option<String>,
+    pub q: Option<i32>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -213,6 +214,10 @@ pub fn save_options_from_map(raw: &BTreeMap<String, String>) -> SaveOptions {
         bitdepth: raw.get("bitdepth").and_then(|value| value.parse().ok()),
         keep: raw.get("keep").cloned(),
         profile: raw.get("profile").cloned(),
+        q: raw
+            .get("Q")
+            .or_else(|| raw.get("q"))
+            .and_then(|value| value.parse().ok()),
     }
 }
 
@@ -257,8 +262,10 @@ pub fn loader_name(kind: ForeignKind, input_kind: InputKind) -> Option<&'static 
         (ForeignKind::Heif, InputKind::Buffer) => Some("heifload_buffer"),
         (ForeignKind::Heif, InputKind::Source) => Some("heifload_source"),
         (ForeignKind::Ppm, InputKind::File) => Some("ppmload"),
+        (ForeignKind::Ppm, InputKind::Buffer) => Some("ppmload_buffer"),
         (ForeignKind::Ppm, InputKind::Source) => Some("ppmload_source"),
         (ForeignKind::Pfm, InputKind::File) => Some("ppmload"),
+        (ForeignKind::Pfm, InputKind::Buffer) => Some("ppmload_buffer"),
         (ForeignKind::Pfm, InputKind::Source) => Some("ppmload_source"),
         (ForeignKind::Radiance, InputKind::File) => Some("radload"),
         (ForeignKind::Radiance, InputKind::Buffer) => Some("radload_buffer"),

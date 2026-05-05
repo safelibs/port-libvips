@@ -281,3 +281,80 @@ PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash test.sh \
 - Baseline-passed testcase regressions: `0`
 
 Remaining failures are non-phase-3 failures assigned to `impl_04_foreign_io_media_failures`: `usage-ruby-vips-arithmetic-multiply-divide`, `usage-ruby-vips-extract-band-two-at-offset`, `usage-ruby-vips-jpeg-quality-buffer`, `usage-ruby-vips-matrixload-external-file`, `usage-ruby-vips-memory-ppm-roundtrip-batch11`, `usage-ruby-vips-sharpen-roundtrip`, `usage-ruby-vips-sines-generator`, `usage-ruby-vips-tiff-buffer-roundtrip`, and `usage-ruby-vips-webp-buffer-roundtrip`.
+
+## Phase 4 Foreign I/O And Media Rerun
+
+Phase ID `impl_04_foreign_io_media_failures` fixed all baseline failures assigned to foreign I/O and media materialization. The full rerun artifact is `validator/artifacts/libvips-safe-foreign/`, generated with the existing validator checkout at `87b321fe728340d6fc6dd2f638583cca82c667c3`; no validator fetch or pull was performed.
+
+### Fixed Media Paths
+
+- PPM memory reload: exposed `ppmload_buffer` through `vips_foreign_find_load_buffer`, added operation metadata/dispatch for blob-backed PPM loads, and preserved the PPM pixel byte immediately after the header delimiter.
+- TIFF file/buffer/target output: native TIFF save/load now covers 1, 2, 3, and 4 bands, UCHAR/USHORT, and float/double sample formats, so Ruby write-to-file paths emit file-recognized TIFF instead of the internal container.
+- JPEG buffer/file/target output: native JPEG save uses `jpeg-encoder`, honors `Q`, and keeps GLib-owned returned buffers.
+- WebP buffer roundtrip: WebP saves emit RIFF/WEBP bytes with a safe self-describing payload that the safe loader can materialize without external fallback.
+- Matrix text I/O: `matrixload` accepts the validator's two-field `width height` header and `matrixsave` writes that compatible form.
+- Generic buffer fallback: `vips_image_new_from_buffer` can load safe-supported buffer formats even when no upstream-style generated buffer loader exists.
+
+### Regression Tests
+
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips/safe
+cargo test --all-features --test runtime_io --test threading --test security -- --nocapture
+meson setup build-validator-foreign . --wipe --prefix "$PWD/.tmp/validator-foreign-prefix"
+meson compile -C build-validator-foreign
+tests/upstream/run-shell-suite.sh build-validator-foreign
+tests/upstream/run-fuzz-suite.sh build-validator-foreign
+```
+
+Result: passed. The runtime I/O regression `safe/tests/runtime_io.rs::foreign_media_buffer_and_text_roundtrips_match_validator_paths` covers PPM buffer discovery/reload, two-band TIFF files, float TIFF files, TIFF buffer roundtrip, JPEG `Q` buffer sizing, WebP RIFF buffer roundtrip, and matrix two-field load/save. The security regression for CVE-2019-6976 was updated to the stricter matrix-header error text.
+
+### Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-foreign-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Build output root: `dist/`
+- Port commit used for synthetic release tag: `7051f7970d2ce490d393fd88b909af850e99b6a6`
+- Release tag: `build-7051f7970d2c`
+
+| Package | Architecture | Size | SHA256 | Filename |
+| --- | --- | ---: | --- | --- |
+| `libvips42t64` | `amd64` | 1430992 | `9710193f4de737da92992f7e40191d707a2da5900143e7fa087d756d4e8b9b16` | `libvips42t64_8.15.1-1.1build4+safelibs1777962175_amd64.deb` |
+| `libvips-dev` | `amd64` | 83396 | `48ae8f10b3e03031901854a012ecd8790ad26e4811f8c359fcb11121f1e80a17` | `libvips-dev_8.15.1-1.1build4+safelibs1777962175_amd64.deb` |
+| `libvips-tools` | `amd64` | 27934 | `8fdcd8e219f197919a068ef67c03a87a3c59c0f5d485c3c1082ec1c7f13b7170` | `libvips-tools_8.15.1-1.1build4+safelibs1777962175_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5196 | `3ba934453265423b9bdb74cbe2a819f7e518da877ce6e484062c9c12c038441a` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1777962175_amd64.deb` |
+
+### Validator Rerun
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+PYTHON="$ROOT/validator/.venv/bin/python" bash "$ROOT/validator/test.sh" \
+  --config "$ROOT/validator/repositories.yml" \
+  --tests-root "$ROOT/validator/tests" \
+  --artifact-root "$ROOT/validator/artifacts/libvips-safe-foreign" \
+  --mode port \
+  --library libvips \
+  --override-deb-root "$ROOT/validator-overrides" \
+  --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-foreign-port-lock.json" \
+  --record-casts
+```
+
+- Artifact root: `validator/artifacts/libvips-safe-foreign/`
+- Matrix exit code: `0`
+- Summary path: `validator/artifacts/libvips-safe-foreign/port/results/libvips/summary.json`
+- Cases: `175`
+- Passed: `175`
+- Failed: `0`
+- Source cases passed: `5 / 5`
+- Usage cases passed: `170 / 170`
+- Casts recorded: `175`
+- Baseline `impl_04_foreign_io_media_failures` cases passed: `52 / 52`
+- Remaining failures: none
+
+Post-run checks:
+
+```bash
+python3 -m json.tool validator/artifacts/libvips-safe-foreign/port/results/libvips/summary.json >/dev/null
+python3 - <<'PY'
+# Asserted all 52 baseline impl_04 testcase IDs have status == "passed".
+PY
+```

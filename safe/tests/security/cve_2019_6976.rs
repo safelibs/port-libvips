@@ -8,7 +8,7 @@ unsafe extern "C" {
 }
 
 #[test]
-fn cve_2019_6976_matrix_header_requires_scale_and_offset() {
+fn cve_2019_6976_matrix_header_rejects_incomplete_fields() {
     let _guard = guard();
     init_vips();
     vips_error_clear();
@@ -25,7 +25,7 @@ fn cve_2019_6976_matrix_header_requires_scale_and_offset() {
     assert!(out.is_null());
 
     let error = error_message();
-    assert!(error.contains("matrix header requires width height scale offset"));
+    assert!(error.contains("matrix header requires width height"));
 
     unsafe {
         gobject_sys::g_object_unref(source.cast());

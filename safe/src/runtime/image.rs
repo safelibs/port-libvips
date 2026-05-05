@@ -704,6 +704,30 @@ pub extern "C" fn safe_vips_image_new_from_source_internal(
 }
 
 #[no_mangle]
+pub extern "C" fn safe_vips_image_new_from_buffer_internal(
+    buf: *const c_void,
+    len: usize,
+    option_string: *const c_char,
+) -> *mut VipsImage {
+    if buf.is_null() && len != 0 {
+        return ptr::null_mut();
+    }
+    let bytes = if len == 0 {
+        &[][..]
+    } else {
+        unsafe { std::slice::from_raw_parts(buf.cast::<u8>(), len) }
+    };
+    let image = vips_image_new();
+    let out = crate::foreign::load_image_from_buffer(bytes, option_string, image);
+    if out.is_null() {
+        unsafe {
+            crate::runtime::object::object_unref(image);
+        }
+    }
+    out
+}
+
+#[no_mangle]
 pub extern "C" fn safe_vips_image_write_to_target_internal(
     image: *mut VipsImage,
     suffix: *const c_char,

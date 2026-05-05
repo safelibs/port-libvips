@@ -55,6 +55,7 @@ fn foreign_name_ptr(name: &str) -> *const c_char {
         "heifload_buffer" => c"heifload_buffer".as_ptr(),
         "heifload_source" => c"heifload_source".as_ptr(),
         "ppmload" => c"ppmload".as_ptr(),
+        "ppmload_buffer" => c"ppmload_buffer".as_ptr(),
         "ppmload_source" => c"ppmload_source".as_ptr(),
         "radload" => c"radload".as_ptr(),
         "radload_buffer" => c"radload_buffer".as_ptr(),

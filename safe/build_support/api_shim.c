@@ -22,6 +22,8 @@
 
 extern VipsImage *safe_vips_image_new_from_source_internal(
     VipsSource *source, const char *option_string, int access);
+extern VipsImage *safe_vips_image_new_from_buffer_internal(
+    const void *buf, size_t len, const char *option_string);
 extern int safe_vips_image_write_to_target_internal(
     VipsImage *image, const char *suffix, VipsTarget *target);
 extern int safe_vips_crop_internal(
@@ -734,7 +736,7 @@ vips_image_new_from_buffer(const void *buf, size_t len,
     VipsBlob *blob;
 
     if (!(operation_name = vips_foreign_find_load_buffer(buf, len)))
-        return NULL;
+        return safe_vips_image_new_from_buffer_internal(buf, len, option_string);
 
     blob = vips_blob_new(NULL, buf, len);
     va_start(ap, option_string);

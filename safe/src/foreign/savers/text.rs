@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use crate::abi::image::{VipsImage, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR};
+use crate::abi::image::{VipsImage, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR};
 use crate::runtime::error::append_message_str;
 use crate::runtime::image::{ensure_pixels, image_state};
 
@@ -61,7 +61,7 @@ pub fn save_matrix(image: *mut VipsImage) -> Result<Vec<u8>, ()> {
     let mut out = String::new();
     let _ = writeln!(
         &mut out,
-        "{} {} 1 0",
+        "{} {}",
         image_ref.Xsize.max(0),
         image_ref.Ysize.max(0)
     );
@@ -82,6 +82,17 @@ pub fn save_matrix(image: *mut VipsImage) -> Result<Vec<u8>, ()> {
                 let end = start + image_ref.Xsize.max(0) as usize * 4;
                 for chunk in state.pixels[start..end].chunks_exact(4) {
                     let value = f32::from_ne_bytes(chunk.try_into().unwrap()) as f64;
+                    let _ = write!(&mut out, "{value} ");
+                }
+                out.push('\n');
+            }
+        }
+        VIPS_FORMAT_DOUBLE => {
+            for row in 0..image_ref.Ysize.max(0) as usize {
+                let start = row * image_ref.Xsize.max(0) as usize * 8;
+                let end = start + image_ref.Xsize.max(0) as usize * 8;
+                for chunk in state.pixels[start..end].chunks_exact(8) {
+                    let value = f64::from_ne_bytes(chunk.try_into().unwrap());
                     let _ = write!(&mut out, "{value} ");
                 }
                 out.push('\n');
