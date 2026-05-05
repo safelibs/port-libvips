@@ -19,7 +19,7 @@ use crate::foreign::base::{
     InputKind, LoadOptions, SaveOptions,
 };
 use crate::runtime::error::append_message_str;
-use crate::runtime::image::{ensure_pixels, image_state, set_filename, set_history, sync_pixels};
+use crate::runtime::image::{image_state, set_filename, set_history, sync_pixels};
 use crate::runtime::object;
 use crate::runtime::source::read_all_bytes;
 use crate::runtime::target::{vips_target_end, vips_target_write};
@@ -174,6 +174,9 @@ fn parse_png(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
         crate::runtime::image::safe_decode_png_bytes(bytes).map_err(|message| {
             append_message_str("pngload", &message);
         })?;
+    let metadata = metadata::extract_png_metadata(bytes)
+        .with_string("vips-loader", "pngload")
+        .with_int("bits-per-sample", bits_per_sample as i32);
     Ok(build_load_result(
         width as i32,
         height as i32,
@@ -182,9 +185,7 @@ fn parse_png(bytes: &[u8]) -> Result<ForeignLoadResult, ()> {
         interpretation,
         "pngload",
         Some(pixels),
-        base::ForeignMetadata::default()
-            .with_string("vips-loader", "pngload")
-            .with_int("bits-per-sample", bits_per_sample as i32),
+        metadata,
         None,
     ))
 }
@@ -643,12 +644,15 @@ pub fn save_to_bytes(
             Some(bytes) => Ok(bytes),
             None => savers::container::write_container(image, kind, options),
         },
-        ForeignKind::Png => savers::container::write_container(image, kind, options),
-        ForeignKind::Tiff => match savers::raster::save_tiff_file_if_supported(image)? {
+        ForeignKind::Png => match savers::raster::save_png_file_if_supported(image, options)? {
             Some(bytes) => Ok(bytes),
             None => savers::container::write_container(image, kind, options),
         },
-        ForeignKind::Webp => match savers::raster::save_webp_compat_if_supported(image)? {
+        ForeignKind::Tiff => match savers::raster::save_tiff_file_if_supported(image, options)? {
+            Some(bytes) => Ok(bytes),
+            None => savers::container::write_container(image, kind, options),
+        },
+        ForeignKind::Webp => match savers::raster::save_webp_compat_if_supported(image, options)? {
             Some(bytes) => Ok(bytes),
             None => savers::container::write_container(image, kind, options),
         },
@@ -1238,26 +1242,7 @@ pub fn dispatch_operation(
                 return Ok(false);
             };
             let options = save_options_from_object(object)?;
-            let bytes = if matches!(nickname, "pngsave_buffer") {
-                crate::runtime::image::simulate_save_progress(image, || {
-                    if ensure_pixels(image).is_err() {
-                        return Err(());
-                    }
-                    let Some(image_ref) = (unsafe { image.as_ref() }) else {
-                        return Err(());
-                    };
-                    let Some(state) = (unsafe { image_state(image) }) else {
-                        return Err(());
-                    };
-                    crate::runtime::image::safe_encode_png_bytes(image_ref, &state.pixels).map_err(
-                        |message| {
-                            append_message_str("pngsave", &message);
-                        },
-                    )
-                })?
-            } else {
-                save_to_bytes(image, kind, &options)?
-            };
+            let bytes = save_to_bytes(image, kind, &options)?;
             unsafe {
                 object::object_unref(image);
                 set_output_blob(object, "buffer", bytes)?;
@@ -1289,14 +1274,18 @@ pub fn dispatch_operation(
             };
             let options = save_options_from_object(object)?;
             let bytes = match kind {
-                ForeignKind::Png => match savers::raster::save_png_file_if_supported(image)? {
-                    Some(bytes) => bytes,
-                    None => save_to_bytes(image, kind, &options)?,
-                },
-                ForeignKind::Tiff => match savers::raster::save_tiff_file_if_supported(image)? {
-                    Some(bytes) => bytes,
-                    None => save_to_bytes(image, kind, &options)?,
-                },
+                ForeignKind::Png => {
+                    match savers::raster::save_png_file_if_supported(image, &options)? {
+                        Some(bytes) => bytes,
+                        None => save_to_bytes(image, kind, &options)?,
+                    }
+                }
+                ForeignKind::Tiff => {
+                    match savers::raster::save_tiff_file_if_supported(image, &options)? {
+                        Some(bytes) => bytes,
+                        None => save_to_bytes(image, kind, &options)?,
+                    }
+                }
                 _ => save_to_bytes(image, kind, &options)?,
             };
             std::fs::write(&filename, bytes).map_err(|err| {

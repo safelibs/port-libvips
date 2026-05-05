@@ -5,7 +5,6 @@ readonly SAFE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly PROJECT_ROOT="$(cd -- "${SAFE_ROOT}/.." && pwd)"
 readonly REFERENCE_LIBVIPS="${PROJECT_ROOT}/build-check-install/lib/libvips.so.42.17.1"
 readonly REFERENCE_LIBVIPS_CPP="${PROJECT_ROOT}/build-check-install/lib/libvips-cpp.so.42.17.1"
-readonly REFERENCE_VIPS_PC="${PROJECT_ROOT}/build-check-install/lib/pkgconfig/vips.pc"
 
 cleanup_paths=()
 cleanup() {
@@ -193,10 +192,12 @@ PY
 
 compile_deprecated_c_api_object() {
   local obj="$1"
+  local reference_vips_pc
   local reference_pc_dir
 
-  reference_pc_dir="$(dirname "${REFERENCE_VIPS_PC}")"
-  test -f "${REFERENCE_VIPS_PC}"
+  reference_vips_pc="$(find "${PROJECT_ROOT}/build-check-install" -type f -path '*/pkgconfig/vips.pc' | sort | sed -n '1p')"
+  test -f "${reference_vips_pc}"
+  reference_pc_dir="$(dirname "${reference_vips_pc}")"
 
   env PKG_CONFIG_PATH="${reference_pc_dir}" \
     cc -c tests/link_compat/deprecated_c_api_smoke.c \

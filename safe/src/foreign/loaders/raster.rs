@@ -45,6 +45,15 @@ fn read_u64_le(bytes: &[u8], offset: &mut usize) -> Option<u64> {
     Some(u64::from_le_bytes(raw))
 }
 
+fn read_u32_le_at(bytes: &[u8], offset: &mut usize) -> Option<u32> {
+    let raw: [u8; 4] = bytes
+        .get(*offset..(*offset).checked_add(4)?)?
+        .try_into()
+        .ok()?;
+    *offset += 4;
+    Some(u32::from_le_bytes(raw))
+}
+
 #[derive(Clone, Copy)]
 struct IfdEntry {
     tag: u16,
@@ -64,10 +73,27 @@ fn read_entry(bytes: &[u8], offset: usize, order: ByteOrder) -> Option<IfdEntry>
 
 fn type_width(field_type: u16) -> Option<usize> {
     match field_type {
+        1 | 2 | 7 => Some(1),
         3 => Some(2),
         4 => Some(4),
         _ => None,
     }
+}
+
+fn entry_bytes(entry: IfdEntry, bytes: &[u8], order: ByteOrder) -> Option<Vec<u8>> {
+    let width = type_width(entry.field_type)?;
+    let len = (entry.count as usize).checked_mul(width)?;
+    let inline = match order {
+        ByteOrder::Little => entry.value_offset.to_le_bytes(),
+        ByteOrder::Big => entry.value_offset.to_be_bytes(),
+    };
+    let source = if len <= 4 {
+        &inline[..len]
+    } else {
+        let offset = entry.value_offset as usize;
+        bytes.get(offset..offset.checked_add(len)?)?
+    };
+    Some(source.to_vec())
 }
 
 fn entry_values(entry: IfdEntry, bytes: &[u8], order: ByteOrder) -> Option<Vec<u32>> {
@@ -248,6 +274,23 @@ pub fn parse_tiff(bytes: &[u8]) -> Result<crate::foreign::base::ForeignLoadResul
             chunk.copy_from_slice(&value.to_ne_bytes());
         }
     }
+    let mut metadata = ForeignMetadata::default().with_string("vips-loader", "tiffload");
+    for entry in &entries {
+        match entry.tag {
+            700 => {
+                if let Some(value) = entry_bytes(*entry, bytes, order) {
+                    metadata.insert_blob("xmp-data", value);
+                }
+            }
+            34675 => {
+                if let Some(value) = entry_bytes(*entry, bytes, order) {
+                    metadata.insert_blob("icc-profile-data", value);
+                }
+            }
+            _ => {}
+        }
+    }
+
     Ok(build_load_result(
         width,
         height,
@@ -264,7 +307,7 @@ pub fn parse_tiff(bytes: &[u8]) -> Result<crate::foreign::base::ForeignLoadResul
         },
         "tiffload",
         Some(pixels),
-        ForeignMetadata::default().with_string("vips-loader", "tiffload"),
+        metadata,
         None,
     ))
 }
@@ -320,6 +363,11 @@ fn parse_webp_payload(payload: &[u8]) -> Result<crate::foreign::base::ForeignLoa
         append_message_str("webpload", "truncated webp pixels");
         return Err(());
     };
+    offset += pixel_len;
+    let mut metadata = ForeignMetadata::default().with_string("vips-loader", "webpload");
+    if offset < payload.len() {
+        parse_blob_metadata_payload(payload, &mut offset, &mut metadata)?;
+    }
     Ok(build_load_result(
         width,
         height,
@@ -328,7 +376,45 @@ fn parse_webp_payload(payload: &[u8]) -> Result<crate::foreign::base::ForeignLoa
         interpretation,
         "webpload",
         Some(pixels.to_vec()),
-        ForeignMetadata::default().with_string("vips-loader", "webpload"),
+        metadata,
         None,
     ))
+}
+
+fn parse_blob_metadata_payload(
+    payload: &[u8],
+    offset: &mut usize,
+    metadata: &mut ForeignMetadata,
+) -> Result<(), ()> {
+    let count = read_u32_le_at(payload, offset).ok_or_else(|| {
+        append_message_str("webpload", "truncated webp metadata");
+    })?;
+    for _ in 0..count {
+        let name_len = read_u32_le_at(payload, offset).ok_or_else(|| {
+            append_message_str("webpload", "truncated webp metadata");
+        })? as usize;
+        let data_len = read_u64_le(payload, offset).ok_or_else(|| {
+            append_message_str("webpload", "truncated webp metadata");
+        })? as usize;
+        let name_end = offset.checked_add(name_len).ok_or_else(|| {
+            append_message_str("webpload", "webp metadata is too large");
+        })?;
+        let Some(name_bytes) = payload.get(*offset..name_end) else {
+            append_message_str("webpload", "truncated webp metadata");
+            return Err(());
+        };
+        *offset = name_end;
+        let data_end = offset.checked_add(data_len).ok_or_else(|| {
+            append_message_str("webpload", "webp metadata is too large");
+        })?;
+        let Some(data) = payload.get(*offset..data_end) else {
+            append_message_str("webpload", "truncated webp metadata");
+            return Err(());
+        };
+        *offset = data_end;
+        if let Ok(name) = std::str::from_utf8(name_bytes) {
+            metadata.insert_blob(name, data.to_vec());
+        }
+    }
+    Ok(())
 }

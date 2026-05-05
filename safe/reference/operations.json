@@ -1,5 +1,5 @@
 {
-  "count": 354,
+  "count": 355,
   "entries": [
     {
       "depth": 1,
@@ -994,6 +994,13 @@
       "nickname": "ppmload",
       "parent": "VipsForeignLoadPpm",
       "type_name": "VipsForeignLoadPpmFile"
+    },
+    {
+      "depth": 5,
+      "description": "load ppm from buffer (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted, is_a_buffer, header, load",
+      "nickname": "ppmload_buffer",
+      "parent": "VipsForeignLoadPpm",
+      "type_name": "VipsForeignLoadPpmBuffer"
     },
     {
       "depth": 5,
@@ -2723,6 +2730,7 @@
     "point",
     "ppmload",
     "ppmload_base",
+    "ppmload_buffer",
     "ppmload_source",
     "ppmsave",
     "ppmsave_base",
@@ -2954,6 +2962,7 @@
     "VipsForeignLoadPngFile",
     "VipsForeignLoadPngSource",
     "VipsForeignLoadPpm",
+    "VipsForeignLoadPpmBuffer",
     "VipsForeignLoadPpmFile",
     "VipsForeignLoadPpmSource",
     "VipsForeignLoadRad",

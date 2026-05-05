@@ -2994,6 +2994,19 @@ fn replicate_to_bands(input: &ImageBuffer, bands: usize) -> Result<ImageBuffer, 
     if input.spec.bands == bands {
         return Ok(input.clone());
     }
+    if input.spec.bands + 1 == bands && matches!(bands, 2 | 4) {
+        let mut out = input.with_shape(input.spec.width, input.spec.height, bands);
+        let max_alpha = vips_interpretation_max_alpha(input.spec.interpretation);
+        for y in 0..input.spec.height {
+            for x in 0..input.spec.width {
+                for band in 0..input.spec.bands {
+                    out.set(x, y, band, input.get(x, y, band));
+                }
+                out.set(x, y, bands - 1, max_alpha);
+            }
+        }
+        return Ok(out);
+    }
     if input.spec.bands != 1 || bands == 0 {
         return Err(());
     }

@@ -5,6 +5,9 @@
 # Functions:
 #   prepare_rust_env       Source ~/.cargo/env, prepend ~/.cargo/bin to PATH.
 #   prepare_dist_dir       Recreate $repo_root/dist as an empty directory.
+#   clean_dpkg_build_outputs
+#                          Remove stale root-level dpkg-buildpackage outputs
+#                          before a fresh build copies artifacts into dist/.
 #   stamp_safelibs_changelog
 #                          Rewrite the leading entry of debian/changelog with
 #                          version "<upstream>+safelibs<commit-epoch>". Must
@@ -37,6 +40,23 @@ prepare_dist_dir() {
   local repo_root="$1"
   rm -rf -- "$repo_root/dist"
   mkdir -p -- "$repo_root/dist"
+}
+
+clean_dpkg_build_outputs() {
+  local repo_root="$1"
+  shopt -s nullglob
+  local artifacts=(
+    "$repo_root"/*.deb
+    "$repo_root"/*.ddeb
+    "$repo_root"/*.dsc
+    "$repo_root"/*.tar.gz "$repo_root"/*.tar.xz "$repo_root"/*.tar.bz2 "$repo_root"/*.tar.zst
+    "$repo_root"/*.buildinfo
+    "$repo_root"/*.changes
+  )
+  shopt -u nullglob
+  if (( ${#artifacts[@]} > 0 )); then
+    rm -f -- "${artifacts[@]}"
+  fi
 }
 
 _safelibs_commit_epoch() {
@@ -130,6 +150,7 @@ _synthesize_orig_tarball_if_needed() {
 build_with_dpkg_buildpackage() {
   local repo_root="$1"
   sudo mk-build-deps -i -r -t "apt-get -y --no-install-recommends" debian/control
+  clean_dpkg_build_outputs "$repo_root"
   _synthesize_orig_tarball_if_needed
   dpkg-buildpackage -us -uc
   shopt -s nullglob

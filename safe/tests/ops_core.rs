@@ -508,14 +508,7 @@ fn operation_semantics_ruby_failure_regressions() {
     assert_eq!(vips_image_get_format(rounded), VIPS_FORMAT_DOUBLE);
     assert_eq!(read_samples(rounded), vec![-1.0, -0.0, 0.0, 2.0, 2.0, 3.0]);
 
-    let base = image_from_uchar(
-        2,
-        2,
-        4,
-        &[
-            200, 0, 0, 255, 200, 0, 0, 255, 200, 0, 0, 255, 200, 0, 0, 255,
-        ],
-    );
+    let base = image_from_uchar(2, 2, 3, &[200, 0, 0, 200, 0, 0, 200, 0, 0, 200, 0, 0]);
     let overlay = image_from_uchar(
         2,
         2,

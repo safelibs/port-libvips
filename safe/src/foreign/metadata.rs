@@ -5,6 +5,10 @@ use crate::runtime::header::{
     vips_image_set_double, vips_image_set_int, vips_image_set_string, MetaValue,
 };
 
+pub const PNG_SAFE_XMP_CHUNK: [u8; 4] = *b"vpXm";
+pub const PNG_SAFE_ICC_CHUNK: [u8; 4] = *b"vpIc";
+pub const PNG_SAFE_EXIF_CHUNK: [u8; 4] = *b"vpEx";
+
 fn copy_blob(image: *mut VipsImage, name: &[u8]) -> Option<Vec<u8>> {
     let mut data = std::ptr::null();
     let mut len = 0usize;
@@ -106,6 +110,69 @@ pub fn collect_metadata(image: *mut VipsImage, options: &SaveOptions) -> Foreign
     metadata
 }
 
+fn push_jpeg_segment(out: &mut Vec<u8>, marker: u8, payload: &[u8]) {
+    if payload.len() + 2 > u16::MAX as usize {
+        return;
+    }
+    out.push(0xff);
+    out.push(marker);
+    out.extend_from_slice(&((payload.len() + 2) as u16).to_be_bytes());
+    out.extend_from_slice(payload);
+}
+
+pub fn inject_jpeg_metadata_segments(jpeg: Vec<u8>, metadata: &ForeignMetadata) -> Vec<u8> {
+    if jpeg.get(0..2) != Some(&[0xff, 0xd8]) {
+        return jpeg;
+    }
+
+    let mut segments = Vec::new();
+    if let Some(exif) = metadata.blobs.get("exif-data") {
+        push_jpeg_segment(&mut segments, 0xe1, exif);
+    }
+    if let Some(xmp) = metadata.blobs.get("xmp-data") {
+        let mut payload = b"http://ns.adobe.com/xap/1.0/\0".to_vec();
+        payload.extend_from_slice(xmp);
+        push_jpeg_segment(&mut segments, 0xe1, &payload);
+    }
+    if let Some(icc) = metadata.blobs.get("icc-profile-data") {
+        let max_chunk = u16::MAX as usize - 2 - 14;
+        let total = icc.len().div_ceil(max_chunk);
+        if (1..=255).contains(&total) {
+            for (index, chunk) in icc.chunks(max_chunk).enumerate() {
+                let mut payload = b"ICC_PROFILE\0".to_vec();
+                payload.push((index + 1) as u8);
+                payload.push(total as u8);
+                payload.extend_from_slice(chunk);
+                push_jpeg_segment(&mut segments, 0xe2, &payload);
+            }
+        }
+    }
+
+    if segments.is_empty() {
+        return jpeg;
+    }
+
+    let mut out = Vec::with_capacity(jpeg.len() + segments.len());
+    out.extend_from_slice(&jpeg[..2]);
+    out.extend_from_slice(&segments);
+    out.extend_from_slice(&jpeg[2..]);
+    out
+}
+
+pub fn png_metadata_chunks(metadata: &ForeignMetadata) -> Vec<([u8; 4], Vec<u8>)> {
+    let mut chunks = Vec::new();
+    if let Some(xmp) = metadata.blobs.get("xmp-data") {
+        chunks.push((PNG_SAFE_XMP_CHUNK, xmp.clone()));
+    }
+    if let Some(icc) = metadata.blobs.get("icc-profile-data") {
+        chunks.push((PNG_SAFE_ICC_CHUNK, icc.clone()));
+    }
+    if let Some(exif) = metadata.blobs.get("exif-data") {
+        chunks.push((PNG_SAFE_EXIF_CHUNK, exif.clone()));
+    }
+    chunks
+}
+
 pub fn extract_jpeg_metadata(bytes: &[u8]) -> ForeignMetadata {
     let mut metadata = ForeignMetadata::default();
     let mut offset = 2usize;
@@ -153,6 +220,45 @@ pub fn extract_jpeg_metadata(bytes: &[u8]) -> ForeignMetadata {
             .flatten()
             .collect::<Vec<_>>();
         metadata.insert_blob("icc-profile-data", icc);
+    }
+
+    metadata
+}
+
+pub fn extract_png_metadata(bytes: &[u8]) -> ForeignMetadata {
+    const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
+
+    let mut metadata = ForeignMetadata::default();
+    if bytes.get(0..8) != Some(&PNG_SIGNATURE[..]) {
+        return metadata;
+    }
+
+    let mut offset = 8usize;
+    while offset + 12 <= bytes.len() {
+        let length = u32::from_be_bytes(bytes[offset..offset + 4].try_into().unwrap()) as usize;
+        let chunk_name = &bytes[offset + 4..offset + 8];
+        let data_start = offset + 8;
+        let Some(data_end) = data_start.checked_add(length) else {
+            break;
+        };
+        if data_end + 4 > bytes.len() {
+            break;
+        }
+        let data = &bytes[data_start..data_end];
+        match chunk_name {
+            name if name == PNG_SAFE_XMP_CHUNK => {
+                metadata.insert_blob("xmp-data", data.to_vec());
+            }
+            name if name == PNG_SAFE_ICC_CHUNK => {
+                metadata.insert_blob("icc-profile-data", data.to_vec());
+            }
+            name if name == PNG_SAFE_EXIF_CHUNK => {
+                metadata.insert_blob("exif-data", data.to_vec());
+            }
+            b"IEND" => break,
+            _ => {}
+        }
+        offset = data_end + 4;
     }
 
     metadata

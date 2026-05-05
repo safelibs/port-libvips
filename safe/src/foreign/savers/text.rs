@@ -1,6 +1,8 @@
 use std::fmt::Write;
 
-use crate::abi::image::{VipsImage, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR};
+use crate::abi::image::{
+    VipsImage, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_USHORT,
+};
 use crate::runtime::error::append_message_str;
 use crate::runtime::image::{ensure_pixels, image_state};
 
@@ -117,15 +119,58 @@ pub fn save_ppm(image: *mut VipsImage, pfm: bool) -> Result<Vec<u8>, ()> {
         return Err(());
     };
     if pfm {
-        if image_ref.Bands != 1 || image_ref.BandFmt != VIPS_FORMAT_FLOAT {
-            append_message_str("ppmsave", "pfm save requires single-band float input");
-            return Err(());
-        }
+        let magic = match image_ref.Bands {
+            1 => "Pf",
+            3 => "PF",
+            _ => {
+                append_message_str("ppmsave", "pfm save requires mono or rgb input");
+                return Err(());
+            }
+        };
         let mut out = Vec::new();
         out.extend_from_slice(
-            format!("Pf\n{} {}\n-1.0\n", image_ref.Xsize, image_ref.Ysize).as_bytes(),
+            format!("{magic}\n{} {}\n-1.0\n", image_ref.Xsize, image_ref.Ysize).as_bytes(),
         );
-        out.extend_from_slice(&state.pixels);
+        match image_ref.BandFmt {
+            VIPS_FORMAT_UCHAR => {
+                out.reserve(state.pixels.len() * 4);
+                for value in &state.pixels {
+                    out.extend_from_slice(&(*value as f32).to_le_bytes());
+                }
+            }
+            VIPS_FORMAT_USHORT => {
+                for chunk in state.pixels.chunks_exact(2) {
+                    let value = u16::from_ne_bytes(chunk.try_into().unwrap()) as f32;
+                    out.extend_from_slice(&value.to_le_bytes());
+                }
+            }
+            VIPS_FORMAT_FLOAT => {
+                for chunk in state.pixels.chunks_exact(4) {
+                    let value = f32::from_ne_bytes(chunk.try_into().unwrap());
+                    out.extend_from_slice(&value.to_le_bytes());
+                }
+            }
+            VIPS_FORMAT_DOUBLE => {
+                for chunk in state.pixels.chunks_exact(8) {
+                    let value = f64::from_ne_bytes(chunk.try_into().unwrap()) as f32;
+                    out.extend_from_slice(&value.to_le_bytes());
+                }
+            }
+            _ => {
+                append_message_str("ppmsave", "unsupported pfm band format");
+                return Err(());
+            }
+        }
+        let expected_values = image_ref.Xsize.max(0) as usize
+            * image_ref.Ysize.max(0) as usize
+            * image_ref.Bands as usize;
+        if out.len()
+            != format!("{magic}\n{} {}\n-1.0\n", image_ref.Xsize, image_ref.Ysize).len()
+                + expected_values * 4
+        {
+            append_message_str("ppmsave", "pixel buffer length mismatch");
+            return Err(());
+        }
         return Ok(out);
     }
 

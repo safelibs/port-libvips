@@ -1,5 +1,5 @@
 {
-  "count": 354,
+  "count": 355,
   "entries": [
     {
       "depth": 1,
@@ -994,6 +994,13 @@
       "nickname": "ppmload",
       "parent": "VipsForeignLoadPpm",
       "type_name": "VipsForeignLoadPpmFile"
+    },
+    {
+      "depth": 5,
+      "description": "load ppm from buffer (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted, is_a_buffer, header, load",
+      "nickname": "ppmload_buffer",
+      "parent": "VipsForeignLoadPpm",
+      "type_name": "VipsForeignLoadPpmBuffer"
     },
     {
       "depth": 5,
@@ -2723,6 +2730,7 @@
     "point",
     "ppmload",
     "ppmload_base",
+    "ppmload_buffer",
     "ppmload_source",
     "ppmsave",
     "ppmsave_base",
@@ -35069,6 +35077,45 @@
         "signature": "VIPS_API int vips_crop(VipsImage *in, VipsImage **out, int left, int top, int width, int height, ...) G_GNUC_NULL_TERMINATED;",
         "variadic": true
       }
+    },
+    "VipsForeignLoadPpmBuffer": {
+      "abstract": false,
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Buffer to load from",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Buffer",
+          "name": "buffer",
+          "offset": "G_STRUCT_OFFSET(VipsForeignLoadPpmBuffer, blob)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_BLOB",
+            "type_macro": "VIPS_TYPE_BLOB",
+            "value_type": "VipsBlob"
+          }
+        }
+      ],
+      "depth": 5,
+      "description": "load ppm from buffer (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted, is_a_buffer, header, load",
+      "flags": [
+        "VIPS_OPERATION_UNTRUSTED"
+      ],
+      "nickname": "ppmload_buffer",
+      "parent": "VipsForeignLoadPpm",
+      "source_file": "original/libvips/foreign/ppmload.c",
+      "supported": true,
+      "type_name": "VipsForeignLoadPpmBuffer",
+      "wrapper": null
     }
   },
   "source": "LD_LIBRARY_PATH=/home/yans/code/safelibs/ported/libvips/build-check-install/lib /home/yans/code/safelibs/ported/libvips/build-check-install/bin/vips -l VipsOperation",
@@ -38429,6 +38476,15 @@
       "parent": "VipsConversion",
       "source_file": null,
       "type_name": "crop"
+    },
+    "VipsForeignLoadPpmBuffer": {
+      "abstract": false,
+      "depth": 5,
+      "description": "load ppm from buffer (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted, is_a_buffer, header, load",
+      "nickname": "ppmload_buffer",
+      "parent": "VipsForeignLoadPpm",
+      "source_file": "original/libvips/foreign/ppmload.c",
+      "type_name": "VipsForeignLoadPpmBuffer"
     }
   },
   "type_names": [
@@ -38552,6 +38608,7 @@
     "VipsForeignLoadPngFile",
     "VipsForeignLoadPngSource",
     "VipsForeignLoadPpm",
+    "VipsForeignLoadPpmBuffer",
     "VipsForeignLoadPpmFile",
     "VipsForeignLoadPpmSource",
     "VipsForeignLoadRad",
@@ -38788,7 +38845,7 @@
     "crop"
   ],
   "types": {
-    "count": 373,
+    "count": 374,
     "entries": [
       {
         "depth": 0,
@@ -39916,6 +39973,13 @@
         "nickname": "ppmload",
         "parent": "VipsForeignLoadPpm",
         "type_name": "VipsForeignLoadPpmFile"
+      },
+      {
+        "depth": 5,
+        "description": "load ppm from buffer (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted, is_a_buffer, header, load",
+        "nickname": "ppmload_buffer",
+        "parent": "VipsForeignLoadPpm",
+        "type_name": "VipsForeignLoadPpmBuffer"
       },
       {
         "depth": 5,
@@ -41653,6 +41717,7 @@
       "point",
       "ppmload",
       "ppmload_base",
+      "ppmload_buffer",
       "ppmload_source",
       "ppmsave",
       "ppmsave_base",
@@ -41896,6 +41961,7 @@
       "VipsForeignLoadPngFile",
       "VipsForeignLoadPngSource",
       "VipsForeignLoadPpm",
+      "VipsForeignLoadPpmBuffer",
       "VipsForeignLoadPpmFile",
       "VipsForeignLoadPpmSource",
       "VipsForeignLoadRad",

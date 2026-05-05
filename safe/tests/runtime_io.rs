@@ -1101,7 +1101,7 @@ fn jpeg_public_save_paths_return_glib_owned_buffers_and_targets() {
     assert!(!png_buffer.is_null());
     assert!(png_len > 0);
     let png_bytes = unsafe { slice::from_raw_parts(png_buffer.cast::<u8>(), png_len) };
-    assert!(png_bytes.starts_with(b"SVIPSC01\x02"));
+    assert!(png_bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
     let from_buffer = unsafe {
         vips_image_new_from_buffer(
             png_buffer.cast::<c_void>(),
@@ -1153,7 +1153,7 @@ fn jpeg_public_save_paths_return_glib_owned_buffers_and_targets() {
         0
     );
     assert!(target_state.finished);
-    assert!(target_state.bytes.starts_with(b"SVIPSC01\x02"));
+    assert!(target_state.bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
 
     let mut jpeg_buffer = ptr::null_mut();
     let mut jpeg_len = 0usize;
@@ -1193,6 +1193,123 @@ fn jpeg_public_save_paths_return_glib_owned_buffers_and_targets() {
 }
 
 #[test]
+fn raster_savers_apply_keep_metadata_options() {
+    let _guard = guard();
+    init_vips();
+
+    let input_path = CString::new(sample_jpg().to_string_lossy().into_owned()).expect("jpg path");
+    let input = unsafe { vips_image_new_from_file(input_path.as_ptr(), ptr::null::<c_char>()) };
+    assert_materializes(input);
+    let original_xmp = copy_blob(input, c"xmp-data").expect("sample xmp-data");
+    let original_icc = copy_blob(input, c"icc-profile-data").expect("sample icc-profile-data");
+    let srgb_profile = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("original")
+        .join("libvips")
+        .join("colour")
+        .join("profiles")
+        .join("sRGB.icm");
+    let srgb_icc = std::fs::read(&srgb_profile).expect("sRGB profile");
+
+    for suffix in [".jpg", ".png", ".tif", ".webp"] {
+        let keep_all_suffix = CString::new(suffix).expect("suffix");
+        let keep_all = write_image_buffer(input, &keep_all_suffix);
+        let keep_all = unsafe {
+            vips_image_new_from_buffer(
+                keep_all.as_ptr().cast(),
+                keep_all.len(),
+                ptr::null(),
+                ptr::null::<c_char>(),
+            )
+        };
+        assert_eq!(
+            copy_blob(keep_all, c"xmp-data").as_deref(),
+            Some(original_xmp.as_slice()),
+            "{suffix} should preserve XMP by default"
+        );
+        assert_eq!(
+            copy_blob(keep_all, c"icc-profile-data").as_deref(),
+            Some(original_icc.as_slice()),
+            "{suffix} should preserve ICC by default"
+        );
+
+        let keep_none_suffix = CString::new(format!("{suffix}[keep=none]")).expect("suffix");
+        let keep_none = write_image_buffer(input, &keep_none_suffix);
+        let keep_none = unsafe {
+            vips_image_new_from_buffer(
+                keep_none.as_ptr().cast(),
+                keep_none.len(),
+                ptr::null(),
+                ptr::null::<c_char>(),
+            )
+        };
+        assert!(
+            copy_blob(keep_none, c"xmp-data").is_none(),
+            "{suffix} should strip XMP with keep=none"
+        );
+        assert!(
+            copy_blob(keep_none, c"icc-profile-data").is_none(),
+            "{suffix} should strip ICC with keep=none"
+        );
+
+        let keep_icc_suffix = CString::new(format!("{suffix}[keep=icc]")).expect("suffix");
+        let keep_icc = write_image_buffer(input, &keep_icc_suffix);
+        let keep_icc = unsafe {
+            vips_image_new_from_buffer(
+                keep_icc.as_ptr().cast(),
+                keep_icc.len(),
+                ptr::null(),
+                ptr::null::<c_char>(),
+            )
+        };
+        assert!(
+            copy_blob(keep_icc, c"xmp-data").is_none(),
+            "{suffix} should strip XMP with keep=icc"
+        );
+        assert_eq!(
+            copy_blob(keep_icc, c"icc-profile-data").as_deref(),
+            Some(original_icc.as_slice()),
+            "{suffix} should preserve ICC with keep=icc"
+        );
+
+        let custom_suffix = CString::new(format!(
+            "{suffix}[keep=none,profile={}]",
+            srgb_profile.to_string_lossy()
+        ))
+        .expect("suffix");
+        let custom = write_image_buffer(input, &custom_suffix);
+        let custom = unsafe {
+            vips_image_new_from_buffer(
+                custom.as_ptr().cast(),
+                custom.len(),
+                ptr::null(),
+                ptr::null::<c_char>(),
+            )
+        };
+        assert_eq!(
+            copy_blob(custom, c"icc-profile-data").as_deref(),
+            Some(srgb_icc.as_slice()),
+            "{suffix} should embed the requested profile"
+        );
+        assert!(
+            copy_blob(custom, c"xmp-data").is_none(),
+            "{suffix} custom profile save should still honor keep=none for XMP"
+        );
+
+        unsafe {
+            gobject_sys::g_object_unref(custom.cast());
+            gobject_sys::g_object_unref(keep_icc.cast());
+            gobject_sys::g_object_unref(keep_none.cast());
+            gobject_sys::g_object_unref(keep_all.cast());
+        }
+    }
+
+    unsafe {
+        gobject_sys::g_object_unref(input.cast());
+    }
+}
+
+#[test]
 fn foreign_media_buffer_and_text_roundtrips_match_validator_paths() {
     let _guard = guard();
     init_vips();
@@ -1217,8 +1334,73 @@ fn foreign_media_buffer_and_text_roundtrips_match_validator_paths() {
     };
     assert_eq!(image_memory_bytes(ppm_reload), ppm_pixels);
 
+    let pfm_path = temp_runtime_path(".pfm");
+    let pfm_path_c = CString::new(pfm_path.to_string_lossy().into_owned()).expect("pfm path");
+    assert_eq!(
+        unsafe { vips_image_write_to_file(ppm, pfm_path_c.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    let pfm_bytes = std::fs::read(&pfm_path).expect("pfm file");
+    assert!(pfm_bytes.starts_with(b"PF\n1 2\n-1.0\n"));
+    let pfm_reload = unsafe {
+        vips_image_new_from_buffer(
+            pfm_bytes.as_ptr().cast(),
+            pfm_bytes.len(),
+            ptr::null(),
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_eq!(unsafe { (*pfm_reload).BandFmt }, VIPS_FORMAT_FLOAT);
+    assert_eq!(unsafe { (*pfm_reload).Bands }, 3);
+    let pfm_values = image_memory_bytes(pfm_reload)
+        .chunks_exact(4)
+        .map(|chunk| f32::from_ne_bytes(chunk.try_into().unwrap()))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        pfm_values,
+        ppm_pixels
+            .iter()
+            .map(|value| *value as f32)
+            .collect::<Vec<_>>()
+    );
+
     let gray_pixels = [10, 20, 30, 40, 50, 60, 70, 80, 90];
     let gray = image_from_uchar(3, 3, 1, &gray_pixels);
+    let mono_large_pixels = (0..64 * 64)
+        .map(|i| ((i * 37 + i / 64) % 256) as u8)
+        .collect::<Vec<_>>();
+    let mono_large = image_from_uchar(64, 64, 1, &mono_large_pixels);
+    let png_8bit = write_image_buffer(mono_large, c".png");
+    let png_4bit = write_image_buffer(mono_large, c".png[bitdepth=4]");
+    let png_2bit = write_image_buffer(mono_large, c".png[bitdepth=2]");
+    let png_1bit = write_image_buffer(mono_large, c".png[bitdepth=1]");
+    assert!(png_4bit.len() < png_8bit.len());
+    assert!(png_2bit.len() < png_4bit.len());
+    assert!(png_1bit.len() < png_2bit.len());
+
+    let onebit_pixels = [0, 255, 0, 255, 255, 0, 255, 0];
+    let onebit = image_from_uchar(8, 1, 1, &onebit_pixels);
+    let onebit_png = write_image_buffer(onebit, c".png[bitdepth=1]");
+    let onebit_reload = unsafe {
+        vips_image_new_from_buffer(
+            onebit_png.as_ptr().cast(),
+            onebit_png.len(),
+            ptr::null(),
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_eq!(image_memory_bytes(onebit_reload), onebit_pixels);
+    let mut bits_per_sample = 0;
+    assert_eq!(
+        vips_image_get_int(
+            onebit_reload,
+            c"bits-per-sample".as_ptr(),
+            &mut bits_per_sample,
+        ),
+        0
+    );
+    assert_eq!(bits_per_sample, 1);
+
     let tiff_bytes = write_image_buffer(gray, c".tif");
     assert!(tiff_bytes.starts_with(b"II*\0"));
     let tiff_reload = unsafe {
@@ -1301,6 +1483,35 @@ fn foreign_media_buffer_and_text_roundtrips_match_validator_paths() {
     assert_eq!(unsafe { (*jpeg_reload).Xsize }, 64);
     assert_eq!(unsafe { (*jpeg_reload).Ysize }, 64);
 
+    let cmyk_pixels = (0..4 * 4)
+        .flat_map(|i| {
+            let x = (i % 4) as u8;
+            let y = (i / 4) as u8;
+            [
+                x.wrapping_mul(31),
+                y.wrapping_mul(47),
+                x.wrapping_add(y).wrapping_mul(19),
+                10,
+            ]
+        })
+        .collect::<Vec<_>>();
+    let cmyk = image_from_uchar(4, 4, 4, &cmyk_pixels);
+    unsafe {
+        (*cmyk).Type = VIPS_INTERPRETATION_CMYK;
+    }
+    let cmyk_jpeg = write_image_buffer(cmyk, c".jpg[Q=95]");
+    let cmyk_reload = unsafe {
+        vips_image_new_from_buffer(
+            cmyk_jpeg.as_ptr().cast(),
+            cmyk_jpeg.len(),
+            ptr::null(),
+            ptr::null::<c_char>(),
+        )
+    };
+    assert_materializes(cmyk_reload);
+    assert_eq!(unsafe { (*cmyk_reload).Bands }, 4);
+    assert_eq!(unsafe { (*cmyk_reload).Type }, VIPS_INTERPRETATION_CMYK);
+
     let webp = image_from_uchar(4, 4, 3, &rgb_pixels[..4 * 4 * 3]);
     let webp_bytes = write_image_buffer(webp, c".webp");
     assert_eq!(&webp_bytes[..4], b"RIFF");
@@ -1347,6 +1558,8 @@ fn foreign_media_buffer_and_text_roundtrips_match_validator_paths() {
         gobject_sys::g_object_unref(matrix.cast());
         gobject_sys::g_object_unref(webp_reload.cast());
         gobject_sys::g_object_unref(webp.cast());
+        gobject_sys::g_object_unref(cmyk_reload.cast());
+        gobject_sys::g_object_unref(cmyk.cast());
         gobject_sys::g_object_unref(jpeg_reload.cast());
         gobject_sys::g_object_unref(rgb.cast());
         gobject_sys::g_object_unref(float_reload.cast());
@@ -1354,12 +1567,17 @@ fn foreign_media_buffer_and_text_roundtrips_match_validator_paths() {
         gobject_sys::g_object_unref(two_band_reload.cast());
         gobject_sys::g_object_unref(two_band.cast());
         gobject_sys::g_object_unref(tiff_reload.cast());
+        gobject_sys::g_object_unref(onebit_reload.cast());
+        gobject_sys::g_object_unref(onebit.cast());
+        gobject_sys::g_object_unref(mono_large.cast());
         gobject_sys::g_object_unref(gray.cast());
+        gobject_sys::g_object_unref(pfm_reload.cast());
         gobject_sys::g_object_unref(ppm_reload.cast());
         gobject_sys::g_object_unref(ppm.cast());
     }
     std::fs::remove_file(float_path).expect("remove float tiff");
     std::fs::remove_file(two_band_path).expect("remove two-band tiff");
+    std::fs::remove_file(pfm_path).expect("remove pfm");
     std::fs::remove_file(matrix_path).expect("remove matrix input");
     std::fs::remove_file(matrix_out).expect("remove matrix output");
 }
@@ -1479,7 +1697,7 @@ fn custom_source_and_target_callbacks_round_trip_and_propagate_errors() {
     );
     assert!(target_state.finished);
     assert!(
-        target_state.bytes.starts_with(b"SVIPSC01\x02"),
+        target_state.bytes.starts_with(b"\x89PNG\r\n\x1a\n"),
         "unexpected custom target prefix: {:?}",
         &target_state.bytes[..target_state.bytes.len().min(16)]
     );

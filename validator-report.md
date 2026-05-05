@@ -358,3 +358,107 @@ python3 - <<'PY'
 # Asserted all 52 baseline impl_04 testcase IDs have status == "passed".
 PY
 ```
+
+## Phase 5 Packaging Container And Remaining Rerun
+
+Phase ID `impl_05_packaging_container_remaining_failures` fixed the remaining package/container and release-gate issues after the Phase 4 clean validator run. The full rerun artifact is `validator/artifacts/libvips-safe-remaining/`, generated with the existing validator checkout at `87b321fe728340d6fc6dd2f638583cca82c667c3`; no validator fetch or pull was performed.
+
+### Fixed Remaining Issues
+
+- Package artifact hygiene: `scripts/build-debs.sh` and `scripts/lib/build-deb-common.sh` now remove stale root-level Debian build outputs before building/copying artifacts, so `dist/` cannot inherit old package sets. The build hook also fails explicitly if no package artifacts are produced.
+- Release-gate package smoke: `safe/scripts/run_release_gate.sh` now discovers the reference `vips.pc` under the installed pkg-config tree instead of assuming a non-existent non-multiarch path.
+- Operation manifest sync: `ppmload_buffer` / `VipsForeignLoadPpmBuffer` is represented in the generated/reference manifests to match the live operation registry.
+- Metadata and container behavior: JPEG, PNG, TIFF, and WebP save/load paths preserve or strip XMP/ICC according to `keep` and `profile`, including package/release-gate media paths.
+- Media compatibility: PFM save accepts RGB/mono numeric inputs, CMYK JPEG saves reload as CMYK, PNG save honors 1/2/4 bit output where applicable, and composite band promotion adds an opaque alpha band for RGB base plus RGBA overlay.
+
+### Changed Files
+
+- `scripts/build-debs.sh`
+- `scripts/lib/build-deb-common.sh`
+- `safe/scripts/run_release_gate.sh`
+- `safe/reference/types.json`
+- `safe/reference/operations.json`
+- `safe/src/generated/operations.json`
+- `safe/src/foreign/metadata.rs`
+- `safe/src/foreign/mod.rs`
+- `safe/src/foreign/loaders/raster.rs`
+- `safe/src/foreign/savers/raster.rs`
+- `safe/src/foreign/savers/text.rs`
+- `safe/src/ops/conversion.rs`
+- `safe/src/runtime/image.rs`
+- `safe/tests/ops_core.rs`
+- `safe/tests/runtime_io.rs`
+
+### Regression Tests And Gates
+
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips
+bash scripts/check-layout.sh
+bash scripts/build-debs.sh
+SAFELIBS_VALIDATOR_DIR="$PWD/validator" SAFELIBS_RECORD_CASTS=1 bash scripts/run-validation-tests.sh
+cd safe && cargo test --all-features -- --nocapture
+cd /home/yans/safelibs/pipeline/ports/port-libvips/safe && scripts/run_release_gate.sh
+```
+
+Result: passed. Release gate coverage included Rust tests, Meson install/package checks, upstream shell and pytest suites (`204 passed, 48 skipped`), fuzz corpus runs, link compatibility, packaged deprecated C API smoke, package payload checks, and all dependent application smokes.
+
+Additional JSON assertions parsed `.work/validation/artifacts/port/results/libvips/summary.json` and every per-testcase JSON under `.work/validation/artifacts/port/results/libvips/`; the CI-parity summary was `175` passed, `0` failed, with `override_debs_installed: true` for all `175` testcase results.
+
+### Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-remaining-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Build output root: `dist/`
+- Port commit used for synthetic release tag: `bb560556d1b959fe68c31879483e97a4b27bd36f`
+- Release tag: `build-bb560556d1b9`
+
+| Package | Architecture | Size | SHA256 | Filename |
+| --- | --- | ---: | --- | --- |
+| `libvips42t64` | `amd64` | 1439986 | `4b5e70dd848f257af14c0411ec3a98fda62760a2ec7ee3cde73aed6f3cfe1daf` | `libvips42t64_8.15.1-1.1build4+safelibs1777965439_amd64.deb` |
+| `libvips-dev` | `amd64` | 83418 | `d2342d40c3e89165c03d53e25d5ed8d41020d6055e609162e3c5dfdeeb5b1693` | `libvips-dev_8.15.1-1.1build4+safelibs1777965439_amd64.deb` |
+| `libvips-tools` | `amd64` | 27936 | `7d8b3860834e40731ba3e1f946246a32f33cd70a1a33a04ffd7f213e60d548e4` | `libvips-tools_8.15.1-1.1build4+safelibs1777965439_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5194 | `96c66b1c5e1e106aedfb1b8e64bcdd3193dc64636783e3d6eb385d1c13e6a947` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1777965439_amd64.deb` |
+
+### Controlled Validator Rerun
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+SAFELIBS_LIBRARY=libvips \
+SAFELIBS_COMMIT_SHA="$(git rev-parse HEAD)" \
+SAFELIBS_DIST_DIR="$ROOT/dist" \
+SAFELIBS_VALIDATOR_DIR="$ROOT/validator" \
+SAFELIBS_LOCK_PATH="$ROOT/validator/artifacts/libvips-safe-remaining-port-lock.json" \
+SAFELIBS_OVERRIDE_ROOT="$ROOT/validator-overrides" \
+  python3 "$ROOT/scripts/lib/build_port_lock.py"
+bash "$ROOT/validator/test.sh" \
+  --library libvips \
+  --mode port \
+  --override-deb-root "$ROOT/validator-overrides" \
+  --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-remaining-port-lock.json" \
+  --artifact-root "$ROOT/validator/artifacts/libvips-safe-remaining" \
+  --record-casts
+```
+
+- Artifact root: `validator/artifacts/libvips-safe-remaining/`
+- Matrix exit code: `0`
+- Summary path: `validator/artifacts/libvips-safe-remaining/port/results/libvips/summary.json`
+- Cases: `175`
+- Passed: `175`
+- Failed: `0`
+- Source cases passed: `5 / 5`
+- Usage cases passed: `170 / 170`
+- Casts recorded: `175`
+- Every testcase result had `override_debs_installed: true`
+- Approved validator-bug skips: none
+- Remaining failures: none
+
+Post-run checks:
+
+```bash
+python3 -m json.tool .work/validation/artifacts/port/results/libvips/summary.json >/dev/null
+python3 -m json.tool validator/artifacts/libvips-safe-remaining/port/results/libvips/summary.json >/dev/null
+python3 - <<'PY'
+# Asserted both summaries have failed == 0 and every per-testcase result
+# has override_debs_installed is true.
+PY
+```

@@ -2,8 +2,10 @@ use jpeg_encoder::{ColorType, Encoder};
 
 use crate::abi::image::{
     VipsImage, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR, VIPS_FORMAT_USHORT,
+    VIPS_INTERPRETATION_CMYK,
 };
 use crate::foreign::base::SaveOptions;
+use crate::foreign::metadata;
 use crate::runtime::error::append_message_str;
 use crate::runtime::image::{ensure_pixels, image_state};
 
@@ -18,7 +20,10 @@ fn materialized_pixels(image: *mut VipsImage, domain: &str) -> Result<Vec<u8>, (
     Ok(state.pixels.clone())
 }
 
-pub fn save_png_file_if_supported(image: *mut VipsImage) -> Result<Option<Vec<u8>>, ()> {
+pub fn save_png_file_if_supported(
+    image: *mut VipsImage,
+    options: &SaveOptions,
+) -> Result<Option<Vec<u8>>, ()> {
     let pixels = materialized_pixels(image, "pngsave")?;
     let Some(image_ref) = (unsafe { image.as_ref() }) else {
         append_message_str("pngsave", "image is null");
@@ -29,11 +34,22 @@ pub fn save_png_file_if_supported(image: *mut VipsImage) -> Result<Option<Vec<u8
     {
         return Ok(None);
     }
-    crate::runtime::image::safe_encode_png_bytes(image_ref, &pixels)
-        .map(Some)
-        .map_err(|message| {
-            append_message_str("pngsave", &message);
-        })
+    let metadata = metadata::collect_metadata(image, options);
+    let chunk_storage = metadata::png_metadata_chunks(&metadata);
+    let chunks = chunk_storage
+        .iter()
+        .map(|(name, data)| (*name, data.as_slice()))
+        .collect::<Vec<_>>();
+    crate::runtime::image::safe_encode_png_bytes_with_chunks(
+        image_ref,
+        &pixels,
+        &chunks,
+        options.bitdepth.and_then(|value| u8::try_from(value).ok()),
+    )
+    .map(Some)
+    .map_err(|message| {
+        append_message_str("pngsave", &message);
+    })
 }
 
 pub fn save_jpeg_if_supported(
@@ -65,6 +81,7 @@ pub fn save_jpeg_if_supported(
     let color = match image_ref.Bands {
         1 => ColorType::Luma,
         3 => ColorType::Rgb,
+        4 if image_ref.Type == VIPS_INTERPRETATION_CMYK => ColorType::Cmyk,
         4 => ColorType::Rgba,
         _ => return Ok(None),
     };
@@ -83,7 +100,10 @@ pub fn save_jpeg_if_supported(
         .map_err(|err| {
             append_message_str("jpegsave", &err.to_string());
         })?;
-    Ok(Some(out))
+    let metadata = metadata::collect_metadata(image, options);
+    Ok(Some(metadata::inject_jpeg_metadata_segments(
+        out, &metadata,
+    )))
 }
 
 fn push_u16(out: &mut Vec<u8>, value: u16) {
@@ -99,6 +119,18 @@ fn push_ifd_entry(out: &mut Vec<u8>, tag: u16, field_type: u16, count: u32, valu
     push_u16(out, field_type);
     push_u32(out, count);
     push_u32(out, value);
+}
+
+fn byte_entry_value(extra: &mut Vec<u8>, ifd_size: usize, value: &[u8]) -> u32 {
+    if value.len() <= 4 {
+        let mut inline = [0u8; 4];
+        inline[..value.len()].copy_from_slice(value);
+        u32::from_le_bytes(inline)
+    } else {
+        let offset = 8 + ifd_size as u32 + extra.len() as u32;
+        extra.extend_from_slice(value);
+        offset
+    }
 }
 
 fn repeated_short_entry_value(extra: &mut Vec<u8>, ifd_size: usize, value: u16, count: i32) -> u32 {
@@ -159,7 +191,10 @@ fn tiff_pixels(image_ref: &VipsImage, pixels: &[u8]) -> Result<Vec<u8>, ()> {
     }
 }
 
-pub fn save_tiff_file_if_supported(image: *mut VipsImage) -> Result<Option<Vec<u8>>, ()> {
+pub fn save_tiff_file_if_supported(
+    image: *mut VipsImage,
+    options: &SaveOptions,
+) -> Result<Option<Vec<u8>>, ()> {
     let pixels = materialized_pixels(image, "tiffsave")?;
     let Some(image_ref) = (unsafe { image.as_ref() }) else {
         append_message_str("tiffsave", "image is null");
@@ -184,12 +219,27 @@ pub fn save_tiff_file_if_supported(image: *mut VipsImage) -> Result<Option<Vec<u
         _ => return Ok(None),
     };
     let pixel_data = tiff_pixels(image_ref, &pixels)?;
-    let entry_count = 10u16 + u16::from(matches!(bands, 2 | 4)) + u16::from(sample_format != 1);
+    let metadata = metadata::collect_metadata(image, options);
+    let xmp = metadata
+        .blobs
+        .get("xmp-data")
+        .filter(|value| !value.is_empty());
+    let icc = metadata
+        .blobs
+        .get("icc-profile-data")
+        .filter(|value| !value.is_empty());
+    let entry_count = 10u16
+        + u16::from(matches!(bands, 2 | 4))
+        + u16::from(sample_format != 1)
+        + u16::from(xmp.is_some())
+        + u16::from(icc.is_some());
     let ifd_size = 2usize + entry_count as usize * 12 + 4;
     let mut extra = Vec::new();
     let bits_value = repeated_short_entry_value(&mut extra, ifd_size, bits_per_sample, bands);
     let sample_format_value =
         repeated_short_entry_value(&mut extra, ifd_size, sample_format, bands);
+    let xmp_value = xmp.map(|value| byte_entry_value(&mut extra, ifd_size, value));
+    let icc_value = icc.map(|value| byte_entry_value(&mut extra, ifd_size, value));
     let mut pixel_offset = 8 + ifd_size as u32 + extra.len() as u32;
     if pixel_offset % 2 != 0 {
         extra.push(0);
@@ -218,13 +268,40 @@ pub fn save_tiff_file_if_supported(image: *mut VipsImage) -> Result<Option<Vec<u
     if sample_format != 1 {
         push_ifd_entry(&mut out, 339, 3, bands as u32, sample_format_value);
     }
+    if let (Some(value), Some(data)) = (xmp_value, xmp) {
+        push_ifd_entry(&mut out, 700, 1, data.len() as u32, value);
+    }
+    if let (Some(value), Some(data)) = (icc_value, icc) {
+        push_ifd_entry(&mut out, 34675, 7, data.len() as u32, value);
+    }
     push_u32(&mut out, 0);
     out.extend_from_slice(&extra);
     out.extend_from_slice(&pixel_data);
     Ok(Some(out))
 }
 
-pub fn save_webp_compat_if_supported(image: *mut VipsImage) -> Result<Option<Vec<u8>>, ()> {
+fn append_blob_metadata_payload(
+    out: &mut Vec<u8>,
+    metadata: &crate::foreign::base::ForeignMetadata,
+) {
+    let entries = metadata
+        .blobs
+        .iter()
+        .filter(|(_, value)| !value.is_empty())
+        .collect::<Vec<_>>();
+    out.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+    for (name, value) in entries {
+        out.extend_from_slice(&(name.len() as u32).to_le_bytes());
+        out.extend_from_slice(&(value.len() as u64).to_le_bytes());
+        out.extend_from_slice(name.as_bytes());
+        out.extend_from_slice(value);
+    }
+}
+
+pub fn save_webp_compat_if_supported(
+    image: *mut VipsImage,
+    options: &SaveOptions,
+) -> Result<Option<Vec<u8>>, ()> {
     let pixels = materialized_pixels(image, "webpsave")?;
     let Some(image_ref) = (unsafe { image.as_ref() }) else {
         append_message_str("webpsave", "image is null");
@@ -252,6 +329,8 @@ pub fn save_webp_compat_if_supported(image: *mut VipsImage) -> Result<Option<Vec
     payload.extend_from_slice(&image_ref.Type.to_le_bytes());
     payload.extend_from_slice(&(pixels.len() as u64).to_le_bytes());
     payload.extend_from_slice(&pixels);
+    let metadata = metadata::collect_metadata(image, options);
+    append_blob_metadata_payload(&mut payload, &metadata);
 
     let chunk_len = payload.len();
     let riff_size = 4usize

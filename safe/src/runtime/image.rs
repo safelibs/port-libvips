@@ -381,7 +381,18 @@ pub(crate) fn safe_decode_png_bytes(
         _ => VIPS_FORMAT_UCHAR,
     };
     out.truncate(info.buffer_size());
-    if matches!(info.bit_depth, png::BitDepth::Sixteen) {
+    if matches!(
+        info.bit_depth,
+        png::BitDepth::One | png::BitDepth::Two | png::BitDepth::Four
+    ) && bands == 1
+    {
+        out = expand_subbyte_png_samples(
+            &out,
+            info.width as usize,
+            info.height as usize,
+            info.bit_depth,
+        );
+    } else if matches!(info.bit_depth, png::BitDepth::Sixteen) {
         for chunk in out.chunks_exact_mut(2) {
             let value = u16::from_be_bytes([chunk[0], chunk[1]]);
             chunk.copy_from_slice(&value.to_ne_bytes());
@@ -404,17 +415,102 @@ pub(crate) fn safe_decode_png_bytes(
     ))
 }
 
+fn png_bit_depth_from_option(
+    bitdepth: Option<u8>,
+    image: &VipsImage,
+) -> Result<png::BitDepth, String> {
+    match bitdepth {
+        Some(1) if image.BandFmt == VIPS_FORMAT_UCHAR && image.Bands == 1 => Ok(png::BitDepth::One),
+        Some(2) if image.BandFmt == VIPS_FORMAT_UCHAR && image.Bands == 1 => Ok(png::BitDepth::Two),
+        Some(4) if image.BandFmt == VIPS_FORMAT_UCHAR && image.Bands == 1 => {
+            Ok(png::BitDepth::Four)
+        }
+        Some(8) | None if image.BandFmt != VIPS_FORMAT_USHORT => Ok(png::BitDepth::Eight),
+        Some(16) | None if image.BandFmt == VIPS_FORMAT_USHORT => Ok(png::BitDepth::Sixteen),
+        Some(value) => Err(format!("unsupported png bitdepth {value}")),
+        None => Ok(png::BitDepth::Eight),
+    }
+}
+
+fn subbyte_width(bit_depth: png::BitDepth) -> Option<usize> {
+    match bit_depth {
+        png::BitDepth::One => Some(1),
+        png::BitDepth::Two => Some(2),
+        png::BitDepth::Four => Some(4),
+        _ => None,
+    }
+}
+
+fn expand_subbyte_png_samples(
+    packed: &[u8],
+    width: usize,
+    height: usize,
+    bit_depth: png::BitDepth,
+) -> Vec<u8> {
+    let Some(bits) = subbyte_width(bit_depth) else {
+        return packed.to_vec();
+    };
+    let max_value = (1u16 << bits) - 1;
+    let row_bytes = width.saturating_mul(bits).div_ceil(8);
+    let mut out = Vec::with_capacity(width.saturating_mul(height));
+    for y in 0..height {
+        let row = packed
+            .get(y * row_bytes..(y + 1) * row_bytes)
+            .unwrap_or(&[]);
+        for x in 0..width {
+            let bit_offset = x * bits;
+            let byte = row.get(bit_offset / 8).copied().unwrap_or(0);
+            let shift = 8 - bits - (bit_offset % 8);
+            let sample = ((byte >> shift) & ((1u8 << bits) - 1)) as u16;
+            out.push(((sample * 255 + max_value / 2) / max_value) as u8);
+        }
+    }
+    out
+}
+
+fn pack_subbyte_png_samples(
+    pixels: &[u8],
+    width: usize,
+    height: usize,
+    bit_depth: png::BitDepth,
+) -> Vec<u8> {
+    let Some(bits) = subbyte_width(bit_depth) else {
+        return pixels.to_vec();
+    };
+    let max_value = (1u16 << bits) - 1;
+    let row_bytes = width.saturating_mul(bits).div_ceil(8);
+    let mut out = vec![0u8; row_bytes.saturating_mul(height)];
+    for y in 0..height {
+        for x in 0..width {
+            let value = pixels.get(y * width + x).copied().unwrap_or(0);
+            let sample = ((value as u16 * max_value + 127) / 255) as u8;
+            let bit_offset = x * bits;
+            let byte_index = y * row_bytes + bit_offset / 8;
+            let shift = 8 - bits - (bit_offset % 8);
+            out[byte_index] |= sample << shift;
+        }
+    }
+    out
+}
+
 pub(crate) fn safe_encode_png_bytes(image: &VipsImage, pixels: &[u8]) -> Result<Vec<u8>, String> {
+    safe_encode_png_bytes_with_chunks(image, pixels, &[], None)
+}
+
+pub(crate) fn safe_encode_png_bytes_with_chunks(
+    image: &VipsImage,
+    pixels: &[u8],
+    chunks: &[([u8; 4], &[u8])],
+    bitdepth: Option<u8>,
+) -> Result<Vec<u8>, String> {
     let mut bytes = Vec::new();
     let mut encoder = png::Encoder::new(
         &mut bytes,
         image.Xsize.max(0) as u32,
         image.Ysize.max(0) as u32,
     );
-    encoder.set_depth(match image.BandFmt {
-        VIPS_FORMAT_USHORT => png::BitDepth::Sixteen,
-        _ => png::BitDepth::Eight,
-    });
+    let depth = png_bit_depth_from_option(bitdepth, image)?;
+    encoder.set_depth(depth);
     encoder.set_color(match image.Bands {
         1 => png::ColorType::Grayscale,
         2 => png::ColorType::GrayscaleAlpha,
@@ -423,7 +519,19 @@ pub(crate) fn safe_encode_png_bytes(image: &VipsImage, pixels: &[u8]) -> Result<
         _ => return Err("unsupported band count for png".to_owned()),
     });
     let mut writer = encoder.write_header().map_err(|err| err.to_string())?;
-    let data = if image.BandFmt == VIPS_FORMAT_USHORT {
+    for (name, data) in chunks {
+        writer
+            .write_chunk(png::chunk::ChunkType(*name), data)
+            .map_err(|err| err.to_string())?;
+    }
+    let data = if subbyte_width(depth).is_some() {
+        pack_subbyte_png_samples(
+            pixels,
+            image.Xsize.max(0) as usize,
+            image.Ysize.max(0) as usize,
+            depth,
+        )
+    } else if image.BandFmt == VIPS_FORMAT_USHORT {
         let mut data = pixels.to_vec();
         for chunk in data.chunks_exact_mut(2) {
             let value = u16::from_ne_bytes([chunk[0], chunk[1]]);

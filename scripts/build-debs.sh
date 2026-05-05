@@ -23,6 +23,7 @@ cp -a "build-check-install/lib/$multiarch"/libvips*.so* build-check-install/lib/
 
 cd "$repo_root/safe"
 stamp_safelibs_changelog "$repo_root"
+clean_dpkg_build_outputs "$repo_root"
 _synthesize_orig_tarball_if_needed
 export DEB_BUILD_OPTIONS="${DEB_BUILD_OPTIONS:+$DEB_BUILD_OPTIONS }nocheck"
 dpkg-buildpackage -us -uc -b
@@ -37,4 +38,8 @@ artifacts=(
   ../*.changes
 )
 shopt -u nullglob
+if (( ${#artifacts[@]} == 0 )); then
+  printf 'build-debs: dpkg-buildpackage produced no artifacts\n' >&2
+  exit 1
+fi
 cp -v "${artifacts[@]}" "$repo_root/dist"/
