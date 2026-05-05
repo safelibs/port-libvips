@@ -1,4 +1,5 @@
-use std::ffi::c_char;
+use std::ffi::{c_char, CString};
+use std::path::PathBuf;
 use std::ptr;
 use std::slice;
 use std::sync::{Mutex, Once, OnceLock};
@@ -7,6 +8,24 @@ use vips::*;
 
 unsafe extern "C" {
     fn vips_add(left: *mut VipsImage, right: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
+    fn vips_autorot(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
+    fn vips_canny(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
+    fn vips_composite(
+        input: *mut *mut VipsImage,
+        out: *mut *mut VipsImage,
+        n: i32,
+        mode: *mut VipsBlendMode,
+        ...
+    ) -> i32;
+    fn vips_find_trim(
+        input: *mut VipsImage,
+        left: *mut i32,
+        top: *mut i32,
+        width: *mut i32,
+        height: *mut i32,
+        ...
+    ) -> i32;
+    fn vips_hist_norm(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
     fn vips_linear(
         input: *mut VipsImage,
         out: *mut *mut VipsImage,
@@ -57,6 +76,13 @@ unsafe extern "C" {
         morph: VipsOperationMorphology,
         ...
     ) -> i32;
+    fn vips_round(
+        input: *mut VipsImage,
+        out: *mut *mut VipsImage,
+        round: VipsOperationRound,
+        ...
+    ) -> i32;
+    fn vips_image_write_to_file(image: *mut VipsImage, name: *const c_char, ...) -> i32;
 }
 
 fn guard() -> std::sync::MutexGuard<'static, ()> {
@@ -82,6 +108,17 @@ fn image_from_uchar(width: i32, height: i32, bands: i32, bytes: &[u8]) -> *mut V
         height,
         bands,
         VIPS_FORMAT_UCHAR,
+    )
+}
+
+fn image_from_double(width: i32, height: i32, bands: i32, values: &[f64]) -> *mut VipsImage {
+    vips_image_new_from_memory_copy(
+        values.as_ptr().cast(),
+        std::mem::size_of_val(values),
+        width,
+        height,
+        bands,
+        VIPS_FORMAT_DOUBLE,
     )
 }
 
@@ -120,6 +157,35 @@ fn unref_image(image: *mut VipsImage) {
     unsafe {
         gobject_sys::g_object_unref(image.cast());
     }
+}
+
+fn temp_output_path(suffix: &str) -> PathBuf {
+    let mut path = std::env::temp_dir();
+    path.push(format!(
+        "libvips-safe-ops-{}-{}{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time")
+            .as_nanos(),
+        suffix
+    ));
+    path
+}
+
+fn assert_write_file_magic(image: *mut VipsImage, suffix: &str, magic: &[u8]) {
+    let path = temp_output_path(suffix);
+    let c_path = CString::new(path.to_string_lossy().into_owned()).expect("output path");
+    assert_eq!(
+        unsafe { vips_image_write_to_file(image, c_path.as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    let bytes = std::fs::read(&path).expect("saved output");
+    let _ = std::fs::remove_file(&path);
+    assert!(
+        bytes.starts_with(magic),
+        "bad file magic for {suffix}: {bytes:?}"
+    );
 }
 
 #[test]
@@ -206,6 +272,205 @@ fn gravity_centre_crop_matches_ruby_usage_case() {
 
     unref_image(output);
     unref_image(input);
+}
+
+#[test]
+fn operation_semantics_ruby_failure_regressions() {
+    let _guard = guard();
+    init_vips();
+
+    let autorot_input = image_from_uchar(
+        6,
+        4,
+        1,
+        &[
+            10, 20, 30, 40, 50, 60, 11, 21, 31, 41, 51, 61, 12, 22, 32, 42, 52, 62, 13, 23, 33, 43,
+            53, 63,
+        ],
+    );
+    let mut autorot = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_autorot(autorot_input, &mut autorot, ptr::null::<c_char>()) },
+        0
+    );
+    assert_eq!(vips_image_get_width(autorot), 6);
+    assert_eq!(vips_image_get_height(autorot), 4);
+    assert_eq!(vips_image_get_bands(autorot), 1);
+    assert_eq!(vips_image_get_format(autorot), VIPS_FORMAT_UCHAR);
+    assert_eq!(read_samples(autorot), read_samples(autorot_input));
+
+    let mut canny_pixels = Vec::new();
+    for _ in 0..8 {
+        canny_pixels.extend([0, 0, 0, 0, 255, 255, 255, 255]);
+    }
+    let canny_input = image_from_uchar(8, 8, 1, &canny_pixels);
+    let mut canny = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_canny(canny_input, &mut canny, ptr::null::<c_char>()) },
+        0
+    );
+    assert_eq!(vips_image_get_width(canny), 8);
+    assert_eq!(vips_image_get_height(canny), 8);
+    assert_eq!(vips_image_get_bands(canny), 1);
+    assert_eq!(vips_image_get_format(canny), VIPS_FORMAT_UCHAR);
+    let canny_values = read_samples(canny);
+    assert_eq!(canny_values[2 + 4 * 8], 0.0);
+    assert!(canny_values[3 + 4 * 8] + canny_values[4 + 4 * 8] > 1.0);
+    assert_write_file_magic(canny, ".tif", b"II*\0");
+
+    let trim_input = image_from_uchar(
+        6,
+        5,
+        1,
+        &[
+            200, 200, 200, 200, 200, 200, 200, 200, 50, 50, 50, 200, 200, 200, 50, 50, 50, 200,
+            200, 200, 50, 50, 50, 200, 200, 200, 200, 200, 200, 200,
+        ],
+    );
+    let background = [200.0];
+    let background_array = vips_array_double_new(background.as_ptr(), background.len() as i32);
+    let mut left = -1;
+    let mut top = -1;
+    let mut width = -1;
+    let mut height = -1;
+    assert_eq!(
+        unsafe {
+            vips_find_trim(
+                trim_input,
+                &mut left,
+                &mut top,
+                &mut width,
+                &mut height,
+                c"background".as_ptr(),
+                background_array,
+                c"threshold".as_ptr(),
+                60.0f64,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!((left, top, width, height), (2, 1, 3, 3));
+    left = -1;
+    top = -1;
+    width = -1;
+    height = -1;
+    assert_eq!(
+        unsafe {
+            vips_find_trim(
+                trim_input,
+                &mut left,
+                &mut top,
+                &mut width,
+                &mut height,
+                c"background".as_ptr(),
+                background_array,
+                c"threshold".as_ptr(),
+                200.0f64,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!((width, height), (0, 0));
+    vips_area_unref(background_array.cast());
+
+    let hist_pixels = [
+        120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 120, 121, 122, 123, 124,
+    ];
+    let hist_input = image_from_uchar(4, 4, 1, &hist_pixels);
+    let mut hist_norm = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_hist_norm(hist_input, &mut hist_norm, ptr::null::<c_char>()) },
+        0
+    );
+    assert_eq!(vips_image_get_width(hist_norm), 4);
+    assert_eq!(vips_image_get_height(hist_norm), 4);
+    assert_eq!(vips_image_get_bands(hist_norm), 1);
+    assert_eq!(vips_image_get_format(hist_norm), VIPS_FORMAT_UCHAR);
+    let hist_values = read_samples(hist_norm);
+    let hist_min = hist_values.iter().copied().fold(f64::INFINITY, f64::min);
+    let hist_max = hist_values
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
+    assert!(hist_max - hist_min > 10.0);
+    assert_write_file_magic(hist_norm, ".png", b"\x89PNG\r\n\x1a\n");
+
+    let round_input = image_from_double(6, 1, 1, &[-1.4, -0.5, 0.5, 1.5, 2.5, 2.6]);
+    let mut rounded = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_round(
+                round_input,
+                &mut rounded,
+                VIPS_OPERATION_ROUND_RINT,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(vips_image_get_format(rounded), VIPS_FORMAT_DOUBLE);
+    assert_eq!(read_samples(rounded), vec![-1.0, -0.0, 0.0, 2.0, 2.0, 3.0]);
+
+    let base = image_from_uchar(
+        2,
+        2,
+        4,
+        &[
+            200, 0, 0, 255, 200, 0, 0, 255, 200, 0, 0, 255, 200, 0, 0, 255,
+        ],
+    );
+    let overlay = image_from_uchar(
+        2,
+        2,
+        4,
+        &[0, 200, 0, 0, 0, 200, 0, 0, 0, 200, 0, 0, 0, 200, 0, 0],
+    );
+    unsafe {
+        (*base).Type = VIPS_INTERPRETATION_sRGB;
+        (*overlay).Type = VIPS_INTERPRETATION_sRGB;
+    }
+    let mut images = [base, overlay];
+    let mut modes = [VIPS_BLEND_MODE_OVER];
+    let mut composited = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_composite(
+                images.as_mut_ptr(),
+                &mut composited,
+                images.len() as i32,
+                modes.as_mut_ptr(),
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(vips_image_get_width(composited), 2);
+    assert_eq!(vips_image_get_height(composited), 2);
+    assert_eq!(vips_image_get_bands(composited), 4);
+    assert_eq!(vips_image_get_format(composited), VIPS_FORMAT_UCHAR);
+    assert_eq!(
+        read_samples(composited),
+        vec![
+            200.0, 0.0, 0.0, 255.0, 200.0, 0.0, 0.0, 255.0, 200.0, 0.0, 0.0, 255.0, 200.0, 0.0,
+            0.0, 255.0,
+        ]
+    );
+    assert_write_file_magic(composited, ".png", b"\x89PNG\r\n\x1a\n");
+
+    unref_image(composited);
+    unref_image(overlay);
+    unref_image(base);
+    unref_image(rounded);
+    unref_image(round_input);
+    unref_image(hist_norm);
+    unref_image(hist_input);
+    unref_image(trim_input);
+    unref_image(canny);
+    unref_image(canny_input);
+    unref_image(autorot);
+    unref_image(autorot_input);
 }
 
 #[test]

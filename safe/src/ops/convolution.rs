@@ -5,7 +5,7 @@ use crate::abi::basic::{
 };
 use crate::abi::image::{
     VipsBandFormat, VIPS_DEMAND_STYLE_SMALLTILE, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT,
-    VIPS_FORMAT_UINT,
+    VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT,
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::format::clamp_for_format;
@@ -291,6 +291,66 @@ unsafe fn edge_pair(object: *mut VipsObject, gx: Kernel, gy: Kernel) -> Result<(
     result
 }
 
+fn luma_clamped(input: &ImageBuffer, x: isize, y: isize) -> f64 {
+    if input.spec.bands == 0 {
+        return 0.0;
+    }
+    let mut sum = 0.0;
+    for band in 0..input.spec.bands {
+        sum += input.sample_clamped(x, y, band);
+    }
+    sum / input.spec.bands as f64
+}
+
+unsafe fn op_canny(object: *mut VipsObject) -> Result<(), ()> {
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let mut out = ImageBuffer::new(
+        input.spec.width,
+        input.spec.height,
+        1,
+        VIPS_FORMAT_UCHAR,
+        input.spec.coding,
+        input.spec.interpretation,
+    );
+    out.spec.xres = input.spec.xres;
+    out.spec.yres = input.spec.yres;
+    out.spec.xoffset = input.spec.xoffset;
+    out.spec.yoffset = input.spec.yoffset;
+    out.spec.dhint = input.spec.dhint;
+
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            let x = x as isize;
+            let y = y as isize;
+            let gx = -luma_clamped(&input, x - 1, y - 1) + luma_clamped(&input, x + 1, y - 1)
+                - 2.0 * luma_clamped(&input, x - 1, y)
+                + 2.0 * luma_clamped(&input, x + 1, y)
+                - luma_clamped(&input, x - 1, y + 1)
+                + luma_clamped(&input, x + 1, y + 1);
+            let gy = -luma_clamped(&input, x - 1, y - 1)
+                - 2.0 * luma_clamped(&input, x, y - 1)
+                - luma_clamped(&input, x + 1, y - 1)
+                + luma_clamped(&input, x - 1, y + 1)
+                + 2.0 * luma_clamped(&input, x, y + 1)
+                + luma_clamped(&input, x + 1, y + 1);
+            let magnitude = (gx * gx + gy * gy).sqrt();
+            out.set(
+                x as usize,
+                y as usize,
+                0,
+                clamp_for_format(magnitude, VIPS_FORMAT_UCHAR),
+            );
+        }
+    }
+
+    let image = unsafe { get_image_ref(object, "in")? };
+    let result = unsafe { set_output_image_like(object, "out", out, image) };
+    unsafe {
+        crate::runtime::object::object_unref(image);
+    }
+    result
+}
+
 unsafe fn op_fastcor(object: *mut VipsObject) -> Result<(), ()> {
     let like = unsafe { get_image_ref(object, "in")? };
     let input = unsafe { get_image_buffer(object, "in")? };
@@ -534,6 +594,10 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
         }
         "sharpen" => {
             unsafe { op_sharpen(object)? };
+            Ok(true)
+        }
+        "canny" => {
+            unsafe { op_canny(object)? };
             Ok(true)
         }
         "sobel" => {

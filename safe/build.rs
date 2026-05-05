@@ -573,6 +573,7 @@ fn manual_wrapper(function: &str) -> bool {
             | "vips_bandjoin"
             | "vips_bandjoin_const"
             | "vips_case"
+            | "vips_composite"
             | "vips_crop"
             | "vips_getpoint"
             | "vips_jpegload_buffer"

@@ -819,8 +819,13 @@ vips_image_write_to_file(VipsImage *image, const char *name, ...)
         return -1;
     }
 
-    operation_name = vips_foreign_find_save_target(filename);
-    if (operation_name) {
+    if ((operation_name = vips_foreign_find_save(filename))) {
+        va_start(ap, name);
+        result = vips_call_split_option_string(operation_name,
+            option_string, ap, image, filename);
+        va_end(ap);
+    }
+    else if ((operation_name = vips_foreign_find_save_target(filename))) {
         VipsTarget *target;
 
         if (!(target = vips_target_new_to_file(filename))) {
@@ -835,12 +840,6 @@ vips_image_write_to_file(VipsImage *image, const char *name, ...)
         va_end(ap);
 
         g_object_unref(target);
-    }
-    else if ((operation_name = vips_foreign_find_save(filename))) {
-        va_start(ap, name);
-        result = vips_call_split_option_string(operation_name,
-            option_string, ap, image, filename);
-        va_end(ap);
     }
     else
         result = -1;
@@ -1970,6 +1969,41 @@ vips_call_split_option_string(const char *operation_name,
     va_start(required, optional);
     result = safe_vips_call_by_name(operation_name, option_string, required, optional);
     va_end(required);
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_composite(VipsImage **in, VipsImage **out, int n, int *mode, ...)
+{
+    VipsArrayImage *image_array;
+    VipsArrayInt *mode_array;
+    va_list ap;
+    int result;
+
+    if (out)
+        *out = NULL;
+    if (!in || !out || n < 1 || (n > 1 && !mode)) {
+        vips_error("composite", "%s", "invalid composite arguments");
+        return -1;
+    }
+
+    image_array = vips_array_image_new(in, n);
+    mode_array = vips_array_int_new(mode, n - 1);
+    if (!image_array || !mode_array) {
+        if (image_array)
+            vips_area_unref(VIPS_AREA(image_array));
+        if (mode_array)
+            vips_area_unref(VIPS_AREA(mode_array));
+        return -1;
+    }
+
+    va_start(ap, mode);
+    result = vips_call_split("composite", ap, image_array, out, mode_array);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(image_array));
+    vips_area_unref(VIPS_AREA(mode_array));
 
     return result;
 }

@@ -1,17 +1,17 @@
 use crate::abi::basic::{
-    VipsAlign, VipsAngle, VipsAngle45, VipsCompassDirection, VipsDirection, VipsExtend,
-    VipsInteresting, VipsOperationBoolean, VIPS_ALIGN_CENTRE, VIPS_ALIGN_HIGH, VIPS_ALIGN_LOW,
-    VIPS_ANGLE45_D0, VIPS_ANGLE45_D135, VIPS_ANGLE45_D180, VIPS_ANGLE45_D225, VIPS_ANGLE45_D270,
-    VIPS_ANGLE45_D315, VIPS_ANGLE45_D45, VIPS_ANGLE45_D90, VIPS_ANGLE_D0, VIPS_ANGLE_D180,
-    VIPS_ANGLE_D270, VIPS_ANGLE_D90, VIPS_COMPASS_DIRECTION_CENTRE, VIPS_COMPASS_DIRECTION_EAST,
-    VIPS_COMPASS_DIRECTION_NORTH, VIPS_COMPASS_DIRECTION_NORTH_EAST,
-    VIPS_COMPASS_DIRECTION_NORTH_WEST, VIPS_COMPASS_DIRECTION_SOUTH,
-    VIPS_COMPASS_DIRECTION_SOUTH_EAST, VIPS_COMPASS_DIRECTION_SOUTH_WEST,
-    VIPS_COMPASS_DIRECTION_WEST, VIPS_DIRECTION_HORIZONTAL, VIPS_DIRECTION_VERTICAL,
-    VIPS_EXTEND_BACKGROUND, VIPS_EXTEND_BLACK, VIPS_EXTEND_COPY, VIPS_EXTEND_MIRROR,
-    VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE, VIPS_INTERESTING_ALL, VIPS_INTERESTING_ATTENTION,
-    VIPS_INTERESTING_CENTRE, VIPS_INTERESTING_HIGH, VIPS_INTERESTING_LOW, VIPS_INTERESTING_NONE,
-    VIPS_KERNEL_LANCZOS3, VIPS_PRECISION_INTEGER,
+    VipsAlign, VipsAngle, VipsAngle45, VipsBlendMode, VipsCompassDirection, VipsDirection,
+    VipsExtend, VipsInteresting, VipsOperationBoolean, VIPS_ALIGN_CENTRE, VIPS_ALIGN_HIGH,
+    VIPS_ALIGN_LOW, VIPS_ANGLE45_D0, VIPS_ANGLE45_D135, VIPS_ANGLE45_D180, VIPS_ANGLE45_D225,
+    VIPS_ANGLE45_D270, VIPS_ANGLE45_D315, VIPS_ANGLE45_D45, VIPS_ANGLE45_D90, VIPS_ANGLE_D0,
+    VIPS_ANGLE_D180, VIPS_ANGLE_D270, VIPS_ANGLE_D90, VIPS_BLEND_MODE_OVER,
+    VIPS_COMPASS_DIRECTION_CENTRE, VIPS_COMPASS_DIRECTION_EAST, VIPS_COMPASS_DIRECTION_NORTH,
+    VIPS_COMPASS_DIRECTION_NORTH_EAST, VIPS_COMPASS_DIRECTION_NORTH_WEST,
+    VIPS_COMPASS_DIRECTION_SOUTH, VIPS_COMPASS_DIRECTION_SOUTH_EAST,
+    VIPS_COMPASS_DIRECTION_SOUTH_WEST, VIPS_COMPASS_DIRECTION_WEST, VIPS_DIRECTION_HORIZONTAL,
+    VIPS_DIRECTION_VERTICAL, VIPS_EXTEND_BACKGROUND, VIPS_EXTEND_BLACK, VIPS_EXTEND_COPY,
+    VIPS_EXTEND_MIRROR, VIPS_EXTEND_REPEAT, VIPS_EXTEND_WHITE, VIPS_INTERESTING_ALL,
+    VIPS_INTERESTING_ATTENTION, VIPS_INTERESTING_CENTRE, VIPS_INTERESTING_HIGH,
+    VIPS_INTERESTING_LOW, VIPS_INTERESTING_NONE, VIPS_KERNEL_LANCZOS3, VIPS_PRECISION_INTEGER,
 };
 use crate::abi::image::{
     VipsBandFormat, VipsCoding, VipsInterpretation, VIPS_DEMAND_STYLE_THINSTRIP,
@@ -29,9 +29,9 @@ use crate::runtime::header::{copy_metadata, vips_interpretation_max_alpha};
 use crate::runtime::image::{ensure_pixels, image_size, image_state, sync_pixels};
 
 use super::{
-    argument_assigned, get_array_double, get_array_images, get_bool, get_double, get_enum,
-    get_image_buffer, get_image_ref, get_int, set_output_image, set_output_image_like,
-    set_output_int,
+    argument_assigned, get_array_double, get_array_images, get_array_int, get_bool, get_double,
+    get_enum, get_image_buffer, get_image_ref, get_int, set_output_bool, set_output_enum,
+    set_output_image, set_output_image_like, set_output_int,
 };
 
 const FALSECOLOUR_PET: [[u8; 3]; 256] = [
@@ -1526,21 +1526,31 @@ unsafe fn op_join(object: *mut VipsObject) -> Result<(), ()> {
 }
 
 unsafe fn op_composite2(object: *mut VipsObject) -> Result<(), ()> {
-    let Ok(images) = (unsafe { get_array_images(object, "in") }) else {
-        append_message_str("composite2", "reading input image array failed");
-        return Err(());
-    };
-    if images.len() != 2 {
-        append_message_str("composite2", "expected exactly two input images");
+    let base_image = unsafe { get_image_ref(object, "base")? };
+    let overlay_image = unsafe { get_image_ref(object, "overlay")? };
+    let mode = unsafe { get_enum(object, "mode")? } as VipsBlendMode;
+    if mode != VIPS_BLEND_MODE_OVER {
+        append_message_str("composite2", "only OVER blend mode is supported");
+        unsafe {
+            crate::runtime::object::object_unref(overlay_image);
+            crate::runtime::object::object_unref(base_image);
+        }
         return Err(());
     }
-    let like_image = images[0];
-    let Ok(base) = ImageBuffer::from_image(images[0]) else {
+    let Ok(base) = ImageBuffer::from_image(base_image) else {
         append_message_str("composite2", "decoding base image failed");
+        unsafe {
+            crate::runtime::object::object_unref(overlay_image);
+            crate::runtime::object::object_unref(base_image);
+        }
         return Err(());
     };
-    let Ok(overlay) = ImageBuffer::from_image(images[1]) else {
+    let Ok(overlay) = ImageBuffer::from_image(overlay_image) else {
         append_message_str("composite2", "decoding overlay image failed");
+        unsafe {
+            crate::runtime::object::object_unref(overlay_image);
+            crate::runtime::object::object_unref(base_image);
+        }
         return Err(());
     };
 
@@ -1557,13 +1567,79 @@ unsafe fn op_composite2(object: *mut VipsObject) -> Result<(), ()> {
 
     let Ok(out) = composite2_over_buffers(&base, &overlay, x, y) else {
         append_message_str("composite2", "compositing failed");
+        unsafe {
+            crate::runtime::object::object_unref(overlay_image);
+            crate::runtime::object::object_unref(base_image);
+        }
         return Err(());
     };
-    let result = unsafe { set_output_image_like(object, "out", out, like_image) };
+    let result = unsafe { set_output_image_like(object, "out", out, base_image) };
+    unsafe {
+        crate::runtime::object::object_unref(overlay_image);
+        crate::runtime::object::object_unref(base_image);
+    }
     if result.is_err() {
         append_message_str("composite2", "setting output image failed");
     }
     result
+}
+
+unsafe fn op_composite(object: *mut VipsObject) -> Result<(), ()> {
+    let images = unsafe { get_array_images(object, "in")? };
+    let modes = unsafe { get_array_int(object, "mode")? };
+    if images.is_empty() {
+        append_message_str("composite", "expected at least one input image");
+        return Err(());
+    }
+    if images.len() > 1 && modes.len() != 1 && modes.len() != images.len() - 1 {
+        append_message_str("composite", "mode count must be 1 or n - 1");
+        return Err(());
+    }
+
+    let x_offsets = if unsafe { argument_assigned(object, "x")? } {
+        let values = unsafe { get_array_int(object, "x")? };
+        if values.len() != images.len().saturating_sub(1) {
+            append_message_str("composite", "x count must be n - 1");
+            return Err(());
+        }
+        values
+    } else {
+        vec![0; images.len().saturating_sub(1)]
+    };
+    let y_offsets = if unsafe { argument_assigned(object, "y")? } {
+        let values = unsafe { get_array_int(object, "y")? };
+        if values.len() != images.len().saturating_sub(1) {
+            append_message_str("composite", "y count must be n - 1");
+            return Err(());
+        }
+        values
+    } else {
+        vec![0; images.len().saturating_sub(1)]
+    };
+
+    let mut out = ImageBuffer::from_image(images[0]).map_err(|_| {
+        append_message_str("composite", "decoding base image failed");
+    })?;
+    for (index, image) in images.iter().enumerate().skip(1) {
+        let mode = if modes.len() == 1 {
+            modes[0]
+        } else {
+            modes[index - 1]
+        };
+        if mode as VipsBlendMode != VIPS_BLEND_MODE_OVER {
+            append_message_str("composite", "only OVER blend mode is supported");
+            return Err(());
+        }
+        let overlay = ImageBuffer::from_image(*image).map_err(|_| {
+            append_message_str("composite", "decoding overlay image failed");
+        })?;
+        out = composite2_over_buffers(&out, &overlay, x_offsets[index - 1], y_offsets[index - 1])
+            .map_err(|_| {
+            append_message_str("composite", "compositing failed");
+        })?;
+    }
+
+    unsafe { set_output_image_like(object, "out", out, images[0]) }
 }
 
 fn composite2_over_buffers(
@@ -2701,6 +2777,25 @@ unsafe fn op_copy(object: *mut VipsObject) -> Result<(), ()> {
     result
 }
 
+unsafe fn op_autorot(object: *mut VipsObject) -> Result<(), ()> {
+    let image = unsafe { get_image_ref(object, "in")? };
+    let result = (|| {
+        ensure_pixels(image)?;
+        let out_image = crate::runtime::image::vips_image_copy_memory(image);
+        if out_image.is_null() {
+            return Err(());
+        }
+        unsafe { set_output_image(object, "out", out_image)? };
+        unsafe { set_output_enum(object, "angle", VIPS_ANGLE_D0)? };
+        unsafe { set_output_bool(object, "flip", false)? };
+        Ok(())
+    })();
+    unsafe {
+        crate::runtime::object::object_unref(image);
+    }
+    result
+}
+
 unsafe fn op_byteswap(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_ref(object, "in")? };
     ensure_pixels(input)?;
@@ -2732,6 +2827,10 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
         }
         "copy" => {
             unsafe { op_copy(object)? };
+            Ok(true)
+        }
+        "autorot" => {
+            unsafe { op_autorot(object)? };
             Ok(true)
         }
         "crop" | "extract_area" => {
@@ -2822,6 +2921,10 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
         }
         "composite2" => {
             unsafe { op_composite2(object)? };
+            Ok(true)
+        }
+        "composite" => {
+            unsafe { op_composite(object)? };
             Ok(true)
         }
         "join" => {

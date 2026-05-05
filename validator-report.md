@@ -206,3 +206,83 @@ Remaining failures are unchanged non-phase-2 failures from the baseline: `7` ass
 Remaining failed testcase IDs:
 
 `usage-ruby-vips-abs-of-signed-image`, `usage-ruby-vips-affine-rotation`, `usage-ruby-vips-affine-shear`, `usage-ruby-vips-arithmetic-multiply-divide`, `usage-ruby-vips-arrayjoin-grid`, `usage-ruby-vips-arrayjoin-vertical-stack`, `usage-ruby-vips-autorot-no-orientation`, `usage-ruby-vips-bandfold-roundtrip`, `usage-ruby-vips-bandjoin-extract-roundtrip`, `usage-ruby-vips-canny-edges`, `usage-ruby-vips-colourspace-bw`, `usage-ruby-vips-colourspace-hsv-roundtrip`, `usage-ruby-vips-composite-over`, `usage-ruby-vips-conv-custom-kernel`, `usage-ruby-vips-dilate-cross-mask`, `usage-ruby-vips-draw-circle-mutable`, `usage-ruby-vips-draw-line-mutable`, `usage-ruby-vips-draw-rect-mutable`, `usage-ruby-vips-embed-extend-background-color`, `usage-ruby-vips-embed-extend-modes`, `usage-ruby-vips-erode-cross-mask`, `usage-ruby-vips-extract-band-two-at-offset`, `usage-ruby-vips-falsecolour-grayscale`, `usage-ruby-vips-find-trim-bbox`, `usage-ruby-vips-find-trim-custom-threshold`, `usage-ruby-vips-gamma-explicit-exponent`, `usage-ruby-vips-gaussnoise-generator`, `usage-ruby-vips-gravity-east-west`, `usage-ruby-vips-gravity-placement`, `usage-ruby-vips-grid-tile-layout`, `usage-ruby-vips-hist-equal-histogram`, `usage-ruby-vips-hist-local-equalisation`, `usage-ruby-vips-hist-norm-stretch`, `usage-ruby-vips-ifthenelse-comparison-mask`, `usage-ruby-vips-ifthenelse-multiband-sources`, `usage-ruby-vips-invert-roundtrip-identity`, `usage-ruby-vips-jpeg-quality-buffer`, `usage-ruby-vips-matrixload-external-file`, `usage-ruby-vips-memory-ppm-roundtrip-batch11`, `usage-ruby-vips-new-from-array-pixels`, `usage-ruby-vips-premultiply-roundtrip`, `usage-ruby-vips-recomb-color-matrix`, `usage-ruby-vips-reduce-xfac-yfac`, `usage-ruby-vips-relational-more`, `usage-ruby-vips-resize-kernel-cubic`, `usage-ruby-vips-resize-kernel-linear`, `usage-ruby-vips-rint-banker`, `usage-ruby-vips-scharr-edges`, `usage-ruby-vips-sharpen-roundtrip`, `usage-ruby-vips-similarity-rotate-30`, `usage-ruby-vips-similarity-with-translation`, `usage-ruby-vips-sines-generator`, `usage-ruby-vips-smartcrop-attention`, `usage-ruby-vips-sobel-edges`, `usage-ruby-vips-thumbnail-centre-crop`, `usage-ruby-vips-tiff-buffer-roundtrip`, `usage-ruby-vips-tilecache-roundtrip`, `usage-ruby-vips-webp-buffer-roundtrip`, `usage-ruby-vips-wrap-translation`.
+
+## Phase 3 Operation Semantics Rerun
+
+Phase ID `impl_03_operation_semantics_failures` fixed the seven baseline operation-semantics failures. The full rerun artifact is `validator/artifacts/libvips-safe-ops/`, generated with the existing validator checkout at `87b321fe728340d6fc6dd2f638583cca82c667c3`; no validator fetch or pull was performed.
+
+### Fixed Operation Cases
+
+| Testcase ID | Operation area | Phase 3 status |
+| --- | --- | --- |
+| `usage-ruby-vips-autorot-no-orientation` | `autorot` dispatch and no-orientation output | `passed` |
+| `usage-ruby-vips-canny-edges` | `canny` dispatch and edge response | `passed` |
+| `usage-ruby-vips-composite-over` | `composite` argument metadata, wrapper, and over blend | `passed` |
+| `usage-ruby-vips-find-trim-bbox` | `find_trim` bbox outputs | `passed` |
+| `usage-ruby-vips-find-trim-custom-threshold` | `find_trim` threshold/background handling | `passed` |
+| `usage-ruby-vips-hist-norm-stretch` | `hist_norm` image-shaped stretch output | `passed` |
+| `usage-ruby-vips-rint-banker` | `round(:rint)` half-even rounding | `passed` |
+
+### Implementation Notes
+
+- Added operation support for `autorot`, `canny`, `composite`, and `find_trim`.
+- Updated `hist_norm` to preserve input dimensions/bands while stretching the value range.
+- Changed `rint` rounding to ties-to-even.
+- Regenerated operation registry metadata after adding real `composite` / `composite2` arguments.
+- Added a manual C shim for `vips_composite`.
+- Added narrow file-save support for real PNG/TIFF bytes when the phase-owned Ruby operation scripts write UCHAR/USHORT raster outputs, with the previous container fallback preserved for unsupported save shapes.
+- Added `safe/tests/ops_core.rs::operation_semantics_ruby_failure_regressions`, which calls exported C ABI wrappers and checks dimensions, formats, pixel values, output scalars, and PNG/TIFF file magic.
+
+Changed files intended for commit: `safe/build.rs`, `safe/build_support/api_shim.c`, `safe/src/generated/operations.json`, `safe/src/generated/operations_registry.rs`, `safe/src/foreign/mod.rs`, `safe/src/foreign/savers/mod.rs`, `safe/src/foreign/savers/raster.rs`, `safe/src/ops/arithmetic.rs`, `safe/src/ops/conversion.rs`, `safe/src/ops/convolution.rs`, `safe/src/ops/histogram.rs`, `safe/src/ops/mod.rs`, `safe/tests/ops_core.rs`, and `validator-report.md`.
+
+### Focused Tests
+
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips/safe
+cargo test --all-features --test ops_core --test ops_advanced --test operation_registry --test security -- --nocapture
+cargo test --all-features --test runtime_io -- --nocapture
+```
+
+Result: passed. The required focused run covered `operation_registry`, `ops_advanced`, `ops_core`, and `security`; all 21 tests passed. The extra `runtime_io` run covered the file-save path touched for the Ruby validator scripts; all 19 tests passed.
+
+### Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-ops-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Build output root: `dist/`
+- Port commit used for synthetic release tag and package lock: `c59cd651fb442c84e91630d72ac59be38ca692d1`
+- Release tag: `build-c59cd651fb44`
+
+| Package | Architecture | Size | SHA256 | Filename |
+| --- | --- | ---: | --- | --- |
+| `libvips42t64` | `amd64` | 1393412 | `b4e4c25c9859cab6ff6437c1c237ccfe330b9eb44fc7c748d736cd2b3d09297b` | `libvips42t64_8.15.1-1.1build4+safelibs1777956335_amd64.deb` |
+| `libvips-dev` | `amd64` | 83428 | `5661e75488f701914dd6f2e70ae6ddcce9b6a1592d4139b77cc8c7edead86d77` | `libvips-dev_8.15.1-1.1build4+safelibs1777956335_amd64.deb` |
+| `libvips-tools` | `amd64` | 27944 | `412fc72a8d16736b474347cc032ef7745c3b52207b5e84c29a23301ced393993` | `libvips-tools_8.15.1-1.1build4+safelibs1777956335_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5190 | `4ce2d5de4f2968687b764b125983203e2db598e8d743c4e5e42bb1a007ac3207` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1777956335_amd64.deb` |
+
+### Validator Rerun
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash test.sh \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root artifacts/libvips-safe-ops \
+  --mode port \
+  --library libvips \
+  --override-deb-root "$ROOT/validator-overrides" \
+  --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-ops-port-lock.json" \
+  --record-casts
+```
+
+- Artifact root: `validator/artifacts/libvips-safe-ops/`
+- Matrix exit code: `0`
+- Summary path: `validator/artifacts/libvips-safe-ops/port/results/libvips/summary.json`
+- Passed: `166`
+- Failed: `9`
+- Source cases passed: `5 / 5`
+- Usage cases: `170`
+- Casts recorded: `175`
+- Baseline-passed testcase regressions: `0`
+
+Remaining failures are non-phase-3 failures assigned to `impl_04_foreign_io_media_failures`: `usage-ruby-vips-arithmetic-multiply-divide`, `usage-ruby-vips-extract-band-two-at-offset`, `usage-ruby-vips-jpeg-quality-buffer`, `usage-ruby-vips-matrixload-external-file`, `usage-ruby-vips-memory-ppm-roundtrip-batch11`, `usage-ruby-vips-sharpen-roundtrip`, `usage-ruby-vips-sines-generator`, `usage-ruby-vips-tiff-buffer-roundtrip`, and `usage-ruby-vips-webp-buffer-roundtrip`.

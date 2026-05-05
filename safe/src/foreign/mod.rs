@@ -1272,7 +1272,17 @@ pub fn dispatch_operation(
                 return Ok(false);
             };
             let options = save_options_from_object(object)?;
-            let bytes = save_to_bytes(image, kind, &options)?;
+            let bytes = match kind {
+                ForeignKind::Png => match savers::raster::save_png_file_if_supported(image)? {
+                    Some(bytes) => bytes,
+                    None => save_to_bytes(image, kind, &options)?,
+                },
+                ForeignKind::Tiff => match savers::raster::save_tiff_file_if_supported(image)? {
+                    Some(bytes) => bytes,
+                    None => save_to_bytes(image, kind, &options)?,
+                },
+                _ => save_to_bytes(image, kind, &options)?,
+            };
             std::fs::write(&filename, bytes).map_err(|err| {
                 append_message_str(nickname, &err.to_string());
             })?;

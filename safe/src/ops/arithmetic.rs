@@ -370,7 +370,7 @@ pub(crate) fn boolean_value(
 
 fn unary_round(value: f64, round: VipsOperationRound) -> f64 {
     match round {
-        VIPS_OPERATION_ROUND_RINT => value.round(),
+        VIPS_OPERATION_ROUND_RINT => value.round_ties_even(),
         VIPS_OPERATION_ROUND_CEIL => value.ceil(),
         VIPS_OPERATION_ROUND_FLOOR => value.floor(),
         _ => value,
@@ -704,6 +704,79 @@ unsafe fn op_round(object: *mut VipsObject) -> Result<(), ()> {
         crate::runtime::object::object_unref(image);
     }
     result
+}
+
+fn trim_background(input: &ImageBuffer, background: Vec<f64>) -> Vec<f64> {
+    if !background.is_empty() {
+        return background;
+    }
+    if input.spec.width == 0 || input.spec.height == 0 || input.spec.bands == 0 {
+        return vec![0.0];
+    }
+    (0..input.spec.bands)
+        .map(|band| input.get(0, 0, band))
+        .collect()
+}
+
+fn trim_pixel_differs(
+    input: &ImageBuffer,
+    x: usize,
+    y: usize,
+    background: &[f64],
+    threshold: f64,
+) -> bool {
+    for band in 0..input.spec.bands {
+        let bg = background[band.min(background.len().saturating_sub(1))];
+        if (input.get(x, y, band) - bg).abs() > threshold {
+            return true;
+        }
+    }
+    false
+}
+
+unsafe fn op_find_trim(object: *mut VipsObject) -> Result<(), ()> {
+    let input = unsafe { get_image_buffer(object, "in")? };
+    let threshold = if unsafe { super::argument_assigned(object, "threshold")? } {
+        unsafe { super::get_double(object, "threshold")? }
+    } else {
+        10.0
+    };
+    let background = if unsafe { super::argument_assigned(object, "background")? } {
+        unsafe { get_array_double(object, "background")? }
+    } else {
+        Vec::new()
+    };
+    let background = trim_background(&input, background);
+
+    let mut min_x = input.spec.width;
+    let mut min_y = input.spec.height;
+    let mut max_x = 0usize;
+    let mut max_y = 0usize;
+    let mut found = false;
+    for y in 0..input.spec.height {
+        for x in 0..input.spec.width {
+            if trim_pixel_differs(&input, x, y, &background, threshold) {
+                min_x = min_x.min(x);
+                min_y = min_y.min(y);
+                max_x = max_x.max(x);
+                max_y = max_y.max(y);
+                found = true;
+            }
+        }
+    }
+
+    if found {
+        unsafe { set_output_int(object, "left", min_x as i32)? };
+        unsafe { set_output_int(object, "top", min_y as i32)? };
+        unsafe { set_output_int(object, "width", (max_x - min_x + 1) as i32)? };
+        unsafe { set_output_int(object, "height", (max_y - min_y + 1) as i32)? };
+    } else {
+        unsafe { set_output_int(object, "left", 0)? };
+        unsafe { set_output_int(object, "top", 0)? };
+        unsafe { set_output_int(object, "width", 0)? };
+        unsafe { set_output_int(object, "height", 0)? };
+    }
+    Ok(())
 }
 
 unsafe fn op_math(object: *mut VipsObject) -> Result<(), ()> {
@@ -1572,6 +1645,10 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
         }
         "round" => {
             unsafe { op_round(object)? };
+            Ok(true)
+        }
+        "find_trim" => {
+            unsafe { op_find_trim(object)? };
             Ok(true)
         }
         "math" => {

@@ -19,7 +19,7 @@ use libc::c_int;
 use crate::abi::connection::{VipsSource, VipsTarget};
 use crate::abi::image::VipsImage;
 use crate::abi::object::{VipsArgumentInstance, VipsObject};
-use crate::abi::r#type::{VipsArrayDouble, VipsArrayImage, VipsBlob};
+use crate::abi::r#type::{VipsArrayDouble, VipsArrayImage, VipsArrayInt, VipsBlob};
 use crate::pixels::ImageBuffer;
 use crate::runtime::error::append_message_str;
 use crate::runtime::header::copy_metadata;
@@ -56,6 +56,9 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "complex",
     "complexform",
     "complexget",
+    "autorot",
+    "canny",
+    "composite",
     "composite2",
     "compass",
     "conv",
@@ -82,6 +85,7 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "falsecolour",
     "fastcor",
     "fill_nearest",
+    "find_trim",
     "flatten",
     "flip",
     "freqmult",
@@ -403,6 +407,26 @@ pub(crate) unsafe fn get_array_double(object: *mut VipsObject, name: &str) -> Re
     Ok(unsafe { std::slice::from_raw_parts(data, n as usize) }.to_vec())
 }
 
+pub(crate) unsafe fn get_array_int(object: *mut VipsObject, name: &str) -> Result<Vec<c_int>, ()> {
+    let (gtype, boxed) = unsafe { object::dynamic_boxed_value(object, name) }.ok_or(())?;
+    if gtype != crate::runtime::r#type::vips_array_int_get_type() {
+        return Err(());
+    }
+    let array = boxed.cast::<VipsArrayInt>();
+    if array.is_null() {
+        return Err(());
+    }
+    let mut n = 0;
+    let data = crate::runtime::r#type::vips_array_int_get(array, &mut n);
+    if n < 0 || (data.is_null() && n != 0) {
+        return Err(());
+    }
+    if n == 0 {
+        return Ok(Vec::new());
+    }
+    Ok(unsafe { std::slice::from_raw_parts(data, n as usize) }.to_vec())
+}
+
 pub(crate) unsafe fn get_array_images(
     object: *mut VipsObject,
     name: &str,
@@ -454,6 +478,18 @@ pub(crate) unsafe fn set_output_int(
     unsafe {
         set_property(object, name, |gvalue| {
             gobject_sys::g_value_set_int(gvalue, value);
+        })
+    }
+}
+
+pub(crate) unsafe fn set_output_enum(
+    object: *mut VipsObject,
+    name: &str,
+    value: c_int,
+) -> Result<(), ()> {
+    unsafe {
+        set_property(object, name, |gvalue| {
+            gobject_sys::g_value_set_enum(gvalue, value);
         })
     }
 }

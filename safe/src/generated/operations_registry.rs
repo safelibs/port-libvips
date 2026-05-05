@@ -1300,6 +1300,150 @@ static ARGS_VIPSCOMPLEXGET_GET: GeneratedArgumentMetadata = GeneratedArgumentMet
     max_value: None,
 };
 
+static ARGS_VIPSCOMPOSITE_IN: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "in",
+    long_name: "Inputs",
+    description: "Array of input images",
+    priority: 0,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsArrayImage"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSCOMPOSITE_MODE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "mode",
+    long_name: "Blend modes",
+    description: "Array of VipsBlendMode to join with",
+    priority: 3,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsArrayInt"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSCOMPOSITE_X: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "x",
+    long_name: "x coordinates",
+    description: "Array of x coordinates to join at",
+    priority: 4,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsArrayInt"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSCOMPOSITE_Y: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "y",
+    long_name: "y coordinates",
+    description: "Array of y coordinates to join at",
+    priority: 5,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsArrayInt"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSCOMPOSITE2_BASE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "base",
+    long_name: "Base",
+    description: "Base image",
+    priority: 0,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Object,
+    value_type_name: Some("VipsImage"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSCOMPOSITE2_OVERLAY: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "overlay",
+    long_name: "Overlay",
+    description: "Overlay image",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Object,
+    value_type_name: Some("VipsImage"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSCOMPOSITE2_MODE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "mode",
+    long_name: "Blend mode",
+    description: "VipsBlendMode to join with",
+    priority: 3,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Enum,
+    value_type_name: Some("VipsBlendMode"),
+    default_value: Some("VIPS_BLEND_MODE_OVER"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSCOMPOSITE2_X: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "x",
+    long_name: "x",
+    description: "x position of overlay",
+    priority: 4,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("0"),
+    min_value: Some("-VIPS_MAX_COORD"),
+    max_value: Some("VIPS_MAX_COORD"),
+};
+
+static ARGS_VIPSCOMPOSITE2_Y: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "y",
+    long_name: "y",
+    description: "y position of overlay",
+    priority: 5,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Int,
+    value_type_name: Some("gint"),
+    default_value: Some("0"),
+    min_value: Some("-VIPS_MAX_COORD"),
+    max_value: Some("VIPS_MAX_COORD"),
+};
+
 static ARGS_VIPSCONV_PRECISION: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
     name: "precision",
     long_name: "Precision",
@@ -13439,16 +13583,16 @@ static OPERATION_VIPSCOMPLEXGET: GeneratedOperationMetadata = GeneratedOperation
 };
 
 static OPERATION_VIPSCOMPOSITE: GeneratedOperationMetadata = GeneratedOperationMetadata {
-    flags: 0,
+    flags: crate::abi::operation::VIPS_OPERATION_SEQUENTIAL,
     supported: false,
-    arguments: &[],
+    arguments: &[&ARGS_VIPSCOMPOSITE_IN, &ARGS_VIPSCOMPOSITE_MODE, &ARGS_VIPSCOMPOSITE_X, &ARGS_VIPSCOMPOSITE_Y],
     wrapper_function: Some("vips_composite"),
 };
 
 static OPERATION_VIPSCOMPOSITE2: GeneratedOperationMetadata = GeneratedOperationMetadata {
-    flags: 0,
+    flags: crate::abi::operation::VIPS_OPERATION_SEQUENTIAL,
     supported: false,
-    arguments: &[],
+    arguments: &[&ARGS_VIPSCOMPOSITE2_BASE, &ARGS_VIPSCOMPOSITE2_OVERLAY, &ARGS_VIPSCOMPOSITE2_MODE, &ARGS_VIPSCOMPOSITE2_X, &ARGS_VIPSCOMPOSITE2_Y],
     wrapper_function: Some("vips_composite2"),
 };
 

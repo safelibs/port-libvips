@@ -268,47 +268,42 @@ unsafe fn op_hist_cum(object: *mut VipsObject) -> Result<(), ()> {
 
 unsafe fn op_hist_norm(object: *mut VipsObject) -> Result<(), ()> {
     let input = unsafe { get_image_buffer(object, "in")? };
-    let hist_len = input.spec.width.saturating_mul(input.spec.height).max(1);
-    let new_max = hist_len.saturating_sub(1) as f64;
-    let out_format = if new_max <= 255.0 {
-        VIPS_FORMAT_UCHAR
-    } else if new_max <= 65535.0 {
-        VIPS_FORMAT_USHORT
-    } else {
-        VIPS_FORMAT_UINT
-    };
-    let mut out = ImageBuffer::new(
-        hist_len,
-        1,
-        input.spec.bands.max(1),
-        out_format,
-        crate::abi::image::VIPS_CODING_NONE,
-        crate::abi::image::VIPS_INTERPRETATION_HISTOGRAM,
-    );
-    for band in 0..input.spec.bands.max(1) {
-        let mut band_max = 0.0f64;
-        for index in 0..hist_len {
-            let x = index % input.spec.width.max(1);
-            let y = index / input.spec.width.max(1);
-            band_max = band_max.max(input.get(x, y, band.min(input.spec.bands.saturating_sub(1))));
+    if input.spec.bands == 0 {
+        return Err(());
+    }
+
+    let mut out = input.clone();
+    let target_max = format_max(input.spec.format).unwrap_or(255.0).max(1.0);
+    for band in 0..input.spec.bands {
+        let mut band_min = f64::INFINITY;
+        let mut band_max = f64::NEG_INFINITY;
+        for y in 0..input.spec.height {
+            for x in 0..input.spec.width {
+                let value = input.get(x, y, band);
+                band_min = band_min.min(value);
+                band_max = band_max.max(value);
+            }
         }
-        let scale = if band_max > 0.0 {
-            new_max / band_max
-        } else {
-            0.0
-        };
-        for index in 0..hist_len {
-            let x = index % input.spec.width.max(1);
-            let y = index / input.spec.width.max(1);
-            out.set(
-                index,
-                0,
-                band,
-                input.get(x, y, band.min(input.spec.bands.saturating_sub(1))) * scale,
-            );
+
+        let span = band_max - band_min;
+        for y in 0..input.spec.height {
+            for x in 0..input.spec.width {
+                let value = if span > f64::EPSILON {
+                    (input.get(x, y, band) - band_min) * target_max / span
+                } else {
+                    0.0
+                };
+                out.set(x, y, band, clamp_for_format(value, input.spec.format));
+            }
         }
     }
-    unsafe { set_output_image(object, "out", out.to_image()) }
+
+    let image = unsafe { get_image_ref(object, "in")? };
+    let result = unsafe { set_output_image_like(object, "out", out, image) };
+    unsafe {
+        crate::runtime::object::object_unref(image);
+    }
+    result
 }
 
 unsafe fn op_hist_plot(object: *mut VipsObject) -> Result<(), ()> {

@@ -6083,10 +6083,103 @@
     },
     "VipsComposite": {
       "abstract": false,
-      "arguments": [],
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Array of input images",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Inputs",
+          "name": "in",
+          "offset": "G_STRUCT_OFFSET(VipsCompositeBase, in)",
+          "priority": 0,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_ARRAY_IMAGE",
+            "type_macro": "VIPS_TYPE_ARRAY_IMAGE",
+            "value_type": "VipsArrayImage"
+          }
+        },
+        {
+          "construct": true,
+          "default": null,
+          "description": "Array of VipsBlendMode to join with",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "Blend modes",
+          "name": "mode",
+          "offset": "G_STRUCT_OFFSET(VipsCompositeBase, mode)",
+          "priority": 3,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_ARRAY_INT",
+            "type_macro": "VIPS_TYPE_ARRAY_INT",
+            "value_type": "VipsArrayInt"
+          }
+        },
+        {
+          "construct": true,
+          "default": null,
+          "description": "Array of x coordinates to join at",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "x coordinates",
+          "name": "x",
+          "offset": "G_STRUCT_OFFSET(VipsComposite, x)",
+          "priority": 4,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "VIPS_TYPE_ARRAY_INT",
+            "type_macro": "VIPS_TYPE_ARRAY_INT",
+            "value_type": "VipsArrayInt"
+          }
+        },
+        {
+          "construct": true,
+          "default": null,
+          "description": "Array of y coordinates to join at",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOXED",
+          "long_name": "y coordinates",
+          "name": "y",
+          "offset": "G_STRUCT_OFFSET(VipsComposite, y)",
+          "priority": 5,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "VIPS_TYPE_ARRAY_INT",
+            "type_macro": "VIPS_TYPE_ARRAY_INT",
+            "value_type": "VipsArrayInt"
+          }
+        }
+      ],
       "depth": 4,
       "description": "blend an array of images with an array of blend modes",
-      "flags": [],
+      "flags": [
+        "VIPS_OPERATION_SEQUENTIAL"
+      ],
       "nickname": "composite",
       "parent": "VipsCompositeBase",
       "source_file": null,
@@ -6132,10 +6225,126 @@
     },
     "VipsComposite2": {
       "abstract": false,
-      "arguments": [],
+      "arguments": [
+        {
+          "construct": true,
+          "default": null,
+          "description": "Base image",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "IMAGE",
+          "long_name": "Base",
+          "name": "base",
+          "offset": "G_STRUCT_OFFSET(VipsComposite2, base)",
+          "priority": 0,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_IMAGE",
+            "value_type": "VipsImage"
+          }
+        },
+        {
+          "construct": true,
+          "default": null,
+          "description": "Overlay image",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "IMAGE",
+          "long_name": "Overlay",
+          "name": "overlay",
+          "offset": "G_STRUCT_OFFSET(VipsComposite2, overlay)",
+          "priority": 1,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_IMAGE",
+            "value_type": "VipsImage"
+          }
+        },
+        {
+          "construct": true,
+          "default": "VIPS_BLEND_MODE_OVER",
+          "description": "VipsBlendMode to join with",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_REQUIRED",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "ENUM",
+          "long_name": "Blend mode",
+          "name": "mode",
+          "offset": "G_STRUCT_OFFSET(VipsComposite2, mode)",
+          "priority": 3,
+          "raw_flags": "VIPS_ARGUMENT_REQUIRED_INPUT",
+          "required": true,
+          "type": {
+            "gtype": "VIPS_TYPE_BLEND_MODE",
+            "type_macro": "VIPS_TYPE_BLEND_MODE",
+            "value_type": "VipsBlendMode"
+          }
+        },
+        {
+          "construct": true,
+          "default": "0",
+          "description": "x position of overlay",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "x",
+          "max": "VIPS_MAX_COORD",
+          "min": "-VIPS_MAX_COORD",
+          "name": "x",
+          "offset": "G_STRUCT_OFFSET(VipsComposite2, x)",
+          "priority": 4,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        },
+        {
+          "construct": true,
+          "default": "0",
+          "description": "y position of overlay",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "INT",
+          "long_name": "y",
+          "max": "VIPS_MAX_COORD",
+          "min": "-VIPS_MAX_COORD",
+          "name": "y",
+          "offset": "G_STRUCT_OFFSET(VipsComposite2, y)",
+          "priority": 5,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_INT",
+            "value_type": "gint"
+          }
+        }
+      ],
       "depth": 4,
       "description": "blend a pair of images with a blend mode",
-      "flags": [],
+      "flags": [
+        "VIPS_OPERATION_SEQUENTIAL"
+      ],
       "nickname": "composite2",
       "parent": "VipsCompositeBase",
       "source_file": null,
