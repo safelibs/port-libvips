@@ -10,67 +10,54 @@ phases:
       - validator/
       - validator/.venv/
       - validator/artifacts/**
-      - validator/site/**
       - validator-overrides/libvips/*.deb
       - validator-report.md
-      - original/**
       - safe/**
+      - original/**
       - safe/reference/**
       - safe/vendor/pyvips-3.1.1/**
-      - safe/tests/upstream/**
-      - safe/tests/dependents/**
-      - all_cves.json
-      - relevant_cves.json
-      - dependents.json
-      - scripts/install-build-deps.sh
-      - scripts/check-layout.sh
       - scripts/build-debs.sh
       - scripts/run-validation-tests.sh
       - scripts/lib/build_port_lock.py
       - packaging/package.env
+      - all_cves.json
+      - relevant_cves.json
+      - dependents.json
   - order: 2
     id: check_01_baseline_software_tester
     type: check
     bounce_target: impl_01_update_validator_and_baseline
     required_preexisting_inputs:
-      - validator/
-      - validator/.venv/
+      - validator/.git
+      - validator/.venv/bin/python
       - validator/repositories.yml
-      - validator/tests/libvips/tests/cases/source/*.sh
-      - validator/tests/libvips/tests/cases/usage/*.sh
-      - validator-overrides/libvips/*.deb
+      - validator/tools/testcases.py
+      - validator/tests/libvips/tests/cases/**
       - validator/artifacts/libvips-safe-baseline-current-port-lock.json
-      - validator/artifacts/libvips-safe-baseline-current/
+      - validator/artifacts/libvips-safe-baseline-current/port/results/libvips/summary.json
       - validator/artifacts/libvips-safe-baseline-current/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-baseline-current/matrix-exit-code.txt
+      - validator-overrides/libvips/*.deb
       - validator-report.md
   - order: 3
     id: check_01_baseline_senior_tester
     type: check
     bounce_target: impl_01_update_validator_and_baseline
     required_preexisting_inputs:
-      - validator/
-      - validator-overrides/libvips/*.deb
-      - validator/artifacts/libvips-safe-baseline-current-port-lock.json
+      - validator/.git
+      - validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/**
       - validator/artifacts/libvips-safe-baseline-current/port/results/libvips/*.json
-      - validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/
       - validator-report.md
   - order: 4
     id: impl_02_source_api_surface_failures
     type: implement
     bounce_target: null
     required_preexisting_inputs:
+      - validator-report.md
+      - validator/artifacts/libvips-safe-baseline-current/port/results/libvips/**
+      - validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/**
       - validator/
       - validator/.venv/
-      - validator-report.md
-      - validator-overrides/libvips/*.deb
-      - validator/artifacts/libvips-safe-baseline-current-port-lock.json
-      - validator/artifacts/libvips-safe-baseline-current/port/results/libvips/*.json
-      - validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/
-      - scripts/check-layout.sh
-      - scripts/build-debs.sh
-      - scripts/lib/build_port_lock.py
-      - packaging/package.env
       - safe/include/vips/**
       - safe/src/abi/**
       - safe/src/runtime/init.rs
@@ -96,22 +83,27 @@ phases:
       - safe/tests/introspection/gir_smoke.c
       - original/**
       - safe/reference/**
+      - safe/vendor/pyvips-3.1.1/**
+      - scripts/check-layout.sh
+      - scripts/build-debs.sh
+      - scripts/lib/build_port_lock.py
+      - packaging/package.env
   - order: 5
     id: check_02_source_api_surface_software_tester
     type: check
     bounce_target: impl_02_source_api_surface_failures
     required_preexisting_inputs:
-      - validator/
-      - validator/.venv/
+      - validator/.git
       - validator-report.md
-      - validator-overrides/libvips/*.deb
       - validator/artifacts/libvips-safe-baseline-current/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-source-api-port-lock.json
-      - validator/artifacts/libvips-safe-source-api/
+      - validator/artifacts/libvips-safe-source-api/port/results/libvips/summary.json
       - validator/artifacts/libvips-safe-source-api/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-source-api/matrix-exit-code.txt
+      - validator-overrides/libvips/*.deb
       - scripts/check-layout.sh
-      - safe/src/**
+      - safe/Cargo.toml
+      - safe/Cargo.lock
       - safe/tests/abi_layout.rs
       - safe/tests/init_version_smoke.rs
       - safe/tests/operation_registry.rs
@@ -121,11 +113,8 @@ phases:
     type: check
     bounce_target: impl_02_source_api_surface_failures
     required_preexisting_inputs:
-      - validator/
+      - validator/.git
       - validator-report.md
-      - validator-overrides/libvips/*.deb
-      - validator/artifacts/libvips-safe-source-api-port-lock.json
-      - validator/artifacts/libvips-safe-source-api/port/results/libvips/summary.json
       - safe/include/vips/**
       - safe/src/abi/**
       - safe/src/runtime/**
@@ -133,35 +122,24 @@ phases:
       - safe/meson.build
       - safe/debian/**
       - safe/tests/**
+      - scripts/**
+      - packaging/**
+      - original/**
+      - safe/reference/**
   - order: 7
     id: impl_03_operation_semantics_failures
     type: implement
     bounce_target: null
     required_preexisting_inputs:
-      - validator/
-      - validator/.venv/
       - validator-report.md
-      - validator-overrides/libvips/*.deb
       - validator/artifacts/libvips-safe-baseline-current-port-lock.json
       - validator/artifacts/libvips-safe-baseline-current/port/results/libvips/*.json
-      - validator/artifacts/libvips-safe-source-api/
       - validator/artifacts/libvips-safe-source-api-port-lock.json
-      - scripts/check-layout.sh
-      - scripts/build-debs.sh
-      - scripts/lib/build_port_lock.py
-      - packaging/package.env
+      - validator/artifacts/libvips-safe-source-api/port/results/libvips/*.json
+      - validator/
+      - validator/.venv/
       - safe/src/ops/mod.rs
-      - safe/src/ops/arithmetic.rs
-      - safe/src/ops/conversion.rs
-      - safe/src/ops/colour.rs
-      - safe/src/ops/convolution.rs
-      - safe/src/ops/create.rs
-      - safe/src/ops/draw.rs
-      - safe/src/ops/freqfilt.rs
-      - safe/src/ops/histogram.rs
-      - safe/src/ops/morphology.rs
-      - safe/src/ops/mosaicing.rs
-      - safe/src/ops/resample.rs
+      - safe/src/ops/**
       - safe/src/runtime/operation.rs
       - safe/src/generated/operations_registry.rs
       - safe/src/generated/operation_wrappers.rs
@@ -171,22 +149,25 @@ phases:
       - safe/tests/ops_advanced.rs
       - safe/tests/operation_registry.rs
       - safe/tests/security.rs
+      - scripts/check-layout.sh
+      - scripts/build-debs.sh
+      - scripts/lib/build_port_lock.py
+      - packaging/package.env
   - order: 8
     id: check_03_operation_semantics_software_tester
     type: check
     bounce_target: impl_03_operation_semantics_failures
     required_preexisting_inputs:
-      - validator/
-      - validator/.venv/
+      - validator/.git
       - validator-report.md
-      - validator-overrides/libvips/*.deb
       - validator/artifacts/libvips-safe-baseline-current/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-ops-port-lock.json
-      - validator/artifacts/libvips-safe-ops/
+      - validator/artifacts/libvips-safe-ops/port/results/libvips/summary.json
       - validator/artifacts/libvips-safe-ops/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-ops/matrix-exit-code.txt
-      - safe/src/ops/**
-      - safe/src/pixels/**
+      - validator-overrides/libvips/*.deb
+      - safe/Cargo.toml
+      - safe/Cargo.lock
       - safe/tests/ops_core.rs
       - safe/tests/ops_advanced.rs
       - safe/tests/operation_registry.rs
@@ -196,15 +177,12 @@ phases:
     type: check
     bounce_target: impl_03_operation_semantics_failures
     required_preexisting_inputs:
-      - validator/
+      - validator/.git
       - validator-report.md
-      - validator-overrides/libvips/*.deb
-      - validator/artifacts/libvips-safe-ops-port-lock.json
-      - validator/artifacts/libvips-safe-ops/port/results/libvips/summary.json
       - safe/src/ops/**
-      - safe/src/generated/**
       - safe/src/pixels/**
       - safe/src/runtime/operation.rs
+      - safe/src/generated/**
       - safe/tests/ops_core.rs
       - safe/tests/ops_advanced.rs
       - safe/tests/operation_registry.rs
@@ -213,24 +191,15 @@ phases:
     type: implement
     bounce_target: null
     required_preexisting_inputs:
-      - validator/
-      - validator/.venv/
       - validator-report.md
-      - validator-overrides/libvips/*.deb
       - validator/artifacts/libvips-safe-baseline-current-port-lock.json
       - validator/artifacts/libvips-safe-baseline-current/port/results/libvips/*.json
-      - validator/artifacts/libvips-safe-source-api/
       - validator/artifacts/libvips-safe-source-api-port-lock.json
-      - validator/artifacts/libvips-safe-ops/
+      - validator/artifacts/libvips-safe-source-api/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-ops-port-lock.json
-      - scripts/check-layout.sh
-      - scripts/build-debs.sh
-      - scripts/lib/build_port_lock.py
-      - packaging/package.env
-      - safe/build.rs
-      - safe/meson.build
-      - safe/include/vips/**
-      - safe/src/abi/**
+      - validator/artifacts/libvips-safe-ops/port/results/libvips/*.json
+      - validator/
+      - validator/.venv/
       - safe/src/foreign/base.rs
       - safe/src/foreign/mod.rs
       - safe/src/foreign/sniff.rs
@@ -250,34 +219,38 @@ phases:
       - safe/tests/security.rs
       - original/test/test-suite/images/**
       - safe/tests/upstream/**
+      - scripts/check-layout.sh
+      - scripts/build-debs.sh
+      - scripts/lib/build_port_lock.py
+      - packaging/package.env
   - order: 11
     id: check_04_foreign_io_media_software_tester
     type: check
     bounce_target: impl_04_foreign_io_media_failures
     required_preexisting_inputs:
-      - validator/
-      - validator/.venv/
+      - validator/.git
       - validator-report.md
-      - validator-overrides/libvips/*.deb
       - validator/artifacts/libvips-safe-baseline-current/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-foreign-port-lock.json
-      - validator/artifacts/libvips-safe-foreign/
+      - validator/artifacts/libvips-safe-foreign/port/results/libvips/summary.json
       - validator/artifacts/libvips-safe-foreign/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-foreign/matrix-exit-code.txt
+      - validator-overrides/libvips/*.deb
+      - safe/Cargo.toml
+      - safe/Cargo.lock
+      - safe/meson.build
       - safe/tests/runtime_io.rs
       - safe/tests/threading.rs
       - safe/tests/security.rs
-      - safe/tests/upstream/**
+      - safe/tests/upstream/run-shell-suite.sh
+      - safe/tests/upstream/run-fuzz-suite.sh
   - order: 12
     id: check_04_foreign_io_media_senior_tester
     type: check
     bounce_target: impl_04_foreign_io_media_failures
     required_preexisting_inputs:
-      - validator/
+      - validator/.git
       - validator-report.md
-      - validator-overrides/libvips/*.deb
-      - validator/artifacts/libvips-safe-foreign-port-lock.json
-      - validator/artifacts/libvips-safe-foreign/port/results/libvips/summary.json
       - safe/src/foreign/**
       - safe/src/runtime/image.rs
       - safe/src/runtime/source.rs
@@ -296,79 +269,61 @@ phases:
     type: implement
     bounce_target: null
     required_preexisting_inputs:
+      - validator-report.md
+      - validator/artifacts/libvips-safe-baseline-current-port-lock.json
+      - validator/artifacts/libvips-safe-baseline-current/
+      - validator/artifacts/libvips-safe-source-api-port-lock.json
+      - validator/artifacts/libvips-safe-source-api/
+      - validator/artifacts/libvips-safe-ops-port-lock.json
+      - validator/artifacts/libvips-safe-ops/
+      - validator/artifacts/libvips-safe-foreign-port-lock.json
+      - validator/artifacts/libvips-safe-foreign/
       - validator/
       - validator/.venv/
-      - validator-report.md
-      - validator-overrides/libvips/*.deb
-      - validator/artifacts/libvips-safe-baseline-current/
-      - validator/artifacts/libvips-safe-baseline-current-port-lock.json
-      - validator/artifacts/libvips-safe-source-api/
-      - validator/artifacts/libvips-safe-source-api-port-lock.json
-      - validator/artifacts/libvips-safe-ops/
-      - validator/artifacts/libvips-safe-ops-port-lock.json
-      - validator/artifacts/libvips-safe-foreign/
-      - validator/artifacts/libvips-safe-foreign-port-lock.json
-      - validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/
-      - validator/artifacts/libvips-safe-source-api/port/logs/libvips/
-      - validator/artifacts/libvips-safe-ops/port/logs/libvips/
-      - validator/artifacts/libvips-safe-foreign/port/logs/libvips/
-      - scripts/check-layout.sh
       - scripts/build-debs.sh
       - scripts/install-build-deps.sh
       - scripts/run-validation-tests.sh
       - scripts/lib/build-deb-common.sh
       - scripts/lib/build_port_lock.py
       - packaging/package.env
-      - safe/Cargo.toml
-      - safe/Cargo.lock
-      - safe/build.rs
-      - safe/include/vips/**
-      - safe/src/**
-      - safe/tests/**
       - safe/debian/**
       - safe/meson.build
       - safe/scripts/run_release_gate.sh
-      - original/**
-      - safe/reference/**
-      - safe/vendor/pyvips-3.1.1/**
+      - safe/tests/**
+      - safe/tests/dependents/**
       - all_cves.json
       - relevant_cves.json
       - dependents.json
-      - safe/tests/upstream/**
-      - safe/tests/dependents/**
   - order: 14
     id: check_05_packaging_container_remaining_software_tester
     type: check
     bounce_target: impl_05_packaging_container_remaining_failures
     required_preexisting_inputs:
-      - validator/
-      - validator/.venv/
+      - validator/.git
       - validator-report.md
-      - validator-overrides/libvips/*.deb
+      - .work/validation/port-deb-lock.json
+      - .work/validation/artifacts/port/results/libvips/summary.json
+      - .work/validation/artifacts/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-remaining-port-lock.json
-      - validator/artifacts/libvips-safe-remaining/
+      - validator/artifacts/libvips-safe-remaining/port/results/libvips/summary.json
       - validator/artifacts/libvips-safe-remaining/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-remaining/matrix-exit-code.txt
-      - .work/validation/port-deb-lock.json
-      - .work/validation/artifacts/port/results/libvips/*.json
+      - validator-overrides/libvips/*.deb
       - scripts/check-layout.sh
       - scripts/build-debs.sh
       - scripts/run-validation-tests.sh
-      - scripts/lib/build_port_lock.py
-      - safe/**
       - safe/scripts/run_release_gate.sh
+      - safe/Cargo.toml
+      - safe/Cargo.lock
   - order: 15
     id: check_05_packaging_container_remaining_senior_tester
     type: check
     bounce_target: impl_05_packaging_container_remaining_failures
     required_preexisting_inputs:
-      - validator/
+      - validator/.git
       - validator-report.md
-      - validator-overrides/libvips/*.deb
-      - validator/artifacts/libvips-safe-remaining-port-lock.json
-      - validator/artifacts/libvips-safe-remaining/port/results/libvips/summary.json
       - scripts/**
-      - packaging/package.env
+      - packaging/**
       - safe/debian/**
       - safe/meson.build
       - safe/scripts/**
@@ -379,59 +334,42 @@ phases:
     type: implement
     bounce_target: null
     required_preexisting_inputs:
+      - validator-report.md
       - validator/
       - validator/.venv/
-      - validator-report.md
-      - validator-overrides/libvips/*.deb
-      - .work/validation/port-deb-lock.json
-      - .work/validation/artifacts/port/results/libvips/*.json
-      - validator/artifacts/libvips-safe-baseline-current/
-      - validator/artifacts/libvips-safe-baseline-current-port-lock.json
-      - validator/artifacts/libvips-safe-source-api/
-      - validator/artifacts/libvips-safe-source-api-port-lock.json
-      - validator/artifacts/libvips-safe-ops/
-      - validator/artifacts/libvips-safe-ops-port-lock.json
-      - validator/artifacts/libvips-safe-foreign/
-      - validator/artifacts/libvips-safe-foreign-port-lock.json
-      - validator/artifacts/libvips-safe-remaining/
-      - validator/artifacts/libvips-safe-remaining-port-lock.json
+      - safe/**
       - scripts/check-layout.sh
       - scripts/build-debs.sh
       - scripts/run-validation-tests.sh
       - scripts/lib/build_port_lock.py
-      - safe/**
+      - packaging/package.env
       - safe/scripts/run_release_gate.sh
-      - original/**
-      - safe/reference/**
-      - safe/vendor/pyvips-3.1.1/**
-      - safe/tests/upstream/**
-      - safe/tests/dependents/**
-      - all_cves.json
-      - relevant_cves.json
-      - dependents.json
+      - validator-overrides/libvips/*.deb
+      - validator/artifacts/libvips-safe-final-port-lock.json
+      - validator/artifacts/libvips-safe-final/
+      - validator/artifacts/libvips-safe-final/port/results/libvips/summary.json
+      - validator/site/libvips-safe-final/
+      - validator/site/libvips-safe-final/site-data.json
   - order: 17
     id: check_06_final_clean_run_software_tester
     type: check
     bounce_target: impl_06_final_clean_run_and_report
     required_preexisting_inputs:
-      - validator/
-      - validator/.venv/
+      - validator/.git
       - validator-report.md
-      - validator-overrides/libvips/*.deb
       - validator/artifacts/libvips-safe-final-port-lock.json
-      - validator/artifacts/libvips-safe-final/
+      - validator/artifacts/libvips-safe-final/port/results/libvips/summary.json
       - validator/artifacts/libvips-safe-final/port/results/libvips/*.json
       - validator/artifacts/libvips-safe-final/matrix-exit-code.txt
       - validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json
       - validator/site/libvips-safe-final/site-data.json
+      - validator-overrides/libvips/*.deb
   - order: 18
     id: check_06_final_clean_run_senior_tester
     type: check
     bounce_target: impl_06_final_clean_run_and_report
     required_preexisting_inputs:
-      - validator/
       - validator-report.md
-      - validator-overrides/libvips/*.deb
       - validator/artifacts/libvips-safe-final-port-lock.json
       - validator/artifacts/libvips-safe-final/port/results/libvips/summary.json
       - validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json
