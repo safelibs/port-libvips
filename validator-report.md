@@ -381,7 +381,7 @@ Remaining failed testcase IDs:
 
 `usage-ruby-vips-abs-of-signed-image`, `usage-ruby-vips-affine-rotation`, `usage-ruby-vips-affine-shear`, `usage-ruby-vips-arithmetic-multiply-divide`, `usage-ruby-vips-arrayjoin-grid`, `usage-ruby-vips-arrayjoin-vertical-stack`, `usage-ruby-vips-autorot-no-orientation`, `usage-ruby-vips-bandfold-roundtrip`, `usage-ruby-vips-bandjoin-extract-roundtrip`, `usage-ruby-vips-canny-edges`, `usage-ruby-vips-colourspace-bw`, `usage-ruby-vips-colourspace-hsv-roundtrip`, `usage-ruby-vips-composite-over`, `usage-ruby-vips-conv-custom-kernel`, `usage-ruby-vips-dilate-cross-mask`, `usage-ruby-vips-draw-circle-mutable`, `usage-ruby-vips-draw-line-mutable`, `usage-ruby-vips-draw-rect-mutable`, `usage-ruby-vips-embed-extend-background-color`, `usage-ruby-vips-embed-extend-modes`, `usage-ruby-vips-erode-cross-mask`, `usage-ruby-vips-extract-band-two-at-offset`, `usage-ruby-vips-falsecolour-grayscale`, `usage-ruby-vips-find-trim-bbox`, `usage-ruby-vips-find-trim-custom-threshold`, `usage-ruby-vips-gamma-explicit-exponent`, `usage-ruby-vips-gaussnoise-generator`, `usage-ruby-vips-gravity-east-west`, `usage-ruby-vips-gravity-placement`, `usage-ruby-vips-grid-tile-layout`, `usage-ruby-vips-hist-equal-histogram`, `usage-ruby-vips-hist-local-equalisation`, `usage-ruby-vips-hist-norm-stretch`, `usage-ruby-vips-ifthenelse-comparison-mask`, `usage-ruby-vips-ifthenelse-multiband-sources`, `usage-ruby-vips-invert-roundtrip-identity`, `usage-ruby-vips-jpeg-quality-buffer`, `usage-ruby-vips-matrixload-external-file`, `usage-ruby-vips-memory-ppm-roundtrip-batch11`, `usage-ruby-vips-new-from-array-pixels`, `usage-ruby-vips-premultiply-roundtrip`, `usage-ruby-vips-recomb-color-matrix`, `usage-ruby-vips-reduce-xfac-yfac`, `usage-ruby-vips-relational-more`, `usage-ruby-vips-resize-kernel-cubic`, `usage-ruby-vips-resize-kernel-linear`, `usage-ruby-vips-rint-banker`, `usage-ruby-vips-scharr-edges`, `usage-ruby-vips-sharpen-roundtrip`, `usage-ruby-vips-similarity-rotate-30`, `usage-ruby-vips-similarity-with-translation`, `usage-ruby-vips-sines-generator`, `usage-ruby-vips-smartcrop-attention`, `usage-ruby-vips-sobel-edges`, `usage-ruby-vips-thumbnail-centre-crop`, `usage-ruby-vips-tiff-buffer-roundtrip`, `usage-ruby-vips-tilecache-roundtrip`, `usage-ruby-vips-webp-buffer-roundtrip`, `usage-ruby-vips-wrap-translation`.
 
-## Phase 3 Operation Semantics Rerun
+## Historical Evidence - Phase 3 Operation Semantics Rerun (pre-validator-9ae97150)
 
 Phase ID `impl_03_operation_semantics_failures` fixed the seven baseline operation-semantics failures. The full rerun artifact is `validator/artifacts/libvips-safe-ops/`, generated with the existing validator checkout at `87b321fe728340d6fc6dd2f638583cca82c667c3`; no validator fetch or pull was performed.
 
@@ -699,3 +699,83 @@ Result: all checks passed. The release gate included Rust tests, Meson install/p
 - Phase 5 fixes: stale package artifact cleanup, release-gate pkg-config lookup, generated operation manifest sync for `ppmload_buffer`, metadata/container preservation behavior, PFM/CMYK/PNG bit-depth compatibility, and composite band promotion; regression coverage added in `safe/tests/runtime_io.rs` and `safe/tests/ops_core.rs`, with full release-gate and dependent-smoke coverage.
 - Approved validator-bug skips: none.
 - Remaining failures: none.
+
+## Phase 3 Operation Semantics Rerun
+
+Phase start commit: 7eb2fd1ea843d3398826d6a782bcd6e01368c5fb
+Source commit: 036a24f0988c6e4ebdd68d9730c6fdbf9467529d
+Source fix commits: 036a24f0988c6e4ebdd68d9730c6fdbf9467529d
+
+Phase ID `impl_03_operation_semantics_failures` fixed the four operation-semantics failures assigned in the current Phase 1 baseline. The rerun used the existing validator checkout at `9ae971508c9381f32a531078037851d960cab61f`; no validator fetch or pull was performed.
+
+### Fixed Operation Cases
+
+| Testcase ID | Operation area | Phase 3 status |
+| --- | --- | --- |
+| `usage-ruby-vips-r11-add-alpha-three-to-four-bands` | `addalpha` C ABI dispatch and 3-to-4-band alpha fill | `passed` |
+| `usage-ruby-vips-r11-fwfft-invfft-roundtrip` | `fwfft` / `invfft` operation registration and complex roundtrip | `passed` |
+| `usage-ruby-vips-r12-colourspace-srgb-to-bw-one-band` | `colourspace(:b_w)` one-band greyscale conversion | `passed` |
+| `usage-ruby-vips-r12-composite-over-yields-input-bands` | `composite2` optional `compositing_space` argument handling | `passed` |
+
+### Implementation Notes
+
+- Added manual C ABI wrappers for `vips_addalpha`, `vips_fwfft`, and `vips_invfft`.
+- Added operation dispatch support for `fwfft` and `invfft`, including runtime GType registration for the manually implemented operations.
+- Updated `composite2` shim option parsing to accept `compositing_space` and `premultiplied` defaults used by ruby-vips.
+- Updated colourspace source inference so RGB-shaped `B_W` images can collapse to a one-band `B_W` result.
+- Added `safe/tests/ops_core.rs::operation_semantics_current_ruby_regressions`, which calls the exported C ABI path and checks dimensions, bands, format, interpretation, and representative pixel values.
+
+Changed files in source commit: `safe/build_support/api_shim.c`, `safe/src/generated/operations.json`, `safe/src/generated/operations_registry.rs`, `safe/src/ops/colour.rs`, `safe/src/ops/freqfilt.rs`, `safe/src/ops/mod.rs`, `safe/src/runtime/operation.rs`, and `safe/tests/ops_core.rs`.
+
+### Focused Tests
+
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips/safe
+cargo test --all-features --test ops_core -- --nocapture
+cargo test --all-features --test ops_core --test ops_advanced --test operation_registry --test security -- --nocapture
+```
+
+Result: passed. The second run covered `ops_core`, `ops_advanced`, `operation_registry`, and `security`.
+
+### Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-ops-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Release tag: `build-036a24f0988c`
+- Tag ref: `refs/tags/build-036a24f0988c`
+- Canonical validator package set: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- Unported original packages: `[]`
+
+| Package | Size | SHA256 | Filename |
+| --- | ---: | --- | --- |
+| `libvips42t64` | 1441740 | `1e44a2e75783c534d9edf282e12106859e6f6945a8c2e41f3653d9973736bc88` | `libvips42t64_8.15.1-1.1build4+safelibs1778635647_amd64.deb` |
+| `libvips-dev` | 83426 | `283a024b967bc3e7b51bca4c00c5fa6f2fc42c733d0343326e91374a00e14c9a` | `libvips-dev_8.15.1-1.1build4+safelibs1778635647_amd64.deb` |
+| `libvips-tools` | 27928 | `44880e89df41e9ea5e9308e0a4e946a1e746128083323c91cd51512d389382a5` | `libvips-tools_8.15.1-1.1build4+safelibs1778635647_amd64.deb` |
+| `gir1.2-vips-8.0` | 5190 | `80f0617a7eb7b404a1d2e0ce18f93745023256353e6dbd202bfe53f3325f6320` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778635647_amd64.deb` |
+
+### Validator Rerun
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+cd "$ROOT/validator"
+PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash test.sh \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root "$ROOT/validator/artifacts/libvips-safe-ops" \
+  --mode port \
+  --library libvips \
+  --override-deb-root "$ROOT/validator-overrides" \
+  --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-ops-port-lock.json" \
+  --record-casts
+```
+
+- Artifact root: `validator/artifacts/libvips-safe-ops/`
+- Matrix exit code path: `validator/artifacts/libvips-safe-ops/matrix-exit-code.txt`
+- Matrix exit code: `0`
+- Summary path: `validator/artifacts/libvips-safe-ops/port/results/libvips/summary.json`
+- Summary: `249` cases, `248` passed, `1` failed, `5` source, `240` usage, `4` regression, `249` casts.
+- Override debs installed for every testcase result: `true`
+- Port deb packages for every testcase result: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- Unported original packages for every testcase result: `[]`
+
+Remaining failure ownership: `cve-2026-3284` remains failed and is owned by `impl_05_packaging_container_remaining_failures`. All baseline failures owned by `impl_03_operation_semantics_failures` passed in `validator/artifacts/libvips-safe-ops/`.
