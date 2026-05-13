@@ -4,6 +4,12 @@ use std::sync::{Mutex, Once, OnceLock};
 use vips::*;
 
 unsafe extern "C" {
+    fn vips_operation_new(name: *const std::ffi::c_char) -> *mut VipsOperation;
+    fn vips_object_set_argument_from_string(
+        object: *mut VipsObject,
+        name: *const std::ffi::c_char,
+        value: *const std::ffi::c_char,
+    ) -> i32;
     fn vips_crop(
         input: *mut VipsImage,
         out: *mut *mut VipsImage,

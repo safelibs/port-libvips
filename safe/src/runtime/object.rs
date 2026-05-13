@@ -2183,6 +2183,26 @@ pub extern "C" fn vips_object_set_argument_from_string(
         return -1;
     }
     unsafe {
+        if gobject_sys::g_param_value_validate(pspec, &mut gvalue) != glib_sys::GFALSE {
+            let name = CStr::from_ptr(name).to_string_lossy().into_owned();
+            if let Some(input) = input {
+                append_message_str(
+                    "vips_object_set_argument_from_string",
+                    &format!(
+                        "{} is outside the allowed range for {}",
+                        input.to_string_lossy(),
+                        name
+                    ),
+                );
+            } else {
+                append_message_str(
+                    "vips_object_set_argument_from_string",
+                    &format!("value is outside the allowed range for {}", name),
+                );
+            }
+            gobject_sys::g_value_unset(&mut gvalue);
+            return -1;
+        }
         gobject_sys::g_object_set_property(object.cast(), name, &gvalue);
         let _ = mark_argument_assigned(object, &CStr::from_ptr(name).to_string_lossy(), true);
         gobject_sys::g_value_unset(&mut gvalue);
