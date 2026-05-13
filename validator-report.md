@@ -798,64 +798,82 @@ PY
 
 ## Final Clean Run
 
-Phase ID `impl_06_final_clean_run_and_report` produced the final unmodified clean evidence set for libvips. The validator checkout was not fetched or pulled and remained clean at `87b321fe728340d6fc6dd2f638583cca82c667c3`, matching `origin/main`. The safe source/package commit used for the final package lock was `e9ef9bca3883b600b53efd499bb80962eef64ba1`.
+Phase ID `impl_06_final_clean_run_and_report` produced the final unmodified clean evidence set for `libvips`. The validator checkout was not fetched or pulled and remained clean at the Phase 1 commit, matching `origin/main`. The same safe source commit was used for the final package build, lock synthesis, validator matrix, proof generation, site render, and CI-parity validation hook.
+
+Final validator commit: 9ae971508c9381f32a531078037851d960cab61f
+Final source commit: 69f4e6525a8810bd5d5cccbbb5f5c431738a840a
 
 ### Checks Executed
 
 ```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+FINAL_SOURCE_COMMIT=69f4e6525a8810bd5d5cccbbb5f5c431738a840a
+cd "$ROOT"
 git -C validator status --porcelain --untracked-files=no
-test "$(git -C validator rev-parse HEAD)" = "87b321fe728340d6fc6dd2f638583cca82c667c3"
+test "$(git -C validator rev-parse HEAD)" = "9ae971508c9381f32a531078037851d960cab61f"
 test "$(git -C validator rev-parse HEAD)" = "$(git -C validator rev-parse origin/main)"
 bash scripts/check-layout.sh
 cd safe && cargo test --all-features -- --nocapture
+cd "$ROOT"
+SAFELIBS_COMMIT_SHA="$FINAL_SOURCE_COMMIT" bash scripts/build-debs.sh
 cd safe && scripts/run_release_gate.sh
-bash scripts/build-debs.sh
-SAFELIBS_VALIDATOR_DIR="$PWD/validator" SAFELIBS_RECORD_CASTS=1 bash scripts/run-validation-tests.sh
-PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash validator/test.sh --config repositories.yml --tests-root tests --artifact-root "$ROOT/validator/artifacts/libvips-safe-final" --mode port --library libvips --override-deb-root "$ROOT/validator-overrides" --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-final-port-lock.json" --record-casts
-validator/.venv/bin/python validator/tools/verify_proof_artifacts.py --require-casts --min-source-cases 5 --min-usage-cases 170 --min-cases 175
-validator/.venv/bin/python validator/tools/render_site.py --artifact-root validator/artifacts/libvips-safe-final --proof-path validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json --output-root validator/site/libvips-safe-final
-PATH="$ROOT/validator/.venv/bin:$PATH" bash validator/scripts/verify-site.sh --library libvips
+cd "$ROOT"
+SAFELIBS_LIBRARY=libvips SAFELIBS_COMMIT_SHA="$FINAL_SOURCE_COMMIT" SAFELIBS_DIST_DIR="$ROOT/dist" SAFELIBS_VALIDATOR_DIR="$ROOT/validator" SAFELIBS_LOCK_PATH="$ROOT/validator/artifacts/libvips-safe-final-port-lock.json" SAFELIBS_OVERRIDE_ROOT="$ROOT/validator-overrides" python3 scripts/lib/build_port_lock.py
+cd "$ROOT/validator"
+PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash test.sh --config repositories.yml --tests-root tests --artifact-root "$ROOT/validator/artifacts/libvips-safe-final" --mode port --library libvips --override-deb-root "$ROOT/validator-overrides" --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-final-port-lock.json" --record-casts
+"$ROOT/validator/.venv/bin/python" tools/verify_proof_artifacts.py --config repositories.yml --tests-root tests --artifact-root "$ROOT/validator/artifacts/libvips-safe-final" --proof-output "$ROOT/validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json" --mode port --library libvips --min-source-cases 5 --min-usage-cases 170 --min-cases 175 --require-casts --ports-root /home/yans/safelibs/pipeline/ports
+"$ROOT/validator/.venv/bin/python" tools/render_site.py --config repositories.yml --tests-root tests --artifact-root "$ROOT/validator/artifacts/libvips-safe-final" --proof-path "$ROOT/validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json" --output-root "$ROOT/validator/site/libvips-safe-final"
+PATH="$ROOT/validator/.venv/bin:$PATH" bash scripts/verify-site.sh --config repositories.yml --tests-root tests --artifacts-root "$ROOT/validator/artifacts/libvips-safe-final" --proof-path "$ROOT/validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json" --site-root "$ROOT/validator/site/libvips-safe-final" --library libvips
+cd "$ROOT"
+PYTHON="$ROOT/validator/.venv/bin/python" SAFELIBS_COMMIT_SHA="$FINAL_SOURCE_COMMIT" SAFELIBS_VALIDATOR_DIR="$ROOT/validator" SAFELIBS_RECORD_CASTS=1 bash scripts/run-validation-tests.sh
 ```
 
-Result: all checks passed. The release gate included Rust tests, Meson install/package checks, upstream shell and pytest suites (`204 passed, 48 skipped`), fuzz corpus runs, link compatibility, packaged deprecated C API smoke, package payload checks, and all dependent application smokes.
+Result: all checks passed. The release gate included Rust tests, Meson install/package checks, upstream shell and pytest suites (`204 passed, 48 skipped`), fuzz corpus runs, link compatibility, packaged deprecated C API smoke, package payload checks, and all dependent application smokes. Post-run JSON assertions parsed the final lock, `validator-overrides/libvips/*.deb`, the final official result JSON files, and the fresh `.work/validation` result JSON files.
 
 ### Final Package Lock
 
 - Lock path: `validator/artifacts/libvips-safe-final-port-lock.json`
 - Override root: `validator-overrides/libvips/`
 - Build output root: `dist/`
-- Release tag: `build-e9ef9bca3883`
+- Commit: `69f4e6525a8810bd5d5cccbbb5f5c431738a840a`
+- Tag ref: `refs/tags/build-69f4e6525a88`
+- Release tag: `build-69f4e6525a88`
 - Canonical packages ported: `4 / 4`
-- Unported original packages: none
+- Unported original packages: `[]`
 
 | Package | Architecture | Size | SHA256 | Filename |
 | --- | --- | ---: | --- | --- |
-| `libvips42t64` | `amd64` | 1439840 | `a3540fea05a9db2912f492ee98d106584a1ab47ecd6f6f65abecb8754dced54d` | `libvips42t64_8.15.1-1.1build4+safelibs1777971044_amd64.deb` |
-| `libvips-dev` | `amd64` | 83436 | `d1521843a4593bf30be10af60f65e332bfa74e2f03d69613350217002ded4f32` | `libvips-dev_8.15.1-1.1build4+safelibs1777971044_amd64.deb` |
-| `libvips-tools` | `amd64` | 27940 | `21f57d34d2ce2380e58dde81f072b4ac67aa7b220b929544fab7ebe1104963af` | `libvips-tools_8.15.1-1.1build4+safelibs1777971044_amd64.deb` |
-| `gir1.2-vips-8.0` | `amd64` | 5194 | `4cbd53608fd458b39bd014408515801bf28e9d7fd377d39da2de42cc69890614` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1777971044_amd64.deb` |
+| `libvips42t64` | `amd64` | 1442012 | `c53214c45e8c67f9d362e9a0f6a98557e4c48e7ca55a89604933d7a942b4a5a5` | `libvips42t64_8.15.1-1.1build4+safelibs1778648887_amd64.deb` |
+| `libvips-dev` | `amd64` | 83406 | `b0bc13b541b8dfb9a559ed30736fc876ce1947cf69b5aa69efd6e139d0796332` | `libvips-dev_8.15.1-1.1build4+safelibs1778648887_amd64.deb` |
+| `libvips-tools` | `amd64` | 27946 | `e310f1b3741aaaa9e513cf5fbd83215694ebcd43ea13057ca033a5ff4e54deca` | `libvips-tools_8.15.1-1.1build4+safelibs1778648887_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5188 | `50e7f6dae040e3a22954aacfecd63fdd2c4b83a859cb4fef00bec13df9e8f9d9` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778648887_amd64.deb` |
 
 ### Final Validator Evidence
 
-- CI-parity hook artifact: `.work/validation/artifacts/`
-- CI-parity summary: `175` cases, `175` passed, `0` failed, `5` source, `170` usage, `175` casts.
 - Final matrix artifact: `validator/artifacts/libvips-safe-final/`
 - Final matrix exit code: `0`
 - Final summary path: `validator/artifacts/libvips-safe-final/port/results/libvips/summary.json`
-- Final summary: `175` cases, `175` passed, `0` failed, `5` source, `170` usage, `175` casts.
-- Per-testcase assertion: all `175` final testcase result JSON files reported `override_debs_installed: true`.
+- Final summary: `249` cases, `249` passed, `0` failed, `5` source, `240` usage, `4` regression, `249` casts.
+- Per-testcase assertion: all `249` final testcase result JSON files reported `override_debs_installed: true`, the canonical four-package `port_debs` list, and `unported_original_packages: []`.
 - Proof path: `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json`
-- Proof totals: `175` cases, `175` passed, `0` failed, `5` source, `170` usage, `175` casts.
+- Proof totals: `249` cases, `249` passed, `0` failed, `5` source, `240` usage, `4` regression, `249` casts.
 - Site path: `validator/site/libvips-safe-final/`
 - Site data path: `validator/site/libvips-safe-final/site-data.json`
+- CI-parity hook artifact: `.work/validation/artifacts/`
+- CI-parity lock path: `.work/validation/port-deb-lock.json`
+- CI-parity summary path: `.work/validation/artifacts/port/results/libvips/summary.json`
+- CI-parity summary: `249` cases, `249` passed, `0` failed, `5` source, `240` usage, `4` regression, `249` casts.
+- CI-parity assertion: all `249` result JSON files reported `override_debs_installed: true`, the same four canonical `port_debs`, and `unported_original_packages: []`.
 
 ### Session Traceability
 
-- Baseline failures found in Phase 1: `59` total, with `7` operation semantics failures and `52` foreign I/O/media failures.
+- Baseline failures found in the active Phase 1 current-validator run: `5` total. Four were operation semantics failures: `usage-ruby-vips-r11-add-alpha-three-to-four-bands`, `usage-ruby-vips-r11-fwfft-invfft-roundtrip`, `usage-ruby-vips-r12-colourspace-srgb-to-bw-one-band`, and `usage-ruby-vips-r12-composite-over-yields-input-bands`. One was the package/remaining regression `cve-2026-3284`.
 - Phase 2 source API surface: no owned failures; focused source/API tests and validator rerun confirmed no source-case regressions.
-- Phase 3 fixes: operation support and semantics for `autorot`, `canny`, `composite`, `find_trim`, `hist_norm`, `rint`, and narrow PNG/TIFF file-save paths; regression coverage added in `safe/tests/ops_core.rs::operation_semantics_ruby_failure_regressions`.
-- Phase 4 fixes: PPM buffer loading, TIFF/JPEG/WebP/native media roundtrips, matrix text compatibility, and generic buffer fallback; regression coverage added in `safe/tests/runtime_io.rs::foreign_media_buffer_and_text_roundtrips_match_validator_paths` plus the updated matrix security expectation.
-- Phase 5 fixes: stale package artifact cleanup, release-gate pkg-config lookup, generated operation manifest sync for `ppmload_buffer`, metadata/container preservation behavior, PFM/CMYK/PNG bit-depth compatibility, and composite band promotion; regression coverage added in `safe/tests/runtime_io.rs` and `safe/tests/ops_core.rs`, with full release-gate and dependent-smoke coverage.
+- Phase 3 fixes: `addalpha`, `fwfft` / `invfft`, `colourspace(:b_w)`, and `composite2(:over)` operation semantics; regression coverage added in `safe/tests/ops_core.rs::operation_semantics_ruby_failure_regressions`.
+- Phase 4 fixes: no active current-validator failures were owned by foreign I/O/media, but the phase preserved the existing upstream/dependent media harnesses and zero-failure evidence.
+- Phase 5 fixes: `cve-2026-3284` argument validation for oversized `extract_area` dimensions through the object argument path; regression coverage added in `safe/tests/security/cve_2026_3284.rs`.
+- Phase 6 fixes: none; this phase recorded final clean evidence only.
+- Regression tests added across the workflow: `safe/tests/ops_core.rs::operation_semantics_ruby_failure_regressions`, `safe/tests/security/cve_2026_3284.rs`, and the existing `safe/tests/runtime_io.rs` / release-gate dependent smokes retained for media and packaging coverage.
 - Approved validator-bug skips: none.
 - Remaining failures: none.
 
