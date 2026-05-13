@@ -144,6 +144,27 @@ fn image_from_double(width: i32, height: i32, bands: i32, values: &[f64]) -> *mu
     )
 }
 
+fn image_from_dpcomplex(
+    width: i32,
+    height: i32,
+    bands: i32,
+    samples: &[(f64, f64)],
+) -> *mut VipsImage {
+    let mut values = Vec::with_capacity(samples.len() * 2);
+    for (real, imag) in samples {
+        values.push(*real);
+        values.push(*imag);
+    }
+    vips_image_new_from_memory_copy(
+        values.as_ptr().cast(),
+        values.len() * std::mem::size_of::<f64>(),
+        width,
+        height,
+        bands,
+        VIPS_FORMAT_DPCOMPLEX,
+    )
+}
+
 fn read_samples(image: *mut VipsImage) -> Vec<f64> {
     let format = vips_image_get_format(image);
     let mut len = 0usize;
@@ -727,6 +748,31 @@ fn operation_semantics_current_ruby_regressions() {
         assert!((value - 10.0).abs() < 1e-6, "real invfft value {value}");
     }
 
+    let fft_multiband = image_from_uchar(1, 1, 3, &[1, 2, 3]);
+    let mut rejected_spectrum = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_fwfft(fft_multiband, &mut rejected_spectrum, ptr::null::<c_char>()) },
+        -1
+    );
+    assert!(rejected_spectrum.is_null());
+
+    let invfft_multiband = image_from_dpcomplex(1, 1, 3, &[(1.0, 0.0), (2.0, 0.0), (3.0, 0.0)]);
+    unsafe {
+        (*invfft_multiband).Type = VIPS_INTERPRETATION_FOURIER;
+    }
+    let mut rejected_inverse = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_invfft(
+                invfft_multiband,
+                &mut rejected_inverse,
+                ptr::null::<c_char>(),
+            )
+        },
+        -1
+    );
+    assert!(rejected_inverse.is_null());
+
     let bw_tagged_rgb = image_from_uchar(
         2,
         2,
@@ -805,6 +851,8 @@ fn operation_semantics_current_ruby_regressions() {
     unref_image(base);
     unref_image(bw);
     unref_image(bw_tagged_rgb);
+    unref_image(invfft_multiband);
+    unref_image(fft_multiband);
     unref_image(uchar_inverse_real);
     unref_image(real);
     unref_image(inverse);

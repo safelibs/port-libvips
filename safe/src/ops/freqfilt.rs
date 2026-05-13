@@ -14,6 +14,7 @@ use crate::pixels::iter::pixel_index;
 use crate::pixels::{
     complex_image_from_samples, read_complex_image, ComplexSample, ImageBuffer, ImageSpec,
 };
+use crate::runtime::error::append_message_str;
 use crate::runtime::object;
 
 use super::{argument_assigned, get_bool, get_image_ref, set_output_image, set_output_image_like};
@@ -115,6 +116,15 @@ fn output_buffer_from_spec(spec: ImageSpec, format: VipsBandFormat) -> ImageBuff
     out.spec.yoffset = spec.yoffset;
     out.spec.dhint = spec.dhint;
     out
+}
+
+fn ensure_mono(nickname: &str, spec: &ImageSpec) -> Result<(), ()> {
+    if spec.bands == 1 {
+        Ok(())
+    } else {
+        append_message_str(nickname, "image must have one band");
+        Err(())
+    }
 }
 
 unsafe fn configure_fft_class(
@@ -255,6 +265,7 @@ unsafe fn op_fwfft(object: *mut VipsObject) -> Result<(), ()> {
     let image = unsafe { get_image_ref(object, "in")? };
     let result = (|| {
         let (mut spec, data) = unsafe { read_complex_image(image)? };
+        ensure_mono("fwfft", &spec)?;
         spec.format = VIPS_FORMAT_DPCOMPLEX;
         spec.interpretation = VIPS_INTERPRETATION_FOURIER;
         let samples = transform_planes(spec, &data, false);
@@ -271,6 +282,7 @@ unsafe fn op_invfft(object: *mut VipsObject) -> Result<(), ()> {
     let image = unsafe { get_image_ref(object, "in")? };
     let result = (|| {
         let (spec, data) = unsafe { read_complex_image(image)? };
+        ensure_mono("invfft", &spec)?;
         let samples = transform_planes(spec, &data, true);
         let mut out_spec = spec;
         out_spec.interpretation = VIPS_INTERPRETATION_B_W;
