@@ -2,6 +2,89 @@
 
 ## Phase 1 Current Validator Baseline
 
+Phase start commit: b82520f7f943976b2f62660fb9ad2a78e73a3dc3
+Validator commit: 9ae971508c9381f32a531078037851d960cab61f
+Source commit: b82520f7f943976b2f62660fb9ad2a78e73a3dc3
+Source fix commits: none
+
+This is the fresh current-validator baseline for `libvips` in `port` mode. It uses the committed source SHA above for package stamping, override deb generation, lock synthesis, and the validator matrix run.
+
+### Validator Checkout
+
+- Validator URL: https://github.com/safelibs/validator
+- Active validator commit: `9ae971508c9381f32a531078037851d960cab61f`
+- Active local branch: `main`
+- README invocation mode: `port`
+- Testcase metadata source: current per-script `# @testcase` headers, checked with `validator/tools/testcases.py`.
+
+### Testcase Counts
+
+| Library | Source cases | Usage cases | Regression cases | Total cases |
+| --- | ---: | ---: | ---: | ---: |
+| libvips | 5 | 240 | 4 | 249 |
+
+### Package Lock
+
+- Source commit used for package build, override debs, lock synthesis, and matrix: `b82520f7f943976b2f62660fb9ad2a78e73a3dc3`
+- Lock path: `validator/artifacts/libvips-safe-baseline-current-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Release tag: `build-b82520f7f943`
+- Tag ref: `refs/tags/build-b82520f7f943`
+- Canonical validator package set: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- Unported original packages: `[]`
+
+| Package | Architecture | Size | SHA256 | Filename |
+| --- | --- | ---: | --- | --- |
+| `libvips42t64` | `amd64` | 1440256 | `b11f8969eb675a9eb2a7b64d712744e9296ce88ba0140873cedddbd23a9712c9` | `libvips42t64_8.15.1-1.1build4+safelibs1778624203_amd64.deb` |
+| `libvips-dev` | `amd64` | 83430 | `83cbf384265dda5e4970de7eb87d71c7839b69bb6de3e84361b1a39cb3ac9893` | `libvips-dev_8.15.1-1.1build4+safelibs1778624203_amd64.deb` |
+| `libvips-tools` | `amd64` | 27970 | `f4bd38b41acbc06154287c606ccf4df4f785ca750686cdaa0d7221afe336094f` | `libvips-tools_8.15.1-1.1build4+safelibs1778624203_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5198 | `602763411cbb891bbfd95515fc3750ec7118584949b103e0b60341779fba2c50` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778624203_amd64.deb` |
+
+### Baseline Command
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+cd "$ROOT/validator"
+PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash test.sh \
+  --config repositories.yml \
+  --tests-root tests \
+  --artifact-root artifacts/libvips-safe-baseline-current \
+  --mode port \
+  --library libvips \
+  --override-deb-root "$ROOT/validator-overrides" \
+  --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-baseline-current-port-lock.json" \
+  --record-casts
+```
+
+### Matrix Summary
+
+- Matrix exit code: `0`
+- Matrix exit path: `validator/artifacts/libvips-safe-baseline-current/matrix-exit-code.txt`
+- Summary path: `validator/artifacts/libvips-safe-baseline-current/port/results/libvips/summary.json`
+- Passed: `244`
+- Failed: `5`
+- Casts recorded: `249`
+- Override debs installed for every testcase result: `true`
+- Port deb packages for every testcase result: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- Unported original packages for every testcase result: `[]`
+
+### Failure Classification
+
+- `impl_02_source_api_surface_failures`: 0 failures
+- `impl_03_operation_semantics_failures`: 4 failures
+- `impl_04_foreign_io_media_failures`: 0 failures
+- `impl_05_packaging_container_remaining_failures`: 1 failure
+
+| Testcase ID | Kind | Status | Owner phase | Artifact path | Failure summary |
+| --- | --- | --- | --- | --- | --- |
+| `cve-2026-3284` | `regression` | `failed` | `impl_05_packaging_container_remaining_failures` | `validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/cve-2026-3284.log` | CVE regression: extract_area overflow coordinates were accepted instead of rejected. |
+| `usage-ruby-vips-r11-add-alpha-three-to-four-bands` | `usage` | `failed` | `impl_03_operation_semantics_failures` | `validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/usage-ruby-vips-r11-add-alpha-three-to-four-bands.log` | Ruby Image#add_alpha failed because vips_addalpha is not implemented in the safe compatibility layer. |
+| `usage-ruby-vips-r11-fwfft-invfft-roundtrip` | `usage` | `failed` | `impl_03_operation_semantics_failures` | `validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/usage-ruby-vips-r11-fwfft-invfft-roundtrip.log` | Ruby fwfft/invfft failed because operation dispatch reports unknown operation fwfft. |
+| `usage-ruby-vips-r12-colourspace-srgb-to-bw-one-band` | `usage` | `failed` | `impl_03_operation_semantics_failures` | `validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/usage-ruby-vips-r12-colourspace-srgb-to-bw-one-band.log` | Ruby colourspace(:b_w) returned 3 bands; expected the greyscale conversion to return 1 band. |
+| `usage-ruby-vips-r12-composite-over-yields-input-bands` | `usage` | `failed` | `impl_03_operation_semantics_failures` | `validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/usage-ruby-vips-r12-composite-over-yields-input-bands.log` | Ruby composite2(:over) rejected the compositing_space option, so default compositor argument handling is incomplete. |
+
+## Historical Evidence - Phase 1 Current Validator Baseline (pre-validator-9ae97150)
+
 This report replaces stale fallback-era evidence with the current validator `port`-mode baseline for `libvips`. The old 85-case `validator/artifacts/libvips-safe-final/port-04-test/` artifacts are historical context only and were not used as active validation evidence for this phase.
 
 ### Validator Checkout
