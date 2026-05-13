@@ -703,10 +703,10 @@ Result: all checks passed. The release gate included Rust tests, Meson install/p
 ## Phase 3 Operation Semantics Rerun
 
 Phase start commit: 7eb2fd1ea843d3398826d6a782bcd6e01368c5fb
-Source commit: 036a24f0988c6e4ebdd68d9730c6fdbf9467529d
-Source fix commits: 036a24f0988c6e4ebdd68d9730c6fdbf9467529d
+Source commit: 38f73293498af8556e51e38e34b8f6a003de0270
+Source fix commits: 036a24f0988c6e4ebdd68d9730c6fdbf9467529d 38f73293498af8556e51e38e34b8f6a003de0270
 
-Phase ID `impl_03_operation_semantics_failures` fixed the four operation-semantics failures assigned in the current Phase 1 baseline. The rerun used the existing validator checkout at `9ae971508c9381f32a531078037851d960cab61f`; no validator fetch or pull was performed.
+Phase ID `impl_03_operation_semantics_failures` fixed the four operation-semantics failures assigned in the current Phase 1 baseline. The rerun used the existing validator checkout at `9ae971508c9381f32a531078037851d960cab61f`; no validator fetch or pull was performed. A senior-review bounce found incomplete Fourier standalone semantics, so the final source commit tightens `fwfft` / `invfft` behavior beyond the validator roundtrip.
 
 ### Fixed Operation Cases
 
@@ -721,11 +721,12 @@ Phase ID `impl_03_operation_semantics_failures` fixed the four operation-semanti
 
 - Added manual C ABI wrappers for `vips_addalpha`, `vips_fwfft`, and `vips_invfft`.
 - Added operation dispatch support for `fwfft` and `invfft`, including runtime GType registration for the manually implemented operations.
+- Matched libvips Fourier semantics: `fwfft` now normalizes by image pixel count and always writes `DPCOMPLEX` Fourier output; `invfft` now writes `B_W` interpretation, with `DOUBLE` output for `real: true` and `DPCOMPLEX` otherwise.
 - Updated `composite2` shim option parsing to accept `compositing_space` and `premultiplied` defaults used by ruby-vips.
 - Updated colourspace source inference so RGB-shaped `B_W` images can collapse to a one-band `B_W` result.
-- Added `safe/tests/ops_core.rs::operation_semantics_current_ruby_regressions`, which calls the exported C ABI path and checks dimensions, bands, format, interpretation, and representative pixel values.
+- Added `safe/tests/ops_core.rs::operation_semantics_current_ruby_regressions`, which calls the exported C ABI path and checks dimensions, bands, format, interpretation, representative pixel values, standalone `fwfft` normalization, non-double `DPCOMPLEX` promotion, and `invfft(real)` `B_W` / `DOUBLE` output.
 
-Changed files in source commit: `safe/build_support/api_shim.c`, `safe/src/generated/operations.json`, `safe/src/generated/operations_registry.rs`, `safe/src/ops/colour.rs`, `safe/src/ops/freqfilt.rs`, `safe/src/ops/mod.rs`, `safe/src/runtime/operation.rs`, and `safe/tests/ops_core.rs`.
+Changed files in source fix commits: `safe/build_support/api_shim.c`, `safe/src/generated/operations.json`, `safe/src/generated/operations_registry.rs`, `safe/src/ops/colour.rs`, `safe/src/ops/freqfilt.rs`, `safe/src/ops/mod.rs`, `safe/src/runtime/operation.rs`, and `safe/tests/ops_core.rs`.
 
 ### Focused Tests
 
@@ -741,17 +742,17 @@ Result: passed. The second run covered `ops_core`, `ops_advanced`, `operation_re
 
 - Lock path: `validator/artifacts/libvips-safe-ops-port-lock.json`
 - Override root: `validator-overrides/libvips/`
-- Release tag: `build-036a24f0988c`
-- Tag ref: `refs/tags/build-036a24f0988c`
+- Release tag: `build-38f73293498a`
+- Tag ref: `refs/tags/build-38f73293498a`
 - Canonical validator package set: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
 - Unported original packages: `[]`
 
 | Package | Size | SHA256 | Filename |
 | --- | ---: | --- | --- |
-| `libvips42t64` | 1441740 | `1e44a2e75783c534d9edf282e12106859e6f6945a8c2e41f3653d9973736bc88` | `libvips42t64_8.15.1-1.1build4+safelibs1778635647_amd64.deb` |
-| `libvips-dev` | 83426 | `283a024b967bc3e7b51bca4c00c5fa6f2fc42c733d0343326e91374a00e14c9a` | `libvips-dev_8.15.1-1.1build4+safelibs1778635647_amd64.deb` |
-| `libvips-tools` | 27928 | `44880e89df41e9ea5e9308e0a4e946a1e746128083323c91cd51512d389382a5` | `libvips-tools_8.15.1-1.1build4+safelibs1778635647_amd64.deb` |
-| `gir1.2-vips-8.0` | 5190 | `80f0617a7eb7b404a1d2e0ce18f93745023256353e6dbd202bfe53f3325f6320` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778635647_amd64.deb` |
+| `libvips42t64` | 1441554 | `63b839f23330eab607bc15af8ad926146e5866ed4fd8da1718b386b2c309d02c` | `libvips42t64_8.15.1-1.1build4+safelibs1778637896_amd64.deb` |
+| `libvips-dev` | 83434 | `50eec1992dedc012fb712cfb940b8a204c0362e9d989ab5314c15cd8e774b8ed` | `libvips-dev_8.15.1-1.1build4+safelibs1778637896_amd64.deb` |
+| `libvips-tools` | 27922 | `33ba52f4fe83a78fc122dd98cc2519dd0d7ea67ad45e32094cbd2079ac910316` | `libvips-tools_8.15.1-1.1build4+safelibs1778637896_amd64.deb` |
+| `gir1.2-vips-8.0` | 5196 | `40a0ac290e17a837490da26ea078c42c4bae776ad6f7200d4963c2b84ad12fe9` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778637896_amd64.deb` |
 
 ### Validator Rerun
 
