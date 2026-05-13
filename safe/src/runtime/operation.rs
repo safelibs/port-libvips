@@ -846,6 +846,10 @@ pub extern "C" fn vips_operation_new(name: *const c_char) -> *mut VipsOperation 
     };
     let mut type_ = object::vips_type_find_unfiltered(c"VipsOperation".as_ptr(), lookup_name);
     if type_ == 0 {
+        crate::ops::try_register_operation(requested.as_ref());
+        type_ = object::vips_type_find_unfiltered(c"VipsOperation".as_ptr(), lookup_name);
+    }
+    if type_ == 0 {
         crate::foreign::modules::try_load_for_operation(requested.as_ref());
         type_ = object::vips_type_find_unfiltered(c"VipsOperation".as_ptr(), lookup_name);
     }

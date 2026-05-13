@@ -6398,7 +6398,51 @@
     },
     "VipsCompositeBase": {
       "abstract": false,
-      "arguments": [],
+      "arguments": [
+        {
+          "construct": true,
+          "default": "VIPS_INTERPRETATION_sRGB",
+          "description": "Composite images in this colour space",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "ENUM",
+          "long_name": "Compositing space",
+          "name": "compositing_space",
+          "offset": "G_STRUCT_OFFSET(VipsCompositeBase, compositing_space)",
+          "priority": 10,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "VIPS_TYPE_INTERPRETATION",
+            "type_macro": "VIPS_TYPE_INTERPRETATION",
+            "value_type": "VipsInterpretation"
+          }
+        },
+        {
+          "construct": true,
+          "default": "FALSE",
+          "description": "Images have premultiplied alpha",
+          "direction": "input",
+          "flags": [
+            "VIPS_ARGUMENT_INPUT",
+            "VIPS_ARGUMENT_CONSTRUCT"
+          ],
+          "kind": "BOOL",
+          "long_name": "Premultiplied",
+          "name": "premultiplied",
+          "offset": "G_STRUCT_OFFSET(VipsCompositeBase, premultiplied)",
+          "priority": 11,
+          "raw_flags": "VIPS_ARGUMENT_OPTIONAL_INPUT",
+          "required": false,
+          "type": {
+            "gtype": "G_TYPE_BOOLEAN",
+            "value_type": "gboolean"
+          }
+        }
+      ],
       "depth": 3,
       "description": "blend images together",
       "flags": [],

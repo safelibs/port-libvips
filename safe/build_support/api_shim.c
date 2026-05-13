@@ -481,6 +481,10 @@ safe_vips_call_composite2(va_list required, va_list optional)
             x = va_arg(optional_copy, int);
         else if (strcmp(name, "y") == 0)
             y = va_arg(optional_copy, int);
+        else if (strcmp(name, "compositing_space") == 0)
+            (void) va_arg(optional_copy, int);
+        else if (strcmp(name, "premultiplied") == 0)
+            (void) va_arg(optional_copy, int);
         else {
             vips_error("composite2",
                 "unknown optional argument '%s'", name);
@@ -1174,6 +1178,65 @@ vips__read_extension_block(VipsImage *im, int *size)
         *size = (int) extra;
 
     return buf;
+}
+
+VIPS_PUBLIC int
+vips_addalpha(VipsImage *in, VipsImage **out, ...)
+{
+    VipsArrayDouble *array;
+    double alpha;
+    va_list ap;
+    int result;
+
+    if (out)
+        *out = NULL;
+    if (!in || !out) {
+        vips_error("addalpha", "%s", "input and output are required");
+        return -1;
+    }
+
+    alpha = vips_interpretation_max_alpha(in->Type);
+    array = vips_array_double_new(&alpha, 1);
+    if (!array)
+        return -1;
+
+    va_start(ap, out);
+    result = vips_call_split("bandjoin_const", ap, in, out, array);
+    va_end(ap);
+
+    vips_area_unref(VIPS_AREA(array));
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_fwfft(VipsImage *in, VipsImage **out, ...)
+{
+    va_list ap;
+    int result;
+
+    if (out)
+        *out = NULL;
+    va_start(ap, out);
+    result = vips_call_split("fwfft", ap, in, out);
+    va_end(ap);
+
+    return result;
+}
+
+VIPS_PUBLIC int
+vips_invfft(VipsImage *in, VipsImage **out, ...)
+{
+    va_list ap;
+    int result;
+
+    if (out)
+        *out = NULL;
+    va_start(ap, out);
+    result = vips_call_split("invfft", ap, in, out);
+    va_end(ap);
+
+    return result;
 }
 
 VIPS_PUBLIC int

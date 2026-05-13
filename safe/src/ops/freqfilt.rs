@@ -1,10 +1,20 @@
+use std::mem::size_of;
+use std::sync::OnceLock;
+
 use crate::abi::image::VipsBandFormat;
-use crate::abi::object::VipsObject;
+use crate::abi::image::VIPS_INTERPRETATION_FOURIER;
+use crate::abi::object::{
+    VipsObject, VipsObjectClass, VIPS_ARGUMENT_CONSTRUCT, VIPS_ARGUMENT_INPUT,
+};
+use crate::abi::operation::{VipsOperation, VipsOperationClass};
 use crate::pixels::format::complex_component_format;
 use crate::pixels::iter::pixel_index;
-use crate::pixels::{read_complex_image, ComplexSample, ImageBuffer, ImageSpec};
+use crate::pixels::{
+    complex_image_from_samples, read_complex_image, ComplexSample, ImageBuffer, ImageSpec,
+};
+use crate::runtime::object;
 
-use super::{get_image_ref, set_output_image_like};
+use super::{argument_assigned, get_bool, get_image_ref, set_output_image, set_output_image_like};
 
 fn complex_mul(left: ComplexSample, right: ComplexSample) -> ComplexSample {
     ComplexSample {
@@ -105,6 +115,182 @@ fn output_buffer_from_spec(spec: ImageSpec, format: VipsBandFormat) -> ImageBuff
     out
 }
 
+unsafe fn configure_fft_class(
+    klass: glib_sys::gpointer,
+    nickname: *const libc::c_char,
+    description: *const libc::c_char,
+) {
+    let class = klass.cast::<VipsObjectClass>();
+    unsafe {
+        object::prepare_existing_class(class);
+        (*class).nickname = nickname;
+        (*class).description = description;
+        (*class).build = Some(super::generated_operation_build);
+    }
+}
+
+unsafe fn install_invfft_real_argument(klass: glib_sys::gpointer) {
+    let class = klass.cast::<VipsObjectClass>();
+    let gobject_class = klass.cast::<gobject_sys::GObjectClass>();
+    let pspec = unsafe {
+        gobject_sys::g_param_spec_boolean(
+            c"real".as_ptr(),
+            c"Real".as_ptr(),
+            c"Output only the real part".as_ptr(),
+            glib_sys::GFALSE,
+            gobject_sys::G_PARAM_READWRITE | gobject_sys::G_PARAM_CONSTRUCT,
+        )
+    };
+    unsafe {
+        gobject_sys::g_object_class_install_property(
+            gobject_class,
+            object::vips_argument_get_id() as u32,
+            pspec,
+        );
+        object::vips_object_class_install_argument(
+            class,
+            pspec,
+            VIPS_ARGUMENT_INPUT | VIPS_ARGUMENT_CONSTRUCT,
+            2,
+            object::DYNAMIC_ARGUMENT_OFFSET,
+        );
+    }
+}
+
+unsafe extern "C" fn fwfft_class_init(klass: glib_sys::gpointer, _data: glib_sys::gpointer) {
+    unsafe {
+        configure_fft_class(
+            klass,
+            c"fwfft".as_ptr(),
+            c"Transform an image to Fourier space".as_ptr(),
+        );
+    }
+}
+
+unsafe extern "C" fn invfft_class_init(klass: glib_sys::gpointer, _data: glib_sys::gpointer) {
+    unsafe {
+        configure_fft_class(
+            klass,
+            c"invfft".as_ptr(),
+            c"Transform an image from Fourier space".as_ptr(),
+        );
+        install_invfft_real_argument(klass);
+    }
+}
+
+fn freqfilt_parent_type() -> glib_sys::GType {
+    unsafe { gobject_sys::g_type_from_name(c"VipsFreqfilt".as_ptr()) }
+}
+
+fn register_fft_type(
+    storage: &'static OnceLock<glib_sys::GType>,
+    type_name: *const libc::c_char,
+    class_init: gobject_sys::GClassInitFunc,
+) -> glib_sys::GType {
+    *storage.get_or_init(|| {
+        let existing = unsafe { gobject_sys::g_type_from_name(type_name) };
+        if existing != 0 {
+            return existing;
+        }
+        let parent = freqfilt_parent_type();
+        if parent == 0 {
+            return 0;
+        }
+        object::register_type(
+            parent,
+            type_name,
+            size_of::<VipsOperationClass>(),
+            class_init,
+            size_of::<VipsOperation>(),
+            None,
+            0,
+        )
+    })
+}
+
+pub(crate) fn try_register_operation(name: &str) -> bool {
+    static FWFFT_TYPE: OnceLock<glib_sys::GType> = OnceLock::new();
+    static INVFFT_TYPE: OnceLock<glib_sys::GType> = OnceLock::new();
+
+    match name {
+        "fwfft" => {
+            register_fft_type(&FWFFT_TYPE, c"VipsFwfft".as_ptr(), Some(fwfft_class_init)) != 0
+        }
+        "invfft" => {
+            register_fft_type(
+                &INVFFT_TYPE,
+                c"VipsInvfft".as_ptr(),
+                Some(invfft_class_init),
+            ) != 0
+        }
+        _ => false,
+    }
+}
+
+fn transform_planes(spec: ImageSpec, data: &[ComplexSample], inverse: bool) -> Vec<ComplexSample> {
+    let mut out = vec![ComplexSample::default(); data.len()];
+    for band in 0..spec.bands {
+        let mut plane = vec![ComplexSample::default(); spec.width * spec.height];
+        for y in 0..spec.height {
+            for x in 0..spec.width {
+                let sample = pixel_index(spec.width, spec.bands, x, y, band);
+                plane[y * spec.width + x] = data[sample];
+            }
+        }
+
+        let transformed = dft2(&plane, spec.width, spec.height, inverse);
+        for y in 0..spec.height {
+            for x in 0..spec.width {
+                let sample = pixel_index(spec.width, spec.bands, x, y, band);
+                out[sample] = transformed[y * spec.width + x];
+            }
+        }
+    }
+    out
+}
+
+unsafe fn op_fwfft(object: *mut VipsObject) -> Result<(), ()> {
+    let image = unsafe { get_image_ref(object, "in")? };
+    let result = (|| {
+        let (mut spec, data) = unsafe { read_complex_image(image)? };
+        spec.interpretation = VIPS_INTERPRETATION_FOURIER;
+        let samples = transform_planes(spec, &data, false);
+        let out = unsafe { complex_image_from_samples(spec, &samples, image)? };
+        unsafe { set_output_image(object, "out", out) }
+    })();
+    unsafe {
+        crate::runtime::object::object_unref(image);
+    }
+    result
+}
+
+unsafe fn op_invfft(object: *mut VipsObject) -> Result<(), ()> {
+    let image = unsafe { get_image_ref(object, "in")? };
+    let result = (|| {
+        let (spec, data) = unsafe { read_complex_image(image)? };
+        let samples = transform_planes(spec, &data, true);
+        let real = if unsafe { argument_assigned(object, "real").unwrap_or(false) } {
+            unsafe { get_bool(object, "real")? }
+        } else {
+            false
+        };
+        if real {
+            let format = complex_component_format(spec.format).ok_or(())?;
+            let mut out = output_buffer_from_spec(spec, format);
+            out.data = samples.into_iter().map(|sample| sample.real).collect();
+            let out = out.into_image_like(image);
+            unsafe { set_output_image(object, "out", out) }
+        } else {
+            let out = unsafe { complex_image_from_samples(spec, &samples, image)? };
+            unsafe { set_output_image(object, "out", out) }
+        }
+    })();
+    unsafe {
+        crate::runtime::object::object_unref(image);
+    }
+    result
+}
+
 unsafe fn op_freqmult(object: *mut VipsObject) -> Result<(), ()> {
     let input_image = unsafe { get_image_ref(object, "in")? };
     let mask_image = unsafe { get_image_ref(object, "mask")? };
@@ -186,6 +372,14 @@ unsafe fn op_freqmult(object: *mut VipsObject) -> Result<(), ()> {
 
 pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result<bool, ()> {
     match nickname {
+        "fwfft" => {
+            unsafe { op_fwfft(object)? };
+            Ok(true)
+        }
+        "invfft" => {
+            unsafe { op_invfft(object)? };
+            Ok(true)
+        }
         "freqmult" => {
             unsafe { op_freqmult(object)? };
             Ok(true)

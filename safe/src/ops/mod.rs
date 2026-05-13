@@ -89,6 +89,7 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "flatten",
     "flip",
     "freqmult",
+    "fwfft",
     "gamma",
     "gaussblur",
     "gaussmat",
@@ -116,6 +117,7 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "insert",
     "invert",
     "invertlut",
+    "invfft",
     "join",
     "labelregions",
     "linear",
@@ -214,6 +216,10 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
 
 pub(crate) fn is_manifest_supported_operation(nickname: &str) -> bool {
     SUPPORTED_OPERATIONS.contains(&nickname)
+}
+
+pub(crate) fn try_register_operation(nickname: &str) -> bool {
+    freqfilt::try_register_operation(nickname)
 }
 
 struct OwnedValue {

@@ -1444,6 +1444,38 @@ static ARGS_VIPSCOMPOSITE2_Y: GeneratedArgumentMetadata = GeneratedArgumentMetad
     max_value: Some("VIPS_MAX_COORD"),
 };
 
+static ARGS_VIPSCOMPOSITEBASE_COMPOSITING_SPACE: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "compositing_space",
+    long_name: "Compositing space",
+    description: "Composite images in this colour space",
+    priority: 10,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Enum,
+    value_type_name: Some("VipsInterpretation"),
+    default_value: Some("VIPS_INTERPRETATION_sRGB"),
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSCOMPOSITEBASE_PREMULTIPLIED: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "premultiplied",
+    long_name: "Premultiplied",
+    description: "Images have premultiplied alpha",
+    priority: 11,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: false,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Bool,
+    value_type_name: Some("gboolean"),
+    default_value: Some("FALSE"),
+    min_value: None,
+    max_value: None,
+};
+
 static ARGS_VIPSCONV_PRECISION: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
     name: "precision",
     long_name: "Precision",
@@ -4191,6 +4223,22 @@ static ARGS_VIPSFOREIGNLOADPNGSOURCE_SOURCE: GeneratedArgumentMetadata = Generat
     direction: "input",
     kind: GeneratedArgumentKind::Object,
     value_type_name: Some("VipsSource"),
+    default_value: None,
+    min_value: None,
+    max_value: None,
+};
+
+static ARGS_VIPSFOREIGNLOADPPMBUFFER_BUFFER: GeneratedArgumentMetadata = GeneratedArgumentMetadata {
+    name: "buffer",
+    long_name: "Buffer",
+    description: "Buffer to load from",
+    priority: 1,
+    flags: crate::abi::object::VIPS_ARGUMENT_INPUT | crate::abi::object::VIPS_ARGUMENT_REQUIRED | crate::abi::object::VIPS_ARGUMENT_CONSTRUCT,
+    required: true,
+    construct: true,
+    direction: "input",
+    kind: GeneratedArgumentKind::Boxed,
+    value_type_name: Some("VipsBlob"),
     default_value: None,
     min_value: None,
     max_value: None,
@@ -13599,7 +13647,7 @@ static OPERATION_VIPSCOMPOSITE2: GeneratedOperationMetadata = GeneratedOperation
 static OPERATION_VIPSCOMPOSITEBASE: GeneratedOperationMetadata = GeneratedOperationMetadata {
     flags: 0,
     supported: false,
-    arguments: &[],
+    arguments: &[&ARGS_VIPSCOMPOSITEBASE_COMPOSITING_SPACE, &ARGS_VIPSCOMPOSITEBASE_PREMULTIPLIED],
     wrapper_function: None,
 };
 
@@ -14156,18 +14204,18 @@ static OPERATION_VIPSFOREIGNLOADPPM: GeneratedOperationMetadata = GeneratedOpera
     wrapper_function: None,
 };
 
+static OPERATION_VIPSFOREIGNLOADPPMBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
+    flags: crate::abi::operation::VIPS_OPERATION_UNTRUSTED,
+    supported: true,
+    arguments: &[&ARGS_VIPSFOREIGNLOADPPMBUFFER_BUFFER],
+    wrapper_function: None,
+};
+
 static OPERATION_VIPSFOREIGNLOADPPMFILE: GeneratedOperationMetadata = GeneratedOperationMetadata {
     flags: 0,
     supported: false,
     arguments: &[&ARGS_VIPSFOREIGNLOADPPMFILE_FILENAME],
     wrapper_function: Some("vips_ppmload"),
-};
-
-static OPERATION_VIPSFOREIGNLOADPPMBUFFER: GeneratedOperationMetadata = GeneratedOperationMetadata {
-    flags: crate::abi::operation::VIPS_OPERATION_UNTRUSTED,
-    supported: true,
-    arguments: &[&ARGS_VIPSFOREIGNLOADPNGBUFFER_BUFFER],
-    wrapper_function: None,
 };
 
 static OPERATION_VIPSFOREIGNLOADPPMSOURCE: GeneratedOperationMetadata = GeneratedOperationMetadata {
@@ -17033,16 +17081,6 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         operation: Some(&OPERATION_VIPSFOREIGNLOADPPM),
     },
     GeneratedTypeMetadata {
-        type_name: "VipsForeignLoadPpmFile",
-        parent_type_name: Some("VipsForeignLoadPpm"),
-        nickname: "ppmload",
-        description: "load ppm from file (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted, is_a, get_flags, header, load",
-        depth: 5,
-        abstract_: false,
-        source_file: Some("original/libvips/foreign/ppmload.c"),
-        operation: Some(&OPERATION_VIPSFOREIGNLOADPPMFILE),
-    },
-    GeneratedTypeMetadata {
         type_name: "VipsForeignLoadPpmBuffer",
         parent_type_name: Some("VipsForeignLoadPpm"),
         nickname: "ppmload_buffer",
@@ -17051,6 +17089,16 @@ pub(crate) static GENERATED_TYPES: &[GeneratedTypeMetadata] = &[
         abstract_: false,
         source_file: Some("original/libvips/foreign/ppmload.c"),
         operation: Some(&OPERATION_VIPSFOREIGNLOADPPMBUFFER),
+    },
+    GeneratedTypeMetadata {
+        type_name: "VipsForeignLoadPpmFile",
+        parent_type_name: Some("VipsForeignLoadPpm"),
+        nickname: "ppmload",
+        description: "load ppm from file (.pbm, .pgm, .ppm, .pfm, .pnm), priority=200, untrusted, is_a, get_flags, header, load",
+        depth: 5,
+        abstract_: false,
+        source_file: Some("original/libvips/foreign/ppmload.c"),
+        operation: Some(&OPERATION_VIPSFOREIGNLOADPPMFILE),
     },
     GeneratedTypeMetadata {
         type_name: "VipsForeignLoadPpmSource",

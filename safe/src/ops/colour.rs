@@ -53,6 +53,8 @@ fn default_source_space(input: &ImageBuffer) -> VipsInterpretation {
                 VIPS_INTERPRETATION_sRGB
             }
         }
+        VIPS_INTERPRETATION_B_W if input.spec.bands >= 3 => VIPS_INTERPRETATION_sRGB,
+        VIPS_INTERPRETATION_GREY16 if input.spec.bands >= 3 => VIPS_INTERPRETATION_RGB16,
         other => other,
     }
 }

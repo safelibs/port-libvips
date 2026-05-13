@@ -7,14 +7,34 @@ use std::sync::{Mutex, Once, OnceLock};
 use vips::*;
 
 unsafe extern "C" {
+    fn vips_addalpha(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
     fn vips_add(left: *mut VipsImage, right: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
     fn vips_autorot(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
     fn vips_canny(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
+    fn vips_colourspace(
+        input: *mut VipsImage,
+        out: *mut *mut VipsImage,
+        space: VipsInterpretation,
+        ...
+    ) -> i32;
     fn vips_composite(
         input: *mut *mut VipsImage,
         out: *mut *mut VipsImage,
         n: i32,
         mode: *mut VipsBlendMode,
+        ...
+    ) -> i32;
+    fn vips_composite2(
+        base: *mut VipsImage,
+        overlay: *mut VipsImage,
+        out: *mut *mut VipsImage,
+        mode: VipsBlendMode,
+        ...
+    ) -> i32;
+    fn vips_complexget(
+        input: *mut VipsImage,
+        out: *mut *mut VipsImage,
+        get: VipsOperationComplexget,
         ...
     ) -> i32;
     fn vips_find_trim(
@@ -25,7 +45,9 @@ unsafe extern "C" {
         height: *mut i32,
         ...
     ) -> i32;
+    fn vips_fwfft(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
     fn vips_hist_norm(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
+    fn vips_invfft(input: *mut VipsImage, out: *mut *mut VipsImage, ...) -> i32;
     fn vips_linear(
         input: *mut VipsImage,
         out: *mut *mut VipsImage,
@@ -563,6 +585,157 @@ fn operation_semantics_ruby_failure_regressions() {
     unref_image(canny_input);
     unref_image(autorot);
     unref_image(autorot_input);
+}
+
+#[test]
+fn operation_semantics_current_ruby_regressions() {
+    let _guard = guard();
+    init_vips();
+
+    let rgb = image_from_uchar(
+        2,
+        2,
+        3,
+        &[100, 101, 102, 110, 111, 112, 120, 121, 122, 130, 131, 132],
+    );
+    unsafe {
+        (*rgb).Type = VIPS_INTERPRETATION_sRGB;
+    }
+    let mut rgba = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_addalpha(rgb, &mut rgba, ptr::null::<c_char>()) },
+        0
+    );
+    assert_eq!(vips_image_get_width(rgba), 2);
+    assert_eq!(vips_image_get_height(rgba), 2);
+    assert_eq!(vips_image_get_bands(rgba), 4);
+    assert_eq!(vips_image_get_format(rgba), VIPS_FORMAT_UCHAR);
+    assert_eq!(
+        read_samples(rgba),
+        vec![
+            100.0, 101.0, 102.0, 255.0, 110.0, 111.0, 112.0, 255.0, 120.0, 121.0, 122.0, 255.0,
+            130.0, 131.0, 132.0, 255.0,
+        ]
+    );
+
+    let fft_input = image_from_double(8, 8, 1, &vec![100.0; 64]);
+    let mut spectrum = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_fwfft(fft_input, &mut spectrum, ptr::null::<c_char>()) },
+        0
+    );
+    assert_eq!(vips_image_get_width(spectrum), 8);
+    assert_eq!(vips_image_get_height(spectrum), 8);
+    assert_eq!(vips_image_get_bands(spectrum), 1);
+    assert_eq!(vips_image_get_format(spectrum), VIPS_FORMAT_DPCOMPLEX);
+    assert_eq!(unsafe { (*spectrum).Type }, VIPS_INTERPRETATION_FOURIER);
+
+    let mut inverse = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_invfft(spectrum, &mut inverse, ptr::null::<c_char>()) },
+        0
+    );
+    assert_eq!(vips_image_get_format(inverse), VIPS_FORMAT_DPCOMPLEX);
+    let mut real = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_complexget(
+                inverse,
+                &mut real,
+                VIPS_OPERATION_COMPLEXGET_REAL,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    for value in read_samples(real) {
+        assert!((value - 100.0).abs() < 1e-6, "fft roundtrip value {value}");
+    }
+
+    let bw_tagged_rgb = image_from_uchar(
+        2,
+        2,
+        3,
+        &[20, 200, 20, 30, 210, 30, 40, 220, 40, 50, 230, 50],
+    );
+    unsafe {
+        (*bw_tagged_rgb).Type = VIPS_INTERPRETATION_B_W;
+    }
+    let mut bw = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_colourspace(
+                bw_tagged_rgb,
+                &mut bw,
+                VIPS_INTERPRETATION_B_W,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(vips_image_get_width(bw), 2);
+    assert_eq!(vips_image_get_height(bw), 2);
+    assert_eq!(vips_image_get_bands(bw), 1);
+    assert_eq!(vips_image_get_format(bw), VIPS_FORMAT_UCHAR);
+    let bw_values = read_samples(bw);
+    assert!(bw_values.iter().all(|value| *value > 0.0 && *value < 255.0));
+
+    let base = image_from_uchar(
+        2,
+        2,
+        4,
+        &[
+            200, 50, 50, 255, 200, 50, 50, 255, 200, 50, 50, 255, 200, 50, 50, 255,
+        ],
+    );
+    let overlay = image_from_uchar(
+        2,
+        2,
+        4,
+        &[
+            50, 200, 50, 128, 50, 200, 50, 128, 50, 200, 50, 128, 50, 200, 50, 128,
+        ],
+    );
+    unsafe {
+        (*base).Type = VIPS_INTERPRETATION_sRGB;
+        (*overlay).Type = VIPS_INTERPRETATION_sRGB;
+    }
+    let mut composite = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_composite2(
+                base,
+                overlay,
+                &mut composite,
+                VIPS_BLEND_MODE_OVER,
+                c"compositing_space".as_ptr(),
+                VIPS_INTERPRETATION_sRGB,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(vips_image_get_width(composite), 2);
+    assert_eq!(vips_image_get_height(composite), 2);
+    assert_eq!(vips_image_get_bands(composite), 4);
+    assert_eq!(vips_image_get_format(composite), VIPS_FORMAT_UCHAR);
+    let composite_values = read_samples(composite);
+    assert!(composite_values[0] > 100.0 && composite_values[0] < 150.0);
+    assert!(composite_values[1] > 100.0 && composite_values[1] < 150.0);
+    assert_eq!(composite_values[2], 50.0);
+    assert_eq!(composite_values[3], 255.0);
+
+    unref_image(composite);
+    unref_image(overlay);
+    unref_image(base);
+    unref_image(bw);
+    unref_image(bw_tagged_rgb);
+    unref_image(real);
+    unref_image(inverse);
+    unref_image(spectrum);
+    unref_image(fft_input);
+    unref_image(rgba);
+    unref_image(rgb);
 }
 
 #[test]
