@@ -703,10 +703,10 @@ Result: all checks passed. The release gate included Rust tests, Meson install/p
 ## Phase 3 Operation Semantics Rerun
 
 Phase start commit: 7eb2fd1ea843d3398826d6a782bcd6e01368c5fb
-Source commit: 52104ba8808154538661ac521df133627a464365
-Source fix commits: 036a24f0988c6e4ebdd68d9730c6fdbf9467529d 38f73293498af8556e51e38e34b8f6a003de0270 52104ba8808154538661ac521df133627a464365
+Source commit: 0e1725f21039edd56db857a875b20170c24c8f0c
+Source fix commits: 036a24f0988c6e4ebdd68d9730c6fdbf9467529d 38f73293498af8556e51e38e34b8f6a003de0270 52104ba8808154538661ac521df133627a464365 0e1725f21039edd56db857a875b20170c24c8f0c
 
-Phase ID `impl_03_operation_semantics_failures` fixed the four operation-semantics failures assigned in the current Phase 1 baseline. The rerun used the existing validator checkout at `9ae971508c9381f32a531078037851d960cab61f`; no validator fetch or pull was performed. Senior-review bounces found incomplete Fourier standalone semantics and multi-band acceptance, so the final source commit tightens `fwfft` / `invfft` behavior beyond the validator roundtrip.
+Phase ID `impl_03_operation_semantics_failures` fixed the four operation-semantics failures assigned in the current Phase 1 baseline. The rerun used the existing validator checkout at `9ae971508c9381f32a531078037851d960cab61f`; no validator fetch or pull was performed. Senior-review bounces found incomplete Fourier standalone semantics and an incorrect multi-band rejection, so the final source commit tightens `fwfft` / `invfft` behavior beyond the validator roundtrip.
 
 ### Fixed Operation Cases
 
@@ -722,10 +722,10 @@ Phase ID `impl_03_operation_semantics_failures` fixed the four operation-semanti
 - Added manual C ABI wrappers for `vips_addalpha`, `vips_fwfft`, and `vips_invfft`.
 - Added operation dispatch support for `fwfft` and `invfft`, including runtime GType registration for the manually implemented operations.
 - Matched libvips Fourier semantics: `fwfft` now normalizes by image pixel count and always writes `DPCOMPLEX` Fourier output; `invfft` now writes `B_W` interpretation, with `DOUBLE` output for `real: true` and `DPCOMPLEX` otherwise.
-- Rejected multi-band `fwfft` and `invfft` inputs through the C ABI path, preserving null outputs on failure.
+- Preserved libvips multi-band behavior by processing each band plane independently and returning bandjoined Fourier/inverse results.
 - Updated `composite2` shim option parsing to accept `compositing_space` and `premultiplied` defaults used by ruby-vips.
 - Updated colourspace source inference so RGB-shaped `B_W` images can collapse to a one-band `B_W` result.
-- Added `safe/tests/ops_core.rs::operation_semantics_current_ruby_regressions`, which calls the exported C ABI path and checks dimensions, bands, format, interpretation, representative pixel values, standalone `fwfft` normalization, non-double `DPCOMPLEX` promotion, `invfft(real)` `B_W` / `DOUBLE` output, and multi-band failure/null-output behavior.
+- Added `safe/tests/ops_core.rs::operation_semantics_current_ruby_regressions`, which calls the exported C ABI path and checks dimensions, bands, format, interpretation, representative pixel values, standalone `fwfft` normalization, non-double `DPCOMPLEX` promotion, `invfft(real)` `B_W` / `DOUBLE` output, and multi-band per-band FFT behavior.
 
 Changed files in source fix commits: `safe/build_support/api_shim.c`, `safe/src/generated/operations.json`, `safe/src/generated/operations_registry.rs`, `safe/src/ops/colour.rs`, `safe/src/ops/freqfilt.rs`, `safe/src/ops/mod.rs`, `safe/src/runtime/operation.rs`, and `safe/tests/ops_core.rs`.
 
@@ -743,17 +743,17 @@ Result: passed. The second run covered `ops_core`, `ops_advanced`, `operation_re
 
 - Lock path: `validator/artifacts/libvips-safe-ops-port-lock.json`
 - Override root: `validator-overrides/libvips/`
-- Release tag: `build-52104ba88081`
-- Tag ref: `refs/tags/build-52104ba88081`
+- Release tag: `build-0e1725f21039`
+- Tag ref: `refs/tags/build-0e1725f21039`
 - Canonical validator package set: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
 - Unported original packages: `[]`
 
 | Package | Size | SHA256 | Filename |
 | --- | ---: | --- | --- |
-| `libvips42t64` | 1442264 | `19d2fb1bbd8f0a6cbcbd1e88411f929188664bd7e80557924cba70454cd3e3a3` | `libvips42t64_8.15.1-1.1build4+safelibs1778639962_amd64.deb` |
-| `libvips-dev` | 83432 | `ae0ca4c3253b127b6659c4a7d656282767ff267ae2bb6bf7bd831228c3a8aea9` | `libvips-dev_8.15.1-1.1build4+safelibs1778639962_amd64.deb` |
-| `libvips-tools` | 28062 | `d95a8c4c29a6f10fdaa6ea5f8271b28ffbb32b98fa0ef4c01ec1b7776cb42171` | `libvips-tools_8.15.1-1.1build4+safelibs1778639962_amd64.deb` |
-| `gir1.2-vips-8.0` | 5192 | `7999fee5fcc36e8b692954c4a7bafc31854f5d4056c26c00221832185457b3b2` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778639962_amd64.deb` |
+| `libvips42t64` | 1441564 | `4dbf0985815a24b6a92d616709fc21017fdac60c2ba080df27cea665e3e39537` | `libvips42t64_8.15.1-1.1build4+safelibs1778641814_amd64.deb` |
+| `libvips-dev` | 83428 | `afbc003faca71bf9ae9ee62193e83e5da12f9a72ff1c44b6a1f08dbc532448de` | `libvips-dev_8.15.1-1.1build4+safelibs1778641814_amd64.deb` |
+| `libvips-tools` | 27968 | `890aaac3ba7add806aa3d4a07d30fc6ac6b1ebf14552e9b0da5204c41bc4047b` | `libvips-tools_8.15.1-1.1build4+safelibs1778641814_amd64.deb` |
+| `gir1.2-vips-8.0` | 5196 | `51d24366e76222972bfeae4371c0a9b3044fd06fa534a4484b7474ac0edaffed` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778641814_amd64.deb` |
 
 ### Validator Rerun
 
