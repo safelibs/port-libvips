@@ -144,27 +144,6 @@ fn image_from_double(width: i32, height: i32, bands: i32, values: &[f64]) -> *mu
     )
 }
 
-fn image_from_dpcomplex(
-    width: i32,
-    height: i32,
-    bands: i32,
-    samples: &[(f64, f64)],
-) -> *mut VipsImage {
-    let mut values = Vec::with_capacity(samples.len() * 2);
-    for (real, imag) in samples {
-        values.push(*real);
-        values.push(*imag);
-    }
-    vips_image_new_from_memory_copy(
-        values.as_ptr().cast(),
-        values.len() * std::mem::size_of::<f64>(),
-        width,
-        height,
-        bands,
-        VIPS_FORMAT_DPCOMPLEX,
-    )
-}
-
 fn read_samples(image: *mut VipsImage) -> Vec<f64> {
     let format = vips_image_get_format(image);
     let mut len = 0usize;
@@ -749,29 +728,80 @@ fn operation_semantics_current_ruby_regressions() {
     }
 
     let fft_multiband = image_from_uchar(1, 1, 3, &[1, 2, 3]);
-    let mut rejected_spectrum = ptr::null_mut();
-    assert_eq!(
-        unsafe { vips_fwfft(fft_multiband, &mut rejected_spectrum, ptr::null::<c_char>()) },
-        -1
-    );
-    assert!(rejected_spectrum.is_null());
-
-    let invfft_multiband = image_from_dpcomplex(1, 1, 3, &[(1.0, 0.0), (2.0, 0.0), (3.0, 0.0)]);
-    unsafe {
-        (*invfft_multiband).Type = VIPS_INTERPRETATION_FOURIER;
-    }
-    let mut rejected_inverse = ptr::null_mut();
+    let mut multiband_spectrum = ptr::null_mut();
     assert_eq!(
         unsafe {
-            vips_invfft(
-                invfft_multiband,
-                &mut rejected_inverse,
+            vips_fwfft(
+                fft_multiband,
+                &mut multiband_spectrum,
                 ptr::null::<c_char>(),
             )
         },
-        -1
+        0
     );
-    assert!(rejected_inverse.is_null());
+    assert_eq!(vips_image_get_width(multiband_spectrum), 1);
+    assert_eq!(vips_image_get_height(multiband_spectrum), 1);
+    assert_eq!(vips_image_get_bands(multiband_spectrum), 3);
+    assert_eq!(
+        vips_image_get_format(multiband_spectrum),
+        VIPS_FORMAT_DPCOMPLEX
+    );
+    assert_eq!(
+        unsafe { (*multiband_spectrum).Type },
+        VIPS_INTERPRETATION_FOURIER
+    );
+
+    let mut multiband_spectrum_real = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_complexget(
+                multiband_spectrum,
+                &mut multiband_spectrum_real,
+                VIPS_OPERATION_COMPLEXGET_REAL,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(read_samples(multiband_spectrum_real), vec![1.0, 2.0, 3.0]);
+
+    let mut multiband_spectrum_imag = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_complexget(
+                multiband_spectrum,
+                &mut multiband_spectrum_imag,
+                VIPS_OPERATION_COMPLEXGET_IMAG,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(read_samples(multiband_spectrum_imag), vec![0.0, 0.0, 0.0]);
+
+    let mut multiband_inverse_real = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_invfft(
+                multiband_spectrum,
+                &mut multiband_inverse_real,
+                c"real".as_ptr(),
+                1i32,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(vips_image_get_bands(multiband_inverse_real), 3);
+    assert_eq!(
+        vips_image_get_format(multiband_inverse_real),
+        VIPS_FORMAT_DOUBLE
+    );
+    assert_eq!(
+        unsafe { (*multiband_inverse_real).Type },
+        VIPS_INTERPRETATION_B_W
+    );
+    assert_eq!(read_samples(multiband_inverse_real), vec![1.0, 2.0, 3.0]);
 
     let bw_tagged_rgb = image_from_uchar(
         2,
@@ -851,7 +881,10 @@ fn operation_semantics_current_ruby_regressions() {
     unref_image(base);
     unref_image(bw);
     unref_image(bw_tagged_rgb);
-    unref_image(invfft_multiband);
+    unref_image(multiband_inverse_real);
+    unref_image(multiband_spectrum_imag);
+    unref_image(multiband_spectrum_real);
+    unref_image(multiband_spectrum);
     unref_image(fft_multiband);
     unref_image(uchar_inverse_real);
     unref_image(real);
