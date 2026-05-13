@@ -1,8 +1,10 @@
 use std::mem::size_of;
 use std::sync::OnceLock;
 
-use crate::abi::image::VipsBandFormat;
-use crate::abi::image::VIPS_INTERPRETATION_FOURIER;
+use crate::abi::image::{
+    VipsBandFormat, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_DPCOMPLEX, VIPS_INTERPRETATION_B_W,
+    VIPS_INTERPRETATION_FOURIER,
+};
 use crate::abi::object::{
     VipsObject, VipsObjectClass, VIPS_ARGUMENT_CONSTRUCT, VIPS_ARGUMENT_INPUT,
 };
@@ -41,9 +43,9 @@ fn dft2(input: &[ComplexSample], width: usize, height: usize, inverse: bool) -> 
     let mut out = vec![ComplexSample::default(); width * height];
     let sign = if inverse { 1.0 } else { -1.0 };
     let norm = if inverse {
-        1.0 / (width * height).max(1) as f64
-    } else {
         1.0
+    } else {
+        1.0 / (width * height).max(1) as f64
     };
 
     for v in 0..height {
@@ -253,6 +255,7 @@ unsafe fn op_fwfft(object: *mut VipsObject) -> Result<(), ()> {
     let image = unsafe { get_image_ref(object, "in")? };
     let result = (|| {
         let (mut spec, data) = unsafe { read_complex_image(image)? };
+        spec.format = VIPS_FORMAT_DPCOMPLEX;
         spec.interpretation = VIPS_INTERPRETATION_FOURIER;
         let samples = transform_planes(spec, &data, false);
         let out = unsafe { complex_image_from_samples(spec, &samples, image)? };
@@ -269,19 +272,21 @@ unsafe fn op_invfft(object: *mut VipsObject) -> Result<(), ()> {
     let result = (|| {
         let (spec, data) = unsafe { read_complex_image(image)? };
         let samples = transform_planes(spec, &data, true);
+        let mut out_spec = spec;
+        out_spec.interpretation = VIPS_INTERPRETATION_B_W;
         let real = if unsafe { argument_assigned(object, "real").unwrap_or(false) } {
             unsafe { get_bool(object, "real")? }
         } else {
             false
         };
         if real {
-            let format = complex_component_format(spec.format).ok_or(())?;
-            let mut out = output_buffer_from_spec(spec, format);
+            let mut out = output_buffer_from_spec(out_spec, VIPS_FORMAT_DOUBLE);
             out.data = samples.into_iter().map(|sample| sample.real).collect();
             let out = out.into_image_like(image);
             unsafe { set_output_image(object, "out", out) }
         } else {
-            let out = unsafe { complex_image_from_samples(spec, &samples, image)? };
+            out_spec.format = VIPS_FORMAT_DPCOMPLEX;
+            let out = unsafe { complex_image_from_samples(out_spec, &samples, image)? };
             unsafe { set_output_image(object, "out", out) }
         }
     })();

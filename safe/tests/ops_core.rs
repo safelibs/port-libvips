@@ -630,12 +630,62 @@ fn operation_semantics_current_ruby_regressions() {
     assert_eq!(vips_image_get_format(spectrum), VIPS_FORMAT_DPCOMPLEX);
     assert_eq!(unsafe { (*spectrum).Type }, VIPS_INTERPRETATION_FOURIER);
 
+    let fft_uchar = image_from_uchar(2, 2, 1, &[10, 10, 10, 10]);
+    let mut uchar_spectrum = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_fwfft(fft_uchar, &mut uchar_spectrum, ptr::null::<c_char>()) },
+        0
+    );
+    assert_eq!(vips_image_get_format(uchar_spectrum), VIPS_FORMAT_DPCOMPLEX);
+    assert_eq!(
+        unsafe { (*uchar_spectrum).Type },
+        VIPS_INTERPRETATION_FOURIER
+    );
+
+    let mut uchar_spectrum_real = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_complexget(
+                uchar_spectrum,
+                &mut uchar_spectrum_real,
+                VIPS_OPERATION_COMPLEXGET_REAL,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    let uchar_spectrum_real_values = read_samples(uchar_spectrum_real);
+    assert!((uchar_spectrum_real_values[0] - 10.0).abs() < 1e-6);
+    for value in &uchar_spectrum_real_values[1..] {
+        assert!(value.abs() < 1e-6, "normalized fwfft residual {value}");
+    }
+
+    let mut uchar_spectrum_imag = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_complexget(
+                uchar_spectrum,
+                &mut uchar_spectrum_imag,
+                VIPS_OPERATION_COMPLEXGET_IMAG,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    for value in read_samples(uchar_spectrum_imag) {
+        assert!(
+            value.abs() < 1e-6,
+            "normalized fwfft imaginary value {value}"
+        );
+    }
+
     let mut inverse = ptr::null_mut();
     assert_eq!(
         unsafe { vips_invfft(spectrum, &mut inverse, ptr::null::<c_char>()) },
         0
     );
     assert_eq!(vips_image_get_format(inverse), VIPS_FORMAT_DPCOMPLEX);
+    assert_eq!(unsafe { (*inverse).Type }, VIPS_INTERPRETATION_B_W);
     let mut real = ptr::null_mut();
     assert_eq!(
         unsafe {
@@ -650,6 +700,31 @@ fn operation_semantics_current_ruby_regressions() {
     );
     for value in read_samples(real) {
         assert!((value - 100.0).abs() < 1e-6, "fft roundtrip value {value}");
+    }
+
+    let mut uchar_inverse_real = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_invfft(
+                uchar_spectrum,
+                &mut uchar_inverse_real,
+                c"real".as_ptr(),
+                1i32,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert_eq!(
+        vips_image_get_format(uchar_inverse_real),
+        VIPS_FORMAT_DOUBLE
+    );
+    assert_eq!(
+        unsafe { (*uchar_inverse_real).Type },
+        VIPS_INTERPRETATION_B_W
+    );
+    for value in read_samples(uchar_inverse_real) {
+        assert!((value - 10.0).abs() < 1e-6, "real invfft value {value}");
     }
 
     let bw_tagged_rgb = image_from_uchar(
@@ -730,8 +805,13 @@ fn operation_semantics_current_ruby_regressions() {
     unref_image(base);
     unref_image(bw);
     unref_image(bw_tagged_rgb);
+    unref_image(uchar_inverse_real);
     unref_image(real);
     unref_image(inverse);
+    unref_image(uchar_spectrum_imag);
+    unref_image(uchar_spectrum_real);
+    unref_image(uchar_spectrum);
+    unref_image(fft_uchar);
     unref_image(spectrum);
     unref_image(fft_input);
     unref_image(rgba);
