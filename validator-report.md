@@ -458,6 +458,88 @@ Remaining failures are non-phase-3 failures assigned to `impl_04_foreign_io_medi
 
 ## Phase 4 Foreign I/O And Media Rerun
 
+Phase start commit: 1e23d5f78e260fad42f35bd76f3bf5b9ed63dc13
+Source commit: 1e23d5f78e260fad42f35bd76f3bf5b9ed63dc13
+Source fix commits: none
+
+The active Phase 1 baseline assigns zero failures to `impl_04_foreign_io_media_failures`, so this phase made no `safe/**` loader, saver, buffer, source, target, thumbnail, CLI, or media materialization edits. The full rerun artifact is `validator/artifacts/libvips-safe-foreign/`, generated with the existing validator checkout at `9ae971508c9381f32a531078037851d960cab61f`; no validator fetch or pull was performed.
+
+### Zero-Owned-Failure Decision
+
+- Phase ID: `impl_04_foreign_io_media_failures`
+- Baseline owned failures: `0`
+- Fixed testcase IDs: none
+- Media paths fixed: none; the active baseline has no foreign I/O or media failures assigned to this phase
+- Regression tests added: none; existing runtime/media tests were rerun
+- Changed files intended for commit: `validator-report.md`
+
+### Focused Test Coverage
+
+```bash
+cd /home/yans/safelibs/pipeline/ports/port-libvips/safe
+cargo test --all-features --test runtime_io --test threading --test security -- --nocapture
+rm -rf build-validator-foreign
+meson setup build-validator-foreign . --prefix "$PWD/.tmp/validator-foreign-prefix"
+meson compile -C build-validator-foreign
+tests/upstream/run-shell-suite.sh build-validator-foreign
+tests/upstream/run-fuzz-suite.sh build-validator-foreign
+```
+
+Result: passed.
+
+### Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-foreign-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Build output root: `dist/`
+- Port commit used for synthetic release tag: `1e23d5f78e260fad42f35bd76f3bf5b9ed63dc13`
+- Release tag: `build-1e23d5f78e26`
+- Tag ref: `refs/tags/build-1e23d5f78e26`
+- Unported original packages: `[]`
+
+| Package | Architecture | Size | SHA256 | Filename |
+| --- | --- | ---: | --- | --- |
+| `libvips42t64` | `amd64` | 1441984 | `c1aca381fbac50366a17f047f2d2ad0beac5d9686e8ad9d1f472bae1338de9fa` | `libvips42t64_8.15.1-1.1build4+safelibs1778643169_amd64.deb` |
+| `libvips-dev` | `amd64` | 83406 | `d4c24c0164c5973975bc13393e88c832fe4a7baa2e6510a35dff8bbbd5c55b1c` | `libvips-dev_8.15.1-1.1build4+safelibs1778643169_amd64.deb` |
+| `libvips-tools` | `amd64` | 27974 | `440ae12b88dd01fd06e6daea130c0a27f9c6bc453ab8078e7ee2132d4684cc19` | `libvips-tools_8.15.1-1.1build4+safelibs1778643169_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5190 | `f12a6ba92f12b8df22718d3266d07f75bc7d35b1c8ea9e52bd085f23f843d35f` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778643169_amd64.deb` |
+
+### Validator Rerun
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash "$ROOT/validator/test.sh" \
+  --config "$ROOT/validator/repositories.yml" \
+  --tests-root "$ROOT/validator/tests" \
+  --artifact-root "$ROOT/validator/artifacts/libvips-safe-foreign" \
+  --mode port \
+  --library libvips \
+  --override-deb-root "$ROOT/validator-overrides" \
+  --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-foreign-port-lock.json" \
+  --record-casts
+```
+
+- Artifact root: `validator/artifacts/libvips-safe-foreign/`
+- Matrix exit code: `0`
+- Matrix exit path: `validator/artifacts/libvips-safe-foreign/matrix-exit-code.txt`
+- Summary path: `validator/artifacts/libvips-safe-foreign/port/results/libvips/summary.json`
+- Cases: `249`
+- Source cases: `5`
+- Usage cases: `240`
+- Regression cases: `4`
+- Passed: `248`
+- Failed: `1`
+- Casts recorded: `249`
+- Override debs installed for every testcase result: `true`
+- Port deb packages for every testcase result: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- Unported original packages for every testcase result: `[]`
+- Baseline `impl_04_foreign_io_media_failures` cases passed: zero owned; not applicable
+- Remaining failures: `cve-2026-3284` remains failed and is assigned to `impl_05_packaging_container_remaining_failures` in the active baseline.
+
+Post-run checks passed for canonical package order, lock SHA256/size matches under `validator-overrides/libvips/`, per-testcase `override_debs_installed is true`, and per-testcase `unported_original_packages == []`.
+
+## Historical Evidence - Phase 4 Foreign I/O And Media Rerun (pre-current-validator-zero-owned)
+
 Phase ID `impl_04_foreign_io_media_failures` fixed all baseline failures assigned to foreign I/O and media materialization. The full rerun artifact is `validator/artifacts/libvips-safe-foreign/`, generated with the existing validator checkout at `87b321fe728340d6fc6dd2f638583cca82c667c3`; no validator fetch or pull was performed.
 
 ### Fixed Media Paths
