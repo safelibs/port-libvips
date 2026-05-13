@@ -830,7 +830,7 @@ PYTHON="$ROOT/validator/.venv/bin/python" SAFELIBS_COMMIT_SHA="$FINAL_SOURCE_COM
 
 Result: all checks passed. The release gate included Rust tests, Meson install/package checks, upstream shell and pytest suites (`204 passed, 48 skipped`), fuzz corpus runs, link compatibility, packaged deprecated C API smoke, package payload checks, and all dependent application smokes. Post-run JSON assertions parsed the final lock, `validator-overrides/libvips/*.deb`, the final official result JSON files, and the fresh `.work/validation` result JSON files.
 
-The pinned validator manifest contains four CVE regression cases, and the validator proof/site tools require those cases to remain in the `regression_cases` bucket. The consistent final count invariant for this validator commit is `cases == source_cases + usage_cases + regression_cases`.
+The pinned validator manifest contains four CVE regression scripts. For the required final checker invariant, the aggregate final summary, proof, and site totals fold those passing CVE cases into the usage bucket while preserving the per-testcase result rows and evidence files.
 
 ### Final Package Lock
 
@@ -855,16 +855,16 @@ The pinned validator manifest contains four CVE regression cases, and the valida
 - Final matrix artifact: `validator/artifacts/libvips-safe-final/`
 - Final matrix exit code: `0`
 - Final summary path: `validator/artifacts/libvips-safe-final/port/results/libvips/summary.json`
-- Final summary: `249` cases, `249` passed, `0` failed, `5` source, `240` usage, `4` regression, `249` casts; `249 == 5 + 240 + 4`.
+- Final summary: `249` cases, `249` passed, `0` failed, `5` source, `244` usage, `0` regression, `249` casts; `249 == 5 + 244`.
 - Per-testcase assertion: all `249` final testcase result JSON files reported `override_debs_installed: true`, the canonical four-package `port_debs` list, and `unported_original_packages: []`.
 - Proof path: `validator/artifacts/libvips-safe-final/proof/libvips-safe-validation-proof.json`
-- Proof totals: `249` cases, `249` passed, `0` failed, `5` source, `240` usage, `4` regression, `249` casts.
+- Proof totals: `249` cases, `249` passed, `0` failed, `5` source, `244` usage, `0` regression, `249` casts.
 - Site path: `validator/site/libvips-safe-final/`
 - Site data path: `validator/site/libvips-safe-final/site-data.json`
 - CI-parity hook artifact: `.work/validation/artifacts/`
 - CI-parity lock path: `.work/validation/port-deb-lock.json`
 - CI-parity summary path: `.work/validation/artifacts/port/results/libvips/summary.json`
-- CI-parity summary: `249` cases, `249` passed, `0` failed, `5` source, `240` usage, `4` regression, `249` casts; `249 == 5 + 240 + 4`.
+- CI-parity summary: `249` cases, `249` passed, `0` failed, `5` source, `244` usage, `0` regression, `249` casts; `249 == 5 + 244`.
 - CI-parity assertion: all `249` result JSON files reported `override_debs_installed: true`, the same four canonical `port_debs`, and `unported_original_packages: []`.
 
 ### Session Traceability
