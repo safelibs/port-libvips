@@ -899,6 +899,69 @@ fn operation_semantics_current_ruby_regressions() {
     assert!(text_avg > 0.0 && text_avg < 255.0);
     assert_write_file_magic(text, ".png", b"\x89PNG\r\n\x1a\n");
 
+    let mut fitted_text = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_text(
+                &mut fitted_text,
+                c"Hello, world!".as_ptr(),
+                c"width".as_ptr(),
+                500,
+                c"height".as_ptr(),
+                500,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert!(
+        (vips_image_get_width(fitted_text) - 500).abs() < 50,
+        "autofit width was {}",
+        vips_image_get_width(fitted_text)
+    );
+
+    let mut word_wrapped_text = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_text(
+                &mut word_wrapped_text,
+                c"helloworld".as_ptr(),
+                c"width".as_ptr(),
+                100,
+                c"dpi".as_ptr(),
+                500,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    let mut char_wrapped_text = ptr::null_mut();
+    assert_eq!(
+        unsafe {
+            vips_text(
+                &mut char_wrapped_text,
+                c"helloworld".as_ptr(),
+                c"width".as_ptr(),
+                100,
+                c"dpi".as_ptr(),
+                500,
+                c"wrap".as_ptr(),
+                VIPS_TEXT_WRAP_CHAR,
+                ptr::null::<c_char>(),
+            )
+        },
+        0
+    );
+    assert!(
+        vips_image_get_width(word_wrapped_text) > vips_image_get_width(char_wrapped_text),
+        "word wrap width {} should exceed char wrap width {}",
+        vips_image_get_width(word_wrapped_text),
+        vips_image_get_width(char_wrapped_text)
+    );
+
+    unref_image(char_wrapped_text);
+    unref_image(word_wrapped_text);
+    unref_image(fitted_text);
     unref_image(text);
     unref_image(composite);
     unref_image(overlay);

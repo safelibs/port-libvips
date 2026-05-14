@@ -1,6 +1,9 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::abi::basic::{VipsPrecision, VIPS_PRECISION_FLOAT, VIPS_PRECISION_INTEGER};
+use crate::abi::basic::{
+    VipsPrecision, VIPS_PRECISION_FLOAT, VIPS_PRECISION_INTEGER, VIPS_TEXT_WRAP_CHAR,
+    VIPS_TEXT_WRAP_NONE, VIPS_TEXT_WRAP_WORD_CHAR,
+};
 use crate::abi::image::{
     VIPS_INTERPRETATION_sRGB, VIPS_DEMAND_STYLE_THINSTRIP, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT,
     VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_FOURIER,
@@ -198,13 +201,195 @@ fn text_lines(text: &str) -> Vec<&str> {
     }
 }
 
+fn text_char_advance(ch: char, char_width: usize) -> usize {
+    if ch.is_whitespace() {
+        (char_width / 2).max(1)
+    } else {
+        char_width
+    }
+}
+
+fn text_line_width(line: &str, char_width: usize) -> usize {
+    line.chars()
+        .map(|ch| text_char_advance(ch, char_width))
+        .sum()
+}
+
+fn wrap_chars(line: &str, max_width: usize, char_width: usize) -> Vec<String> {
+    let mut wrapped = Vec::new();
+    let mut current = String::new();
+    let mut current_width = 0usize;
+
+    for ch in line.chars() {
+        let advance = text_char_advance(ch, char_width);
+        if current_width > 0 && current_width.saturating_add(advance) > max_width {
+            wrapped.push(current);
+            current = String::new();
+            current_width = 0;
+        }
+        current.push(ch);
+        current_width = current_width.saturating_add(advance);
+    }
+
+    if !current.is_empty() || wrapped.is_empty() {
+        wrapped.push(current);
+    }
+    wrapped
+}
+
+fn wrap_words(
+    line: &str,
+    max_width: usize,
+    char_width: usize,
+    split_long_words: bool,
+) -> Vec<String> {
+    let mut wrapped = Vec::new();
+    let mut current = String::new();
+    let mut current_width = 0usize;
+    let space_width = text_char_advance(' ', char_width);
+
+    for word in line.split_whitespace() {
+        let word_width = text_line_width(word, char_width);
+        if current.is_empty() {
+            if split_long_words && word_width > max_width {
+                wrapped.extend(wrap_chars(word, max_width, char_width));
+            } else {
+                current.push_str(word);
+                current_width = word_width;
+            }
+            continue;
+        }
+
+        let next_width = current_width
+            .saturating_add(space_width)
+            .saturating_add(word_width);
+        if next_width <= max_width {
+            current.push(' ');
+            current.push_str(word);
+            current_width = next_width;
+            continue;
+        }
+
+        wrapped.push(current);
+        current = String::new();
+        current_width = 0;
+        if split_long_words && word_width > max_width {
+            wrapped.extend(wrap_chars(word, max_width, char_width));
+        } else {
+            current.push_str(word);
+            current_width = word_width;
+        }
+    }
+
+    if !current.is_empty() || wrapped.is_empty() {
+        wrapped.push(current);
+    }
+    wrapped
+}
+
+fn text_layout_lines(text: &str, char_width: usize, width_limit: usize, wrap: i32) -> Vec<String> {
+    let max_content_width = width_limit.saturating_sub(4).max(1);
+    let mut lines = Vec::new();
+    for line in text_lines(text) {
+        if width_limit == 0 || wrap == VIPS_TEXT_WRAP_NONE {
+            lines.push(line.to_owned());
+        } else if wrap == VIPS_TEXT_WRAP_CHAR {
+            lines.extend(wrap_chars(line, max_content_width, char_width));
+        } else {
+            lines.extend(wrap_words(
+                line,
+                max_content_width,
+                char_width,
+                wrap == VIPS_TEXT_WRAP_WORD_CHAR,
+            ));
+        }
+    }
+    lines
+}
+
+fn text_dimensions(
+    lines: &[String],
+    char_width: usize,
+    glyph_height: usize,
+    line_gap: usize,
+) -> Option<(usize, usize)> {
+    let content_width = lines
+        .iter()
+        .map(|line| text_line_width(line, char_width))
+        .max()
+        .unwrap_or(0);
+    if content_width == 0 {
+        return None;
+    }
+
+    let width = content_width.checked_add(4)?;
+    let line_count = lines.len().max(1);
+    let height = line_count
+        .checked_mul(glyph_height)?
+        .checked_add(line_count.saturating_sub(1).checked_mul(line_gap)?)?
+        .checked_add(4)?;
+    Some((width, height))
+}
+
+fn text_metrics(font_size: f64, dpi: i32) -> (usize, usize) {
+    let scale = dpi.max(1) as f64 / 72.0;
+    let char_width = ((font_size * scale * 0.62).ceil() as usize).max(4);
+    let glyph_height = ((font_size * scale * 1.25).ceil() as usize).max(8);
+    (char_width, glyph_height)
+}
+
+fn text_layout_for_dpi(
+    text: &str,
+    font_size: f64,
+    dpi: i32,
+    line_gap: usize,
+    width_limit: usize,
+    wrap: i32,
+) -> Option<(Vec<String>, usize, usize, usize, usize)> {
+    let (char_width, glyph_height) = text_metrics(font_size, dpi);
+    let lines = text_layout_lines(text, char_width, width_limit, wrap);
+    let (width, height) = text_dimensions(&lines, char_width, glyph_height, line_gap)?;
+    Some((lines, width, height, char_width, glyph_height))
+}
+
+fn text_autofit_dpi(
+    text: &str,
+    font_size: f64,
+    line_gap: usize,
+    width_limit: usize,
+    height_limit: usize,
+    wrap: i32,
+) -> i32 {
+    let mut low = 1i32;
+    let mut high = 10_000i32;
+    let mut best = 1i32;
+
+    while low <= high {
+        let dpi = low + (high - low) / 2;
+        let Some((_, width, height, _, _)) =
+            text_layout_for_dpi(text, font_size, dpi, line_gap, width_limit, wrap)
+        else {
+            break;
+        };
+        if width <= width_limit && height <= height_limit {
+            best = dpi;
+            low = dpi.saturating_add(1);
+        } else {
+            high = dpi.saturating_sub(1);
+        }
+    }
+
+    best
+}
+
 unsafe fn op_text(object: *mut VipsObject) -> Result<(), ()> {
     let text = unsafe { get_string(object, "text")? }.ok_or(())?;
     if text.is_empty() {
         return Err(());
     }
 
-    let dpi = if unsafe { argument_assigned(object, "dpi")? } {
+    let dpi_assigned = unsafe { argument_assigned(object, "dpi")? };
+    let mut dpi = if dpi_assigned {
         unsafe { get_int(object, "dpi")? }.max(1)
     } else {
         72
@@ -215,41 +400,11 @@ unsafe fn op_text(object: *mut VipsObject) -> Result<(), ()> {
         None
     };
     let font_size = parsed_font_size(font.as_deref());
-    let scale = dpi as f64 / 72.0;
-    let char_width = ((font_size * scale * 0.62).ceil() as usize).max(4);
-    let glyph_height = ((font_size * scale * 1.25).ceil() as usize).max(8);
     let line_gap = if unsafe { argument_assigned(object, "spacing")? } {
         unsafe { get_int(object, "spacing")? }.max(0) as usize
     } else {
         0
     };
-
-    let lines = text_lines(&text);
-    let content_width = lines
-        .iter()
-        .map(|line| {
-            line.chars()
-                .map(|ch| {
-                    if ch.is_whitespace() {
-                        char_width / 2
-                    } else {
-                        char_width
-                    }
-                })
-                .sum::<usize>()
-        })
-        .max()
-        .unwrap_or(0);
-    if content_width == 0 {
-        return Err(());
-    }
-
-    let natural_width = content_width.checked_add(4).ok_or(())?;
-    let natural_height = lines
-        .len()
-        .checked_mul(glyph_height.checked_add(line_gap).ok_or(())?)
-        .and_then(|height| height.checked_add(4))
-        .ok_or(())?;
     let width_limit = if unsafe { argument_assigned(object, "width")? } {
         usize::try_from(unsafe { get_int(object, "width")? }).map_err(|_| ())?
     } else {
@@ -260,16 +415,16 @@ unsafe fn op_text(object: *mut VipsObject) -> Result<(), ()> {
     } else {
         0
     };
-    let width = if width_limit > 0 {
-        natural_width.min(width_limit).max(1)
+    let wrap = if unsafe { argument_assigned(object, "wrap")? } {
+        unsafe { get_enum(object, "wrap")? }
     } else {
-        natural_width
+        crate::abi::basic::VIPS_TEXT_WRAP_WORD
     };
-    let height = if height_limit > 0 {
-        natural_height.min(height_limit).max(1)
-    } else {
-        natural_height
-    };
+    if width_limit > 0 && height_limit > 0 && !dpi_assigned {
+        dpi = text_autofit_dpi(&text, font_size, line_gap, width_limit, height_limit, wrap);
+    }
+    let (lines, width, height, char_width, glyph_height) =
+        text_layout_for_dpi(&text, font_size, dpi, line_gap, width_limit, wrap).ok_or(())?;
     let rgba =
         unsafe { argument_assigned(object, "rgba")? } && unsafe { get_bool(object, "rgba")? };
 
