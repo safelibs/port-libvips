@@ -886,7 +886,7 @@ fn operation_semantics_current_ruby_regressions() {
     assert!(vips_image_get_height(text) > 0);
     assert_eq!(vips_image_get_bands(text), 1);
     assert_eq!(vips_image_get_format(text), VIPS_FORMAT_UCHAR);
-    assert_eq!(unsafe { (*text).Type }, VIPS_INTERPRETATION_B_W);
+    assert_eq!(unsafe { (*text).Type }, VIPS_INTERPRETATION_MULTIBAND);
     let text_values = read_samples(text);
     let text_min = text_values.iter().copied().fold(f64::INFINITY, f64::min);
     let text_max = text_values

@@ -3,9 +3,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::abi::basic::{VipsPrecision, VIPS_PRECISION_FLOAT, VIPS_PRECISION_INTEGER};
 use crate::abi::image::{
     VIPS_INTERPRETATION_sRGB, VIPS_DEMAND_STYLE_THINSTRIP, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT,
-    VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_B_W,
-    VIPS_INTERPRETATION_FOURIER, VIPS_INTERPRETATION_HISTOGRAM, VIPS_INTERPRETATION_MULTIBAND,
-    VIPS_INTERPRETATION_XYZ,
+    VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_FOURIER,
+    VIPS_INTERPRETATION_HISTOGRAM, VIPS_INTERPRETATION_MULTIBAND, VIPS_INTERPRETATION_XYZ,
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::kernel::{gaussian_kernel, log_kernel};
@@ -283,7 +282,7 @@ unsafe fn op_text(object: *mut VipsObject) -> Result<(), ()> {
         if rgba {
             VIPS_INTERPRETATION_sRGB
         } else {
-            VIPS_INTERPRETATION_B_W
+            VIPS_INTERPRETATION_MULTIBAND
         },
     );
     out.spec.xres = dpi as f64 / 25.4;
