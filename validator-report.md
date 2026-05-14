@@ -318,6 +318,99 @@ PYTHON="$ROOT/validator/.venv/bin/python" RECORD_CASTS=1 bash test.sh \
 The first local build attempted to produce a source package after generating binary build products under `safe/build-validator-source/`; `scripts/build-debs.sh` was narrowed to `dpkg-buildpackage -us -uc -b` so the hook matches the port contract and emits binary package artifacts only.
 
 ## Phase 2 Source API Surface Rerun
+Phase start commit: 4dfa13309913db4b2a85b45b883c8c01a615f974
+Source commit: 4dfa13309913db4b2a85b45b883c8c01a615f974
+Source fix commits: none
+
+Baseline classification assigned zero failures to `impl_02_source_api_surface_failures`, so this phase made no `safe/**` source, header, ABI, Meson, pkg-config, GIR, or Debian packaging edits. The focused source/API tests passed, and all five source-facing validator cases passed in the current full rerun.
+
+### Zero-Owned-Failure Decision
+
+- Phase ID: `impl_02_source_api_surface_failures`
+- Baseline owned failures: `0`
+- Fixed testcase IDs: none
+- Regression tests added: none; no phase-owned failure existed to regress
+- Changed files intended for commit: `validator-report.md`
+- Validator checkout commit used: `d1c08d01cd50b34a7aeb62c5630e28df0eb6cd97`
+- Port commit used for synthetic release tag and package lock: `4dfa13309913db4b2a85b45b883c8c01a615f974`
+- Release tag: `build-4dfa13309913`
+- Tag ref: `refs/tags/build-4dfa13309913`
+
+### Focused Source-Surface Tests
+
+```bash
+bash scripts/check-layout.sh
+cd safe && cargo test --all-features --test abi_layout --test init_version_smoke --test operation_registry --test runtime_io -- --nocapture
+```
+
+Result: passed. The Cargo test run covered `abi_layout`, `init_version_smoke`, `operation_registry`, and `runtime_io`; all 25 Rust tests passed.
+
+### Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-source-api-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Build output root: `dist/`
+- Canonical validator package set: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- Unported original packages: `[]`
+
+| Package | Architecture | Size | SHA256 | Filename |
+| --- | --- | ---: | --- | --- |
+| `libvips42t64` | `amd64` | 1436354 | `6b946314ce96a6056c08860c4ea78938dd82969d8a661d932718813da31c5dc2` | `libvips42t64_8.15.1-1.1build4+safelibs1778733646_amd64.deb` |
+| `libvips-dev` | `amd64` | 83402 | `a732ce2944db2fb80c786d3f7048b5a7bda64ef976ad8c68f8df29e02976718b` | `libvips-dev_8.15.1-1.1build4+safelibs1778733646_amd64.deb` |
+| `libvips-tools` | `amd64` | 27936 | `2edc23e2a326238fdf3ec4d9b242dd672715bcfb7e1cdc3489fb2e9a535e5d4a` | `libvips-tools_8.15.1-1.1build4+safelibs1778733646_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5192 | `37d2453ea5e9af57ae8af66416c7442b33a3a33e19b549abcd96a46afa8bcafa` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778733646_amd64.deb` |
+
+### Validator Rerun
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+PYTHON="$ROOT/validator/.venv/bin/python" bash "$ROOT/validator/test.sh" \
+  --config "$ROOT/validator/repositories.yml" \
+  --tests-root "$ROOT/validator/tests" \
+  --artifact-root "$ROOT/validator/artifacts/libvips-safe-source-api" \
+  --mode port \
+  --library libvips \
+  --override-deb-root "$ROOT/validator-overrides" \
+  --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-source-api-port-lock.json" \
+  --record-casts
+```
+
+- Artifact root: `validator/artifacts/libvips-safe-source-api/`
+- Matrix exit code: `0`
+- Validator status path: `validator/artifacts/libvips-safe-source-api/validator-exit-status.txt`
+- Package-completeness status path: `validator/artifacts/libvips-safe-source-api/package-completeness-status.txt`
+- Summary path: `validator/artifacts/libvips-safe-source-api/port/results/libvips/summary.json`
+- Passed: `258`
+- Failed: `1`
+- Source cases: `5`
+- Usage cases: `250`
+- Regression cases: `4`
+- Total cases: `259`
+- Casts recorded: `259`
+- Override debs installed for every testcase result: `true`
+- Port deb packages for every testcase result: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- Unported original packages for every testcase result: `[]`
+- Artifact integrity check: passed with `cases == source_cases + usage_cases + regression_cases` and `casts == cases`.
+
+Source-facing testcase statuses:
+
+| Testcase ID | Status |
+| --- | --- |
+| `c-api-compile-smoke` | `passed` |
+| `gir-introspection-smoke` | `passed` |
+| `metadata-header-checks` | `passed` |
+| `thumbnail-behavior` | `passed` |
+| `vips-cli-load-save` | `passed` |
+
+Active Phase 1 baseline failures are gone in this rerun: `cve-2026-3284`, `usage-ruby-vips-r11-add-alpha-three-to-four-bands`, `usage-ruby-vips-r11-fwfft-invfft-roundtrip`, `usage-ruby-vips-r12-colourspace-srgb-to-bw-one-band`, and `usage-ruby-vips-r12-composite-over-yields-input-bands` all passed.
+
+Remaining failed testcase ID:
+
+| Testcase ID | Kind | Assigned later owner | Log path |
+| --- | --- | --- | --- |
+| `usage-ruby-vips-r16-text-hello-image-has-positive-width` | `usage` | `impl_03_operation_semantics_failures` | `validator/artifacts/libvips-safe-source-api/port/logs/libvips/usage-ruby-vips-r16-text-hello-image-has-positive-width.log` |
+
+## Historical Evidence - Phase 2 Source API Surface Rerun (pre-current-4dfa133)
 
 Phase start commit: e9cddc1360a86d67102f8a809d8da5cb74b73fbb
 Source commit: e9cddc1360a86d67102f8a809d8da5cb74b73fbb
