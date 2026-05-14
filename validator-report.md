@@ -1169,6 +1169,68 @@ PY
 
 ## Final Clean Run
 
+Final validator commit: d1c08d01cd50b34a7aeb62c5630e28df0eb6cd97
+Final source commit: dae3a854aaa9c249c4c7e78ba2a36cdecb02cf42
+
+Phase ID `impl_06_final_clean_run_report` produced the final clean evidence set for `libvips`. No source, test, script, packaging, or tracked validator files were edited in this phase; the only tracked phase edit is this report update. The validator checkout was checked clean before and after the direct matrix, proof/site commands, and CI-parity hook.
+
+### Final Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-final-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Build output root: `dist/`
+- Commit: `dae3a854aaa9c249c4c7e78ba2a36cdecb02cf42`
+- Tag ref: `refs/tags/build-dae3a854aaa9`
+- Release tag: `build-dae3a854aaa9`
+- Canonical packages ported: `4 / 4`
+- Unported original packages: `[]`
+
+| Package | Architecture | Size | SHA256 | Filename |
+| --- | --- | ---: | --- | --- |
+| `libvips42t64` | `amd64` | 1444912 | `56359f083ab688dcd8faeb35ba6857f7bde989103b5dd31b8d3b9c33ab723704` | `libvips42t64_8.15.1-1.1build4+safelibs1778744718_amd64.deb` |
+| `libvips-dev` | `amd64` | 83398 | `64bd893861be04006de3b416844337d838de8d0e119ab9a60f00cb9022fb34ab` | `libvips-dev_8.15.1-1.1build4+safelibs1778744718_amd64.deb` |
+| `libvips-tools` | `amd64` | 27938 | `29a46d696900bf63cf2fdb5ab19dedff24fabc27f1baa801c904aaee8d223d84` | `libvips-tools_8.15.1-1.1build4+safelibs1778744718_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5196 | `0c3051bc33d51be6f7ca2e3326233962649dd78d81f70a97d1bf109cfffea255` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778744718_amd64.deb` |
+
+### Final Validator Evidence
+
+- Final matrix artifact: `validator/artifacts/libvips-safe-final/`
+- Final matrix exit status path: `validator/artifacts/libvips-safe-final/validator-exit-status.txt`
+- Final matrix exit code: `0`
+- Final summary path: `validator/artifacts/libvips-safe-final/port/results/libvips/summary.json`
+- Final summary: `259` cases, `259` passed, `0` failed, `5` source, `250` usage, `4` regression, `259` casts; `casts == cases`.
+- Per-testcase assertion: every final testcase result reported `override_debs_installed: true`, canonical package order `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`, and `unported_original_packages: []`.
+- Approved validator-bug skips: none.
+- Preserved unmodified failure artifact: not applicable.
+- Remaining failures: none.
+
+### Proof And Site
+
+- Proof path: `validator/artifacts/libvips-safe-final/proof/port-validation-proof.json`
+- Proof inventory thresholds: `5` source, `250` usage, `4` regression, `259` total.
+- Site path: `validator/site/libvips-safe-final/`
+- Site data path: `validator/site/libvips-safe-final/site-data.json`
+- Site verification: passed with `validator/scripts/verify-site.sh`.
+
+### CI Parity
+
+- CI-parity artifact root: `.work/validation/artifacts/`
+- CI-parity lock path: `.work/validation/port-deb-lock.json`
+- CI-parity exit status path: `.work/validation/validator-exit-status.txt`
+- CI-parity exit code: `0`
+- CI-parity summary path: `.work/validation/artifacts/port/results/libvips/summary.json`
+- CI-parity summary: `259` cases, `259` passed, `0` failed, `5` source, `250` usage, `4` regression, `259` casts; `casts == cases`.
+- CI-parity assertion: every result reported the same final source commit, the same four canonical packages in order, `override_debs_installed: true`, and `unported_original_packages: []`.
+
+### Validator Cleanliness
+
+- Real validator checkout: `d1c08d01cd50b34a7aeb62c5630e28df0eb6cd97`
+- Tracked validator status before/after matrix, proof/site, and CI-parity: clean with `git -C validator status --porcelain --untracked-files=no`.
+- Transient adjusted validator: not used.
+- Approved skip manifest: not present.
+
+## Historical Evidence - impl_06_final_clean_run_report - Final Clean Run - 69f4e6525a88
+
 Phase ID `impl_06_final_clean_run_and_report` produced the final unmodified clean evidence set for `libvips`. The validator checkout was not fetched or pulled and remained clean at the Phase 1 commit, matching `origin/main`. The same safe source commit was used for the final package build, lock synthesis, validator matrix, proof generation, site render, and CI-parity validation hook.
 
 Final validator commit: 9ae971508c9381f32a531078037851d960cab61f
