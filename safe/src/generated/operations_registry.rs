@@ -15634,7 +15634,7 @@ static OPERATION_VIPSSYSTEM: GeneratedOperationMetadata = GeneratedOperationMeta
 
 static OPERATION_VIPSTEXT: GeneratedOperationMetadata = GeneratedOperationMetadata {
     flags: 0,
-    supported: false,
+    supported: true,
     arguments: &[&ARGS_VIPSTEXT_TEXT, &ARGS_VIPSTEXT_FONT, &ARGS_VIPSTEXT_WIDTH, &ARGS_VIPSTEXT_HEIGHT, &ARGS_VIPSTEXT_ALIGN, &ARGS_VIPSTEXT_JUSTIFY, &ARGS_VIPSTEXT_DPI, &ARGS_VIPSTEXT_AUTOFIT_DPI, &ARGS_VIPSTEXT_SPACING, &ARGS_VIPSTEXT_FONTFILE, &ARGS_VIPSTEXT_RGBA, &ARGS_VIPSTEXT_WRAP],
     wrapper_function: Some("vips_text"),
 };

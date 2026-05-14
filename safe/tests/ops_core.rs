@@ -104,6 +104,7 @@ unsafe extern "C" {
         round: VipsOperationRound,
         ...
     ) -> i32;
+    fn vips_text(out: *mut *mut VipsImage, text: *const c_char, ...) -> i32;
     fn vips_image_write_to_file(image: *mut VipsImage, name: *const c_char, ...) -> i32;
 }
 
@@ -876,6 +877,29 @@ fn operation_semantics_current_ruby_regressions() {
     assert_eq!(composite_values[2], 50.0);
     assert_eq!(composite_values[3], 255.0);
 
+    let mut text = ptr::null_mut();
+    assert_eq!(
+        unsafe { vips_text(&mut text, c"Hello".as_ptr(), ptr::null::<c_char>()) },
+        0
+    );
+    assert!(vips_image_get_width(text) > 0);
+    assert!(vips_image_get_height(text) > 0);
+    assert_eq!(vips_image_get_bands(text), 1);
+    assert_eq!(vips_image_get_format(text), VIPS_FORMAT_UCHAR);
+    assert_eq!(unsafe { (*text).Type }, VIPS_INTERPRETATION_B_W);
+    let text_values = read_samples(text);
+    let text_min = text_values.iter().copied().fold(f64::INFINITY, f64::min);
+    let text_max = text_values
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
+    let text_avg = text_values.iter().sum::<f64>() / text_values.len() as f64;
+    assert_eq!(text_min, 0.0);
+    assert_eq!(text_max, 255.0);
+    assert!(text_avg > 0.0 && text_avg < 255.0);
+    assert_write_file_magic(text, ".png", b"\x89PNG\r\n\x1a\n");
+
+    unref_image(text);
     unref_image(composite);
     unref_image(overlay);
     unref_image(base);

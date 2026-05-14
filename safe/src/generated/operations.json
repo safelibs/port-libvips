@@ -32457,7 +32457,7 @@
       "nickname": "text",
       "parent": "VipsCreate",
       "source_file": "original/libvips/create/text.c",
-      "supported": false,
+      "supported": true,
       "type_name": "VipsText",
       "wrapper": {
         "function": "vips_text",

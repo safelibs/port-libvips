@@ -2,16 +2,18 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::abi::basic::{VipsPrecision, VIPS_PRECISION_FLOAT, VIPS_PRECISION_INTEGER};
 use crate::abi::image::{
-    VIPS_DEMAND_STYLE_THINSTRIP, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT, VIPS_FORMAT_UCHAR,
-    VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_FOURIER,
-    VIPS_INTERPRETATION_HISTOGRAM, VIPS_INTERPRETATION_MULTIBAND, VIPS_INTERPRETATION_XYZ,
+    VIPS_INTERPRETATION_sRGB, VIPS_DEMAND_STYLE_THINSTRIP, VIPS_FORMAT_DOUBLE, VIPS_FORMAT_FLOAT,
+    VIPS_FORMAT_UCHAR, VIPS_FORMAT_UINT, VIPS_FORMAT_USHORT, VIPS_INTERPRETATION_B_W,
+    VIPS_INTERPRETATION_FOURIER, VIPS_INTERPRETATION_HISTOGRAM, VIPS_INTERPRETATION_MULTIBAND,
+    VIPS_INTERPRETATION_XYZ,
 };
 use crate::abi::object::VipsObject;
 use crate::pixels::kernel::{gaussian_kernel, log_kernel};
 use crate::pixels::ImageBuffer;
 
 use super::{
-    argument_assigned, get_bool, get_double, get_enum, get_image_buffer, get_int, set_output_image,
+    argument_assigned, get_bool, get_double, get_enum, get_image_buffer, get_int, get_string,
+    set_output_image, set_output_int,
 };
 
 fn blank(width: usize, height: usize, bands: usize) -> ImageBuffer {
@@ -175,6 +177,161 @@ unsafe fn op_xyz(object: *mut VipsObject) -> Result<(), ()> {
             }
         }
     }
+    unsafe { set_output_image(object, "out", out.to_image()) }
+}
+
+fn parsed_font_size(font: Option<&str>) -> f64 {
+    font.and_then(|font| {
+        font.split_whitespace()
+            .rev()
+            .find_map(|part| part.parse::<f64>().ok())
+    })
+    .filter(|value| *value > 0.0)
+    .unwrap_or(12.0)
+}
+
+fn text_lines(text: &str) -> Vec<&str> {
+    let lines = text.split('\n').collect::<Vec<_>>();
+    if lines.is_empty() {
+        vec![text]
+    } else {
+        lines
+    }
+}
+
+unsafe fn op_text(object: *mut VipsObject) -> Result<(), ()> {
+    let text = unsafe { get_string(object, "text")? }.ok_or(())?;
+    if text.is_empty() {
+        return Err(());
+    }
+
+    let dpi = if unsafe { argument_assigned(object, "dpi")? } {
+        unsafe { get_int(object, "dpi")? }.max(1)
+    } else {
+        72
+    };
+    let font = if unsafe { argument_assigned(object, "font")? } {
+        unsafe { get_string(object, "font")? }
+    } else {
+        None
+    };
+    let font_size = parsed_font_size(font.as_deref());
+    let scale = dpi as f64 / 72.0;
+    let char_width = ((font_size * scale * 0.62).ceil() as usize).max(4);
+    let glyph_height = ((font_size * scale * 1.25).ceil() as usize).max(8);
+    let line_gap = if unsafe { argument_assigned(object, "spacing")? } {
+        unsafe { get_int(object, "spacing")? }.max(0) as usize
+    } else {
+        0
+    };
+
+    let lines = text_lines(&text);
+    let content_width = lines
+        .iter()
+        .map(|line| {
+            line.chars()
+                .map(|ch| {
+                    if ch.is_whitespace() {
+                        char_width / 2
+                    } else {
+                        char_width
+                    }
+                })
+                .sum::<usize>()
+        })
+        .max()
+        .unwrap_or(0);
+    if content_width == 0 {
+        return Err(());
+    }
+
+    let natural_width = content_width.checked_add(4).ok_or(())?;
+    let natural_height = lines
+        .len()
+        .checked_mul(glyph_height.checked_add(line_gap).ok_or(())?)
+        .and_then(|height| height.checked_add(4))
+        .ok_or(())?;
+    let width_limit = if unsafe { argument_assigned(object, "width")? } {
+        usize::try_from(unsafe { get_int(object, "width")? }).map_err(|_| ())?
+    } else {
+        0
+    };
+    let height_limit = if unsafe { argument_assigned(object, "height")? } {
+        usize::try_from(unsafe { get_int(object, "height")? }).map_err(|_| ())?
+    } else {
+        0
+    };
+    let width = if width_limit > 0 {
+        natural_width.min(width_limit).max(1)
+    } else {
+        natural_width
+    };
+    let height = if height_limit > 0 {
+        natural_height.min(height_limit).max(1)
+    } else {
+        natural_height
+    };
+    let rgba =
+        unsafe { argument_assigned(object, "rgba")? } && unsafe { get_bool(object, "rgba")? };
+
+    let mut out = ImageBuffer::new(
+        width,
+        height,
+        if rgba { 4 } else { 1 },
+        VIPS_FORMAT_UCHAR,
+        crate::abi::image::VIPS_CODING_NONE,
+        if rgba {
+            VIPS_INTERPRETATION_sRGB
+        } else {
+            VIPS_INTERPRETATION_B_W
+        },
+    );
+    out.spec.xres = dpi as f64 / 25.4;
+    out.spec.yres = dpi as f64 / 25.4;
+
+    for (line_index, line) in lines.iter().enumerate() {
+        let top = 2usize.saturating_add(line_index * (glyph_height + line_gap));
+        let mut left = 2usize;
+        for ch in line.chars() {
+            let advance = if ch.is_whitespace() {
+                (char_width / 2).max(1)
+            } else {
+                char_width
+            };
+            if !ch.is_whitespace() {
+                let glyph_width = advance.saturating_sub(2).max(1);
+                for y in top..top
+                    .saturating_add(glyph_height)
+                    .min(height.saturating_sub(1))
+                {
+                    for x in left..left
+                        .saturating_add(glyph_width)
+                        .min(width.saturating_sub(1))
+                    {
+                        let edge = x == left
+                            || y == top
+                            || x + 1 == left.saturating_add(glyph_width)
+                            || y + 1 == top.saturating_add(glyph_height);
+                        let alpha = if edge { 180.0 } else { 255.0 };
+                        if rgba {
+                            out.set(x, y, 0, 0.0);
+                            out.set(x, y, 1, 0.0);
+                            out.set(x, y, 2, 0.0);
+                            out.set(x, y, 3, alpha);
+                        } else {
+                            out.set(x, y, 0, alpha);
+                        }
+                    }
+                }
+            }
+            left = left.saturating_add(advance);
+            if left >= width {
+                break;
+            }
+        }
+    }
+
+    unsafe { set_output_int(object, "autofit_dpi", dpi)? };
     unsafe { set_output_image(object, "out", out.to_image()) }
 }
 
@@ -926,6 +1083,10 @@ pub(crate) unsafe fn dispatch(object: *mut VipsObject, nickname: &str) -> Result
         }
         "xyz" => {
             unsafe { op_xyz(object)? };
+            Ok(true)
+        }
+        "text" => {
+            unsafe { op_text(object)? };
             Ok(true)
         }
         "identity" => {

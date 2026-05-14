@@ -194,6 +194,7 @@ const SUPPORTED_OPERATIONS: &[&str] = &[
     "stats",
     "stdif",
     "spcor",
+    "text",
     "tilecache",
     "thumbnail",
     "thumbnail_buffer",
