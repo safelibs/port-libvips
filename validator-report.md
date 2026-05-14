@@ -907,6 +907,87 @@ PY
 
 ## Phase 5 Packaging Container And Remaining Rerun
 
+Phase start commit: dcac38c5b2868ac1971e5f6841e4697d1ca5ea92
+Source commit: 4f6431f0ac6fc34ffe2a0e8523add5047b39432f
+Source fix commits: 4f6431f0ac6fc34ffe2a0e8523add5047b39432f
+
+Phase ID `impl_05_packaging_container_remaining_failures` fixed the remaining release-gate and validator issue after the Phase 4 clean foreign/media rerun. The validator checkout was not fetched, pulled, switched, or modified, and tracked validator source remained clean at `d1c08d01cd50b34a7aeb62c5630e28df0eb6cd97`.
+
+### Failure Resolution
+
+- Resolved the remaining text/autofit failure: bounded `vips_text()` now selects a fitting DPI and reports wrapped output dimensions compatible with upstream behavior for explicit width/height boxes.
+- Added regression coverage in `safe/tests/ops_core.rs` for `vips_text("Hello, world!", width=500, height=500)` autofit width and for the difference between word and character wrapping at high DPI.
+- Approved validator-bug skips: none.
+- Remaining ordinary failures: none.
+
+### Gates Executed
+
+```bash
+bash scripts/check-layout.sh
+cd safe && cargo test --all-features -- --nocapture
+bash safe/scripts/run_release_gate.sh
+SAFELIBS_COMMIT_SHA="4f6431f0ac6fc34ffe2a0e8523add5047b39432f" bash scripts/build-debs.sh
+PYTHON="$ROOT/validator/.venv/bin/python" bash "$ROOT/validator/test.sh" --mode port --library libvips --override-deb-root "$ROOT/validator-overrides" --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-remaining-port-lock.json" --record-casts
+PYTHON="$ROOT/validator/.venv/bin/python" SAFELIBS_VALIDATOR_DIR="$ROOT/validator" SAFELIBS_COMMIT_SHA="4f6431f0ac6fc34ffe2a0e8523add5047b39432f" SAFELIBS_RECORD_CASTS=1 bash scripts/run-validation-tests.sh
+```
+
+Result: passed. The release gate included Rust tests, Meson install/package checks, upstream shell and pytest suites (`205 passed, 47 skipped`), fuzz corpus runs, link compatibility, Debian package rebuilds, packaged-prefix checks, deprecated C API smoke, and all dependent application smokes.
+
+### Stable Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-remaining-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Build output root: `dist/`
+- Source commit used for package traceability: `4f6431f0ac6fc34ffe2a0e8523add5047b39432f`
+- Release tag: `build-4f6431f0ac6f`
+- Stable lock canonical package order: `["libvips42t64", "libvips-dev", "libvips-tools", "gir1.2-vips-8.0"]`
+- Stable lock `unported_original_packages: []`
+
+| Package | Architecture | Size | SHA256 | Filename |
+| --- | --- | ---: | --- | --- |
+| `libvips42t64` | `amd64` | 1441342 | `c053aaa5a99bfdf373763c59b7c52bce3a9c7013f1e0b6532a92b759fe4c4dbb` | `libvips42t64_8.15.1-1.1build4+safelibs1778742518_amd64.deb` |
+| `libvips-dev` | `amd64` | 83400 | `091efe35092e462a1ab84c04590afe6a97bd3f2d6dc895c82ebffdf899f97ace` | `libvips-dev_8.15.1-1.1build4+safelibs1778742518_amd64.deb` |
+| `libvips-tools` | `amd64` | 27900 | `328a1718e9d83245c12e4ad5cecd065f9114040b92b11a461ce163dfc8f7d1c7` | `libvips-tools_8.15.1-1.1build4+safelibs1778742518_amd64.deb` |
+| `gir1.2-vips-8.0` | `amd64` | 5198 | `847c86c142ad156af611a335eb23c86d260193c909f6e086de2943dbb5895d6d` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778742518_amd64.deb` |
+
+### Stable Validator Rerun
+
+- Artifact root: `validator/artifacts/libvips-safe-remaining/`
+- Matrix exit status path: `validator/artifacts/libvips-safe-remaining/validator-exit-status.txt`
+- Package completeness status path: `validator/artifacts/libvips-safe-remaining/package-completeness-status.txt`
+- Matrix exit code: `0`
+- Package completeness assertion status: `0`
+- Summary path: `validator/artifacts/libvips-safe-remaining/port/results/libvips/summary.json`
+- Cases: `259`
+- Source cases: `5`
+- Usage cases: `250`
+- Regression cases: `4`
+- Passed: `259`
+- Failed: `0`
+- Casts recorded: `259`
+- Every stable testcase result had `override_debs_installed: true`, port commit `4f6431f0ac6fc34ffe2a0e8523add5047b39432f`, the canonical apt package order, the same four canonical `port_debs`, the same four `override_installed_packages`, and `unported_original_packages: []`.
+
+### CI-Parity Validator Evidence
+
+- Artifact root: `.work/validation/artifacts/`
+- Lock path: `.work/validation/port-deb-lock.json`
+- Summary path: `.work/validation/artifacts/port/results/libvips/summary.json`
+- Hook exit code: `0`
+- Cases: `259`
+- Source cases: `5`
+- Usage cases: `250`
+- Regression cases: `4`
+- Passed: `259`
+- Failed: `0`
+- Casts recorded: `259`
+- CI-parity lock canonical package order: `["libvips42t64", "libvips-dev", "libvips-tools", "gir1.2-vips-8.0"]`
+- CI-parity lock `unported_original_packages: []`
+- Every CI-parity testcase result had `override_debs_installed: true`, port commit `4f6431f0ac6fc34ffe2a0e8523add5047b39432f`, the canonical apt package order, the same four canonical `port_debs`, the same four `override_installed_packages`, and `unported_original_packages: []`.
+
+Post-run JSON assertions parsed `.work/validation/port-deb-lock.json`, `.work/validation/artifacts/port/results/libvips/*.json`, `validator/artifacts/libvips-safe-remaining-port-lock.json`, and `validator/artifacts/libvips-safe-remaining/port/results/libvips/*.json`; both locks were full canonical libvips locks with `unported_original_packages: []`, both summaries had `failed == 0`, and both roots recorded `casts == cases`.
+
+## Historical Evidence - impl_05_packaging_container_remaining_failures - Phase 5 Packaging Container And Remaining Rerun - 261c108d16f8
+
 Phase ID `impl_05_packaging_container_remaining_failures` fixed the remaining validator failure after Phases 2-4 and recorded a full canonical package rerun. The validator checkout was not fetched or pulled and remained clean at `9ae971508c9381f32a531078037851d960cab61f`.
 
 Phase start commit: 89f17a623af922ce3fd8001961dde0fba6edf167
