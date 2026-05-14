@@ -655,6 +655,99 @@ Remaining failures are non-phase-3 failures assigned to `impl_04_foreign_io_medi
 
 ## Phase 4 Foreign I/O And Media Rerun
 
+Phase start commit: 266faa4935588632bb36c8213f77a9bce04f084b
+Source commit: 266faa4935588632bb36c8213f77a9bce04f084b
+Source fix commits: none
+
+Phase ID `impl_04_foreign_io_media_failures` reran the foreign I/O and media matrix after the current Phase 3 source fixes. The active current-validator baseline and Phase 3 rerun left no remaining Phase 4-owned failures, so no new `safe/**`, `scripts/**`, `packaging/**`, or test edits were required in this phase. Existing media regression coverage and safe foreign stack behavior were retained, including PPM buffer discovery/reload, native JPEG `Q` buffer output, TIFF file/buffer output, WebP RIFF buffer roundtrip, matrix text load/save, metadata keep/profile handling, and source/target ownership paths.
+
+The rerun used the existing validator checkout at `d1c08d01cd50b34a7aeb62c5630e28df0eb6cd97`; no validator fetch, pull, branch switch, tracked validator edit, or approved-skip manifest was used. Tracked validator source was clean before the matrix and after the matrix.
+
+### Focused Media Tests
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+cd "$ROOT"
+bash scripts/check-layout.sh
+(cd safe && cargo test --all-features --test runtime_io --test security -- --nocapture)
+```
+
+Result: passed. `runtime_io` ran 21 tests and `security` ran 10 tests. The media regression `safe/tests/runtime_io.rs::foreign_media_buffer_and_text_roundtrips_match_validator_paths` covers the validator-style PPM, TIFF, JPEG, WebP, and matrix roundtrips; the security suite retained the media parser and range-validation CVE regressions.
+
+The sampled packaged-prefix media smoke also passed against the fresh `dist/` packages:
+
+```bash
+tmp="$(mktemp -d)"
+for pkg in libvips42t64 libvips-dev libvips-tools gir1.2-vips-8.0; do
+  deb="$(find dist -maxdepth 1 -name "${pkg}_*.deb" | head -n1)"
+  dpkg-deb -x "$deb" "$tmp"
+done
+LD_LIBRARY_PATH="$tmp/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}" \
+VIPSHOME="$tmp/usr" \
+  "$tmp/usr/bin/vips" copy original/test/test-suite/images/cogs.png "$tmp/out.v"
+LD_LIBRARY_PATH="$tmp/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}" \
+VIPSHOME="$tmp/usr" \
+  "$tmp/usr/bin/vipsheader" "$tmp/out.v"
+LD_LIBRARY_PATH="$tmp/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}" \
+VIPSHOME="$tmp/usr" \
+  "$tmp/usr/bin/vipsthumbnail" original/test/test-suite/images/cogs.png -o "$tmp/thumb.jpg"
+```
+
+Smoke output confirmed `/tmp/.../out.v` as an `85x385 uchar, 4 bands, srgb` VIPS image and `/tmp/.../thumb.jpg` as a JPEG thumbnail.
+
+### Package Lock
+
+- Lock path: `validator/artifacts/libvips-safe-foreign-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Build output root: `dist/`
+- Release tag: `build-266faa493558`
+- Tag ref: `refs/tags/build-266faa493558`
+- Canonical validator package order: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- `unported_original_packages == []`: confirmed
+
+| Package | Size | SHA256 | Filename |
+| --- | ---: | --- | --- |
+| `libvips42t64` | 1437450 | `973eadca7bcab69c63250ce0da99e50c2a1218fbb146aa650a062f183bf1fc53` | `libvips42t64_8.15.1-1.1build4+safelibs1778739454_amd64.deb` |
+| `libvips-dev` | 83394 | `e94c8280afbf1d52bc7630406415ca55f0deac235152ae7c1a42aeb2e4751c75` | `libvips-dev_8.15.1-1.1build4+safelibs1778739454_amd64.deb` |
+| `libvips-tools` | 27932 | `089a20ec4c7f23ee126c46a1fa41d600c6c0f11a62080b738d5ff4783dbbb6f6` | `libvips-tools_8.15.1-1.1build4+safelibs1778739454_amd64.deb` |
+| `gir1.2-vips-8.0` | 5192 | `b5acb8c177c30b14eccd46b14a334f9f6434391916ee7c9f667cdcc61e72df60` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778739454_amd64.deb` |
+
+### Validator Rerun
+
+```bash
+ROOT=/home/yans/safelibs/pipeline/ports/port-libvips
+cd "$ROOT"
+PYTHON="$ROOT/validator/.venv/bin/python" bash "$ROOT/validator/test.sh" \
+  --config "$ROOT/validator/repositories.yml" \
+  --tests-root "$ROOT/validator/tests" \
+  --artifact-root "$ROOT/validator/artifacts/libvips-safe-foreign" \
+  --mode port \
+  --library libvips \
+  --override-deb-root "$ROOT/validator-overrides" \
+  --port-deb-lock "$ROOT/validator/artifacts/libvips-safe-foreign-port-lock.json" \
+  --record-casts
+```
+
+- Artifact root: `validator/artifacts/libvips-safe-foreign/`
+- Validator exit status path: `validator/artifacts/libvips-safe-foreign/validator-exit-status.txt`
+- Validator exit status: `0`
+- Package-completeness status path: `validator/artifacts/libvips-safe-foreign/package-completeness-status.txt`
+- Package-completeness status: `0`
+- Package-completeness detail path: `validator/artifacts/libvips-safe-foreign/package-completeness-failures.txt`
+- Summary path: `validator/artifacts/libvips-safe-foreign/port/results/libvips/summary.json`
+- Summary: `259` cases, `259` passed, `0` failed, `5` source, `250` usage, `4` regression, `259` casts.
+- `casts == cases`: confirmed
+- Override debs installed for every testcase result: `true`
+- Port deb packages for every testcase result: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- Override installed packages for every testcase result: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- Unported original packages for every testcase result: `[]`
+
+Current and prior owned testcase IDs checked as passed in this rerun: `usage-ruby-vips-r11-add-alpha-three-to-four-bands`, `usage-ruby-vips-r11-fwfft-invfft-roundtrip`, `usage-ruby-vips-r12-colourspace-srgb-to-bw-one-band`, `usage-ruby-vips-r12-composite-over-yields-input-bands`, and `usage-ruby-vips-r16-text-hello-image-has-positive-width`. There were no active Phase 4-owned remaining failures after Phase 3.
+
+Remaining failures: none.
+
+## Historical Evidence - Phase 4 Foreign I/O And Media Rerun (pre-current-266faa493558)
+
 Phase start commit: 1e23d5f78e260fad42f35bd76f3bf5b9ed63dc13
 Source commit: 1e23d5f78e260fad42f35bd76f3bf5b9ed63dc13
 Source fix commits: none
