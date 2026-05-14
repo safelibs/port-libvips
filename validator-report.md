@@ -2,6 +2,110 @@
 
 ## Phase 1 Current Validator Baseline
 
+Phase start commit: e7f1354519acf1df3b49e7a9e26c162df33b2676
+Validator commit: d1c08d01cd50b34a7aeb62c5630e28df0eb6cd97
+Source commit: e7f1354519acf1df3b49e7a9e26c162df33b2676
+Source fix commits: none
+
+This is the refreshed current-validator baseline for `libvips` in `port` mode. The validator checkout was fast-forwarded once on `main`, then the baseline packages, override packages, lock, matrix artifacts, and report evidence were generated from the phase-start source commit above.
+
+### Dependency-hook status
+
+- Command: `bash scripts/install-build-deps.sh`
+- Outcome: success, exit status `0`
+- Ordering: completed before the first official `SAFELIBS_COMMIT_SHA=e7f1354519acf1df3b49e7a9e26c162df33b2676 bash scripts/build-debs.sh` package build.
+- Environment result: existing apt dependencies were already present; Rust toolchain `1.82.0` was refreshed or verified by rustup.
+
+### Validator and source commits
+
+- Validator URL: https://github.com/safelibs/validator
+- Validator branch: `main`
+- Phase-start validator pre-pull local commit: `9ae971508c9381f32a531078037851d960cab61f`
+- Phase-start validator pre-pull remote `origin/main`: `d1c08d01cd50b34a7aeb62c5630e28df0eb6cd97`
+- Active validator commit after the single fast-forward update: `d1c08d01cd50b34a7aeb62c5630e28df0eb6cd97`
+- Source commit used for package build, override debs, lock synthesis, and matrix: `e7f1354519acf1df3b49e7a9e26c162df33b2676`
+- Source fix commits: none
+- `packaging/package.env` still provides `SAFELIBS_LIBRARY="libvips"`.
+
+### Testcase counts
+
+- Pre-pull libvips testcase inventory from the source plan: `5 source, 240 usage, 4 regression, 249 total`
+- Post-update inventory path: `validator/artifacts/libvips-safe-baseline-current-testcases.txt`
+
+| Library | Source cases | Usage cases | Regression cases | Total cases |
+| --- | ---: | ---: | ---: | ---: |
+| libvips | 5 | 250 | 4 | 259 |
+
+### Lock package table
+
+- Lock path: `validator/artifacts/libvips-safe-baseline-current-port-lock.json`
+- Override root: `validator-overrides/libvips/`
+- Release tag: `build-e7f1354519ac`
+- Tag ref: `refs/tags/build-e7f1354519ac`
+- Canonical validator package order: `libvips42t64`, `libvips-dev`, `libvips-tools`, `gir1.2-vips-8.0`
+- `unported_original_packages == []`: confirmed
+
+| Package | Deb filename | SHA256 | Size |
+| --- | --- | --- | ---: |
+| `libvips42t64` | `libvips42t64_8.15.1-1.1build4+safelibs1778655052_amd64.deb` | `3faa9983d31477c4e4523e40188b81242ad0b447712bc98375b3322ce044577f` | 1434254 |
+| `libvips-dev` | `libvips-dev_8.15.1-1.1build4+safelibs1778655052_amd64.deb` | `fc914a1016ca08654700ba28d4336127c93959b73681ef17d794a052e28b9a62` | 83414 |
+| `libvips-tools` | `libvips-tools_8.15.1-1.1build4+safelibs1778655052_amd64.deb` | `562476e69e36567582d3c51cf0ba4ca74c2ad8347b122b549bcac41238c71180` | 27928 |
+| `gir1.2-vips-8.0` | `gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778655052_amd64.deb` | `e24f564ad4d7026b6f347f0c62e3a87a1001382e43553bd2c09c67a2df5e895d` | 5188 |
+
+### Validator exit status
+
+- Direct matrix command: `PYTHON="$ROOT/validator/.venv/bin/python" bash "$ROOT/validator/test.sh" --config "$ROOT/validator/repositories.yml" --tests-root "$ROOT/validator/tests" --artifact-root "$ARTIFACT_ROOT" --mode port --library libvips --override-deb-root "$ROOT/validator-overrides" --port-deb-lock "$LOCK_PATH" --record-casts`
+- Exit status: `0`
+- Status path: `validator/artifacts/libvips-safe-baseline-current/validator-exit-status.txt`
+- Tracked validator source cleanliness: clean before update, before validator unit/check-testcase commands, before the matrix, and after the matrix.
+
+### Package-completeness status
+
+- Status: `0`
+- Status path: `validator/artifacts/libvips-safe-baseline-current/package-completeness-status.txt`
+- Detail path: `validator/artifacts/libvips-safe-baseline-current/package-completeness-failures.txt`
+- Assertion result: every testcase result JSON lists `apt_packages`, `port_debs`, and `override_installed_packages` in canonical order; `override_debs_installed is True`; `port_commit` equals `e7f1354519acf1df3b49e7a9e26c162df33b2676`; `unported_original_packages == []`; and `casts == cases`.
+
+### Matrix summary
+
+- Summary path: `validator/artifacts/libvips-safe-baseline-current/port/results/libvips/summary.json`
+- Cases: `259`
+- Passed: `258`
+- Failed: `1`
+- Casts: `259`
+- `casts == cases`: confirmed
+
+### Failure table
+
+| Testcase ID | Kind | Owner phase | Concise root cause | Result JSON path | Log path |
+| --- | --- | --- | --- | --- | --- |
+| `usage-ruby-vips-r16-text-hello-image-has-positive-width` | `usage` | Phase 3 | Ruby `Vips::Image.text("Hello")` fails because the `text` operation is not implemented in the safe libvips operation surface. | `validator/artifacts/libvips-safe-baseline-current/port/results/libvips/usage-ruby-vips-r16-text-hello-image-has-positive-width.json` | `validator/artifacts/libvips-safe-baseline-current/port/logs/libvips/usage-ruby-vips-r16-text-hello-image-has-positive-width.log` |
+
+### Artifact paths
+
+- Inventory file: `validator/artifacts/libvips-safe-baseline-current-testcases.txt`
+- Lock file: `validator/artifacts/libvips-safe-baseline-current-port-lock.json`
+- Artifact root: `validator/artifacts/libvips-safe-baseline-current/`
+- Result summary: `validator/artifacts/libvips-safe-baseline-current/port/results/libvips/summary.json`
+- Validator status file: `validator/artifacts/libvips-safe-baseline-current/validator-exit-status.txt`
+- Package-completeness status file: `validator/artifacts/libvips-safe-baseline-current/package-completeness-status.txt`
+- Package-completeness detail file: `validator/artifacts/libvips-safe-baseline-current/package-completeness-failures.txt`
+- Dist debs: `dist/gir1.2-vips-8.0_8.15.1-1.1build4+safelibs1778655052_amd64.deb`, `dist/libvips-dev_8.15.1-1.1build4+safelibs1778655052_amd64.deb`, `dist/libvips-doc_8.15.1-1.1build4+safelibs1778655052_all.deb`, `dist/libvips-tools_8.15.1-1.1build4+safelibs1778655052_amd64.deb`, `dist/libvips42t64_8.15.1-1.1build4+safelibs1778655052_amd64.deb`
+- Override packages: `validator-overrides/libvips/`
+
+### Classification counts
+
+| Owner phase | Failure count |
+| --- | ---: |
+| Phase 2 | 0 |
+| Phase 3 | 1 |
+| Phase 4 | 0 |
+| Phase 5 | 0 |
+
+Classification counts sum to the matrix failed count: `1`.
+
+## Historical Evidence - impl_01_update_validator_and_baseline - Phase 1 Current Validator Baseline - 9ae971508c9381f32a531078037851d960cab61f
+
 Phase start commit: b82520f7f943976b2f62660fb9ad2a78e73a3dc3
 Validator commit: 9ae971508c9381f32a531078037851d960cab61f
 Source commit: b82520f7f943976b2f62660fb9ad2a78e73a3dc3
