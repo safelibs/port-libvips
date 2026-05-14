@@ -1168,7 +1168,6 @@ PY
 ```
 
 ## Final Clean Run
-
 Final validator commit: d1c08d01cd50b34a7aeb62c5630e28df0eb6cd97
 Final source commit: dae3a854aaa9c249c4c7e78ba2a36cdecb02cf42
 
@@ -1216,7 +1215,6 @@ Phase ID `impl_06_final_clean_run_report` produced the final clean evidence set 
 
 - CI-parity artifact root: `.work/validation/artifacts/`
 - CI-parity lock path: `.work/validation/port-deb-lock.json`
-- CI-parity exit status path: `.work/validation/validator-exit-status.txt`
 - CI-parity exit code: `0`
 - CI-parity summary path: `.work/validation/artifacts/port/results/libvips/summary.json`
 - CI-parity summary: `259` cases, `259` passed, `0` failed, `5` source, `250` usage, `4` regression, `259` casts; `casts == cases`.
